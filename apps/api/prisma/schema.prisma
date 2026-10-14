@@ -1,0 +1,179 @@
+// Equivalente Prisma del esquema propuesto (schema_propuesto.sql).
+// Prisma no expresa CHECK ni índices parciales: créalos con
+//   npx prisma migrate dev --create-only
+// y añade al final del migration.sql las líneas marcadas "SQL manual" en schema_propuesto.sql
+// (CREATE EXTENSION citext y pg_trgm, CHECKs, índices WHERE deleted_at IS NULL / read_at IS NULL,
+// índices GIN de búsqueda de usuarios).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  username       String    @unique @db.Citext
+  email          String    @unique @db.Citext
+  passwordHash   String    @map("password_hash")
+  displayName    String?   @map("display_name") @db.VarChar(80)
+  bio            String?   @db.VarChar(300)
+  avatarPublicId String?   @map("avatar_public_id")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  posts          Post[]
+  comments       Comment[]
+  likes          PostLike[]
+  following      Follow[]       @relation("follower")
+  followers      Follow[]       @relation("following")
+  refreshTokens  RefreshToken[]
+  convsAsA       Conversation[] @relation("userA")
+  convsAsB       Conversation[] @relation("userB")
+  messages       Message[]
+  notifications  Notification[] @relation("recipient")
+  actedNotifs    Notification[] @relation("actor")
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz
+  replacedBy String?   @map("replaced_by") @db.Uuid
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Post {
+  id           String      @id @default(uuid(7)) @db.Uuid
+  authorId     String      @map("author_id") @db.Uuid
+  content      String?     @db.VarChar(2000)
+  likeCount    Int         @default(0) @map("like_count")
+  commentCount Int         @default(0) @map("comment_count")
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt    DateTime?   @map("deleted_at") @db.Timestamptz
+  author       User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  media        PostMedia[]
+  comments     Comment[]
+  likes        PostLike[]
+  notifications Notification[]
+
+  @@index([authorId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+  @@map("posts")
+}
+
+model PostMedia {
+  id        String @id @default(uuid(7)) @db.Uuid
+  postId    String @map("post_id") @db.Uuid
+  publicId  String @map("public_id")
+  mediaType String @map("media_type") @db.VarChar(10)
+  width     Int?
+  height    Int?
+  position  Int    @default(0) @db.SmallInt
+  post      Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, position])
+  @@map("post_media")
+}
+
+model Comment {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  postId    String    @map("post_id") @db.Uuid
+  authorId  String    @map("author_id") @db.Uuid
+  content   String    @db.VarChar(1000)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+
+  @@index([postId, createdAt])
+  @@index([authorId])
+  @@map("comments")
+}
+
+model PostLike {
+  userId    String   @map("user_id") @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+  @@map("post_likes")
+}
+
+model Follow {
+  followerId  String   @map("follower_id") @db.Uuid
+  followingId String   @map("following_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+model Conversation {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  userAId          String    @map("user_a_id") @db.Uuid
+  userBId          String    @map("user_b_id") @db.Uuid
+  userALastReadAt  DateTime? @map("user_a_last_read_at") @db.Timestamptz
+  userBLastReadAt  DateTime? @map("user_b_last_read_at") @db.Timestamptz
+  lastMessageAt    DateTime? @map("last_message_at") @db.Timestamptz
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  userA            User      @relation("userA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB            User      @relation("userB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages         Message[]
+
+  @@unique([userAId, userBId])
+  @@index([userBId])
+  @@index([lastMessageAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  senderId       String       @map("sender_id") @db.Uuid
+  content        String       @db.VarChar(2000)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt(sort: Desc), id(sort: Desc)])
+  @@map("messages")
+}
+
+model Notification {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  recipientId String    @map("recipient_id") @db.Uuid
+  actorId     String    @map("actor_id") @db.Uuid
+  type        String    @db.VarChar(20)
+  postId      String?   @map("post_id") @db.Uuid
+  commentId   String?   @map("comment_id") @db.Uuid
+  readAt      DateTime? @map("read_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  recipient   User      @relation("recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor       User      @relation("actor", fields: [actorId], references: [id], onDelete: Cascade)
+  post        Post?     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment     Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, createdAt(sort: Desc)])
+  @@map("notifications")
+}

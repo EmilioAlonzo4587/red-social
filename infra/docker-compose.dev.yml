@@ -1,0 +1,14 @@
+# Desarrollo local: solo PostgreSQL. web y api corren con pnpm dev en la máquina.
+services:
+  db:
+    image: postgres:16
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: minired
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+volumes:
+  pgdata_dev:

@@ -1,0 +1,17 @@
+{
+  "titulo": "Mini Red Social",
+  "subtitulo": "Documentación del proyecto",
+  "institucion": "[Institución · Curso]",
+  "integrantes": [
+    { "nombre": "[Nombre 1]", "rol": "Dev 1 · Frontend" },
+    { "nombre": "[Nombre 2]", "rol": "Dev 2 · Datos y contenido" },
+    { "nombre": "[Nombre 3]", "rol": "Dev 3 · Plataforma y tiempo real" }
+  ],
+  "repositorio": "https://github.com/[organizacion]/[repositorio]",
+  "urls": {
+    "frontend": "https://[dominio]",
+    "backend": "https://[dominio]/api",
+    "documentacionApi": "https://[dominio]/api/docs"
+  },
+  "version": "0.1 · plan inicial"
+}

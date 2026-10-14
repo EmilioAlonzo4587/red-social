@@ -1,0 +1,15 @@
+# Reemplazar {$DOMAIN} con la variable de entorno DOMAIN (ej. mired.duckdns.org)
+{$DOMAIN} {
+	encode zstd gzip
+
+	# API, documentación y WebSockets van a NestJS
+	@api path /api /api/* /socket.io/*
+	handle @api {
+		reverse_proxy api:3000
+	}
+
+	# Todo lo demás, a Next.js
+	handle {
+		reverse_proxy web:3000
+	}
+}

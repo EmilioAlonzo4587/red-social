@@ -1,0 +1,45 @@
+/* Estilo de impresión del documento. Fuentes del sistema para no depender de internet en CI. */
+@page { size: A4; }
+:root { --tinta: #1b2130; --suave: #5a6375; --linea: #d9dde6; --acento: #2346b8; --fondo-codigo: #f1f3f7; }
+* { box-sizing: border-box; }
+body { font-family: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif; color: var(--tinta); font-size: 10.5pt; line-height: 1.5; margin: 0; }
+h1, h2, h3 { line-height: 1.25; color: var(--tinta); break-after: avoid; }
+h1 { font-size: 22pt; margin: 0 0 14pt; padding-bottom: 6pt; border-bottom: 2px solid var(--acento); }
+h2 { font-size: 14.5pt; margin: 20pt 0 8pt; }
+h3 { font-size: 11.5pt; margin: 14pt 0 6pt; }
+.num { color: var(--acento); margin-right: 8pt; font-variant-numeric: tabular-nums; }
+.capitulo { break-before: page; }
+p, li { orphans: 3; widows: 3; }
+a { color: var(--acento); text-decoration: none; }
+code { font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace; font-size: 8.8pt; background: var(--fondo-codigo); padding: 0 3px; border-radius: 3px; }
+pre { background: var(--fondo-codigo); padding: 8pt 10pt; border-radius: 4px; overflow: hidden; white-space: pre-wrap; break-inside: avoid; }
+pre code { background: none; padding: 0; font-size: 8.5pt; }
+table { width: 100%; border-collapse: collapse; margin: 8pt 0 12pt; font-size: 9pt; }
+th, td { text-align: left; vertical-align: top; padding: 4pt 6pt; border-bottom: 1px solid var(--linea); }
+th { background: #eef1f8; font-weight: 600; }
+tr { break-inside: avoid; }
+td small { color: var(--suave); }
+figure.diagrama { margin: 10pt 0 14pt; text-align: center; break-inside: avoid; }
+figure.diagrama pre.mermaid { background: none; padding: 0; white-space: normal; }
+@page horizontal { size: A4 landscape; }
+figure.diagrama.horizontal { page: horizontal; break-before: page; break-after: page; margin: 0; }
+figure.diagrama.horizontal svg { max-height: 165mm; width: 100%; }
+figure.diagrama svg { max-width: 100%; height: auto; max-height: 230mm; }
+
+.portada { height: 255mm; display: flex; flex-direction: column; justify-content: center; }
+.portada .marca { color: var(--suave); text-transform: uppercase; letter-spacing: 0.08em; font-size: 10pt; }
+.portada .titulo { font-size: 36pt; border: none; margin: 10pt 0 4pt; padding: 0; }
+.portada .subtitulo { font-size: 15pt; color: var(--acento); margin: 0 0 30pt; }
+.portada .datos { width: auto; min-width: 60%; font-size: 10.5pt; }
+.portada .datos td:first-child { font-weight: 600; padding-right: 24pt; }
+.portada .urls td:first-child { font-weight: 400; color: var(--suave); }
+.portada .version { margin-top: 30pt; color: var(--suave); }
+
+.indice { break-before: page; }
+.indice h1 { border-bottom: 2px solid var(--acento); }
+.indice ol { list-style: none; padding: 0; margin: 0; }
+.indice li { padding: 3pt 0; border-bottom: 1px dotted var(--linea); }
+.indice li.n1 { font-weight: 600; margin-top: 8pt; }
+.indice li.n2 { padding-left: 18pt; font-size: 9.5pt; }
+.indice li span { color: var(--acento); display: inline-block; min-width: 28pt; }
+.indice a { color: var(--tinta); }

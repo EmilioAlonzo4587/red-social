@@ -1,0 +1,38 @@
+name: Documentación PDF
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "tools/docs-pdf/**", ".github/workflows/docs-pdf.yml"]
+  pull_request:
+    paths: ["docs/**", "tools/docs-pdf/**"]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm docs:pdf
+      - name: Verificar que docs/ está sincronizado con backlog.json
+        run: git diff --exit-code docs/ || (echo "Ejecuta 'pnpm docs:sync' y haz commit de los cambios" && exit 1)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: documentacion-pdf
+          path: dist/documentacion.pdf
+      - name: Adjuntar el PDF al release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/documentacion.pdf --clobber
