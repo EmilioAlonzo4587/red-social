@@ -3,11 +3,11 @@
   "subtitulo": "Documentación del proyecto",
   "institucion": "[Institución · Curso]",
   "integrantes": [
-    { "nombre": "[Nombre 1]", "rol": "Dev 1 · Frontend" },
-    { "nombre": "[Nombre 2]", "rol": "Dev 2 · Datos y contenido" },
-    { "nombre": "[Nombre 3]", "rol": "Dev 3 · Plataforma y tiempo real" }
+    { "nombre": "Maynor", "rol": "Dev 1 · Frontend" },
+    { "nombre": "Emilio", "rol": "Dev 2 · Datos y contenido" },
+    { "nombre": "Invitado", "rol": "Dev 3 · Plataforma y tiempo real" }
   ],
-  "repositorio": "https://github.com/[organizacion]/[repositorio]",
+  "repositorio": "https://github.com/EmilioAlonzo4587/red-social.git",
   "urls": {
     "frontend": "https://[dominio]",
     "backend": "https://[dominio]/api",
