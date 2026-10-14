@@ -33,22 +33,24 @@ Una issue está terminada cuando:
 
 ## Cronograma
 
+El proyecto arranca el miércoles 14 de octubre de 2026 a las 15:00, hora de Guatemala (UTC-6), y se cuenta en días naturales: el día 1 es el 14 de octubre y el día 30 el 12 de noviembre. Cada semana termina el día indicado a las 23:59, que es la fecha límite de su milestone en GitHub.
+
 | Semana | Objetivo verificable | Dev 1 · Frontend | Dev 2 · Datos y contenido | Dev 3 · Plataforma y tiempo real |
 |---|---|---|---|---|
-| 0 (días 1-3) | Repo, esquema y servidor listos | Wireframes; Next.js inicializado | Esquema y migración; contrato de API | Monorepo y CI; VPS y dominio |
-| 1 (días 4-10) | Registro e inicio de sesión en producción | Portada, login y registro; cliente de API; perfil | Usuarios y perfil; seed; eventos de dominio | Producción con HTTPS (día 6); autenticación; e2e en CI; socket autenticado |
-| 2 (días 11-17) | Publicar, seguir y like en vivo | Compositor; feed; likes y seguir; editar perfil | Publicaciones; feeds; seguimiento; likes | Cloudinary; respaldo diario; contador de likes en vivo |
-| 3 (días 18-24) | Todas las funciones completas | Notificaciones; detalle y comentarios; buscador | Comentarios; búsqueda; notificaciones persistidas | API e interfaz de chat; envío en vivo |
-| 4 (días 25-30) | Entrega | Funciones congeladas el día 25: pruebas, seguridad, documentación, restauración y ensayo de la demo | | |
+| 0 · 14 al 16 oct (días 1-3) | Repo, esquema y servidor listos | Wireframes; Next.js inicializado | Esquema y migración; contrato de API | Monorepo y CI; VPS y dominio |
+| 1 · 17 al 23 oct (días 4-10) | Registro e inicio de sesión en producción | Portada, login y registro; cliente de API; perfil | Usuarios y perfil; seed; eventos de dominio | Producción con HTTPS (19 oct); autenticación; e2e en CI; socket autenticado |
+| 2 · 24 al 30 oct (días 11-17) | Publicar, seguir y like en vivo | Compositor; feed; likes y seguir; editar perfil | Publicaciones; feeds; seguimiento; likes | Cloudinary; respaldo diario; contador de likes en vivo |
+| 3 · 31 oct al 6 nov (días 18-24) | Todas las funciones completas | Notificaciones; detalle y comentarios; buscador | Comentarios; búsqueda; notificaciones persistidas | API e interfaz de chat; envío en vivo |
+| 4 · 7 al 12 nov (días 25-30) | Entrega | Funciones congeladas el 7 nov: pruebas, seguridad, documentación, restauración y ensayo de la demo | | |
 
 ## Riesgos
 
 | Riesgo | Probabilidad | Mitigación |
 |---|---|---|
-| No conseguir un VPS gratuito a tiempo | Alta | Fecha límite el día 3 y plan de pago |
+| No conseguir un VPS gratuito a tiempo | Alta | Fecha límite el 16 oct y plan de pago |
 | Problemas con WebSockets detrás del proxy | Media | Socket autenticado en producción en la semana 1 |
 | Retraso de una persona bloquea a otra | Media | Contrato de API y eventos de dominio desde la semana 0 y 1 |
-| Errores de último momento | Media | Funciones congeladas el día 25 |
+| Errores de último momento | Media | Funciones congeladas el 7 nov |
 | Pérdida de datos en el VPS | Baja | Respaldo diario y restauración probada |
 
 ## Backlog
@@ -57,19 +59,19 @@ Generado desde `docs/plan/backlog.json`, la misma fuente que crea las issues en 
 
 <!-- BACKLOG:INICIO (generado desde docs/plan/backlog.json; no editar a mano) -->
 
-### Semana 0 (días 1-3): Decidir y preparar
+### Semana 0 (14 al 16 oct): Decidir y preparar
 
 | Issue | Asignado | Criterios de aceptación |
 |---|---|---|
 | **S0-01** Monorepo y estructura base | Dev 3 · Plataforma y tiempo real | • Workspaces con apps/web, apps/api, packages/api-types, infra/ y docs/<br>• README con la estructura y cómo levantar el entorno local<br>• docker-compose.dev.yml levanta PostgreSQL local |
 | **S0-02** CI en pull requests y protección de main<br><small>depende de S0-01</small> | Dev 3 · Plataforma y tiempo real | • ci.yml ejecuta lint, tsc --noEmit y build de web y api en cada PR<br>• main exige PR, 1 aprobación y CI en verde, sin excepciones para administradores |
-| **S0-03** Conseguir el VPS y el dominio | Dev 3 · Plataforma y tiempo real | • Se intenta primero Student Pack o Azure for Students; si el día 3 no hay máquina, se paga un VPS barato<br>• Mínimo 2 GB de RAM y swap configurado<br>• Acceso SSH solo con llave, usuario sin root, firewall con 22, 80 y 443<br>• Docker instalado y el dominio apuntando a la IP |
+| **S0-03** Conseguir el VPS y el dominio | Dev 3 · Plataforma y tiempo real | • Se intenta primero Student Pack o Azure for Students; si el 16 de octubre (día 3) no hay máquina, se paga un VPS barato<br>• Mínimo 2 GB de RAM y swap configurado<br>• Acceso SSH solo con llave, usuario sin root, firewall con 22, 80 y 443<br>• Docker instalado y el dominio apuntando a la IP |
 | **S0-04** Esquema Prisma y migración inicial<br><small>depende de S0-01</small> | Dev 2 · Datos y contenido | • schema.prisma basado en plan-red-social/schema.prisma<br>• La migración incluye a mano las extensiones, CHECKs e índices parciales y GIN de schema_propuesto.sql<br>• prisma migrate reset reconstruye la base desde cero sin errores |
 | **S0-05** Contrato de API v0 | Dev 2 · Datos y contenido | • docs/api-contract.md con endpoints, DTOs, códigos de error y eventos de socket<br>• Revisado y aprobado por los tres |
 | **S0-06** Wireframes de las 8 vistas | Dev 1 · Frontend | • Portada con login, registro, feed, perfil, editar perfil, detalle de publicación, chat y notificaciones<br>• Incluye el buscador en la barra superior y los estados vacíos |
 | **S0-07** Next.js inicializado con layout base<br><small>depende de S0-01</small> | Dev 1 · Frontend | • App Router con TypeScript, ESLint y librería de UI elegida<br>• Layout con barra superior y .env.example |
 
-### Semana 1 (días 4-10): Esqueleto en producción y autenticación
+### Semana 1 (17 al 23 oct): Esqueleto en producción y autenticación
 
 | Issue | Asignado | Criterios de aceptación |
 |---|---|---|
@@ -84,7 +86,7 @@ Generado desde `docs/plan/backlog.json`, la misma fuente que crea las issues en 
 | **S1-09** Cliente de API tipado<br><small>depende de S1-02</small> | Dev 1 · Frontend | • Tipos generados desde /api/docs-json en packages/api-types<br>• En SSR, Next llama a http://api:3000 reenviando la cookie del usuario<br>• Un 401 intenta refresh una vez y, si falla, vuelve a la portada |
 | **S1-10** Perfil renderizado en servidor<br><small>HU05 · depende de S1-05, S1-09</small> | Dev 1 · Frontend | • /u/[username] se renderiza en el servidor con los datos y contadores<br>• 404 si el usuario no existe |
 
-### Semana 2 (días 11-17): Núcleo social y primer contador en vivo
+### Semana 2 (24 al 30 oct): Núcleo social y primer contador en vivo
 
 | Issue | Asignado | Criterios de aceptación |
 |---|---|---|
@@ -100,7 +102,7 @@ Generado desde `docs/plan/backlog.json`, la misma fuente que crea las issues en 
 | **S2-10** Likes, seguir y eliminar en la interfaz<br><small>HU05, HU07, HU09, HU11 · depende de S2-06, S2-07, S1-10</small> | Dev 1 · Frontend | • Botón de like optimista que se corrige si la API falla<br>• Botón seguir en el perfil y lista de publicaciones del perfil<br>• Eliminar publicación propia con confirmación dentro de la página |
 | **S2-11** Editar perfil y avatar<br><small>HU04 · depende de S1-05, S2-01</small> | Dev 1 · Frontend | • Formulario de nombre visible y biografía<br>• Cambio de avatar con vista previa |
 
-### Semana 3 (días 18-24): Comentarios, búsqueda, notificaciones y chat
+### Semana 3 (31 oct al 6 nov): Comentarios, búsqueda, notificaciones y chat
 
 | Issue | Asignado | Criterios de aceptación |
 |---|---|---|
@@ -114,7 +116,7 @@ Generado desde `docs/plan/backlog.json`, la misma fuente que crea las issues en 
 | **S3-08** Detalle de publicación con comentarios<br><small>HU12 · depende de S3-01, S2-03</small> | Dev 1 · Frontend | • /p/[id] renderizado en servidor con comentarios paginados<br>• Escribir y borrar comentarios propios<br>• Contador de comentarios en vivo en el feed y en el detalle |
 | **S3-09** Buscador de usuarios<br><small>HU10 · depende de S3-02</small> | Dev 1 · Frontend | • Campo en la barra superior con espera de 300 ms entre teclas<br>• Resultados con avatar que enlazan al perfil |
 
-### Semana 4 (días 25-30): Funciones congeladas el día 25: pruebas, endurecimiento y entrega
+### Semana 4 (7 al 12 nov): Funciones congeladas el 7 nov: pruebas, endurecimiento y entrega
 
 | Issue | Asignado | Criterios de aceptación |
 |---|---|---|

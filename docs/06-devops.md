@@ -11,7 +11,7 @@ No hay entorno de staging: el CI con base de datos real y la revisión obligator
 
 ## Servidor
 
-- **Proveedor**: primero se intentan las opciones gratuitas (GitHub Student Pack, Azure for Students, Oracle Always Free). Si al día 3 no hay una máquina funcionando, se contrata un VPS económico (issue S0-03).
+- **Proveedor**: primero se intentan las opciones gratuitas (GitHub Student Pack, Azure for Students, Oracle Always Free). Si al 16 de octubre (día 3) no hay una máquina funcionando, se contrata un VPS económico (issue S0-03).
 - **Requisitos mínimos**: 2 GB de RAM, swap de 2 GB, Ubuntu LTS, Docker y el plugin de Compose.
 - **Acceso**: SSH solo con llave, usuario `deploy` sin privilegios de root, firewall con los puertos 22, 80 y 443.
 - **Dominio**: un único dominio o subdominio apuntando a la IP del VPS. Caddy obtiene y renueva el certificado HTTPS automáticamente.

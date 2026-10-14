@@ -46,7 +46,8 @@ for (const [nombre, color] of Object.entries(COLOR)) gh(['label', 'create', nomb
 for (const area of [...new Set(issues.map((i) => i.area))]) gh(['label', 'create', area, '--color', 'c5def5', '--force']);
 
 console.log('Milestones');
-for (const s of semanas) gh(['api', `repos/${repo}/milestones`, '-f', `title=${tituloMilestone(s)}`, '-f', `description=${s.objetivo}`], { permitirFallo: true });
+// Fecha límite: el último día de la semana. Se envía a mediodía UTC para que GitHub muestre ese mismo día en cualquier zona horaria.
+for (const s of semanas) gh(['api', `repos/${repo}/milestones`, '-f', `title=${tituloMilestone(s)}`, '-f', `description=${s.objetivo}`, '-f', `due_on=${s.fin}T12:00:00Z`], { permitirFallo: true });
 
 const existentes = new Map();
 if (!dryRun) {

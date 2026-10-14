@@ -16,16 +16,16 @@
     {"id": "HU14", "texto": "Como usuario, quiero chatear 1 a 1 con otra persona: ver mi bandeja con los mensajes no leídos y recibir los mensajes sin recargar.", "origen": "imprescindible"}
   ],
   "semanas": [
-    {"id": "S0", "titulo": "Semana 0", "dias": "días 1-3", "objetivo": "Decidir y preparar"},
-    {"id": "S1", "titulo": "Semana 1", "dias": "días 4-10", "objetivo": "Esqueleto en producción y autenticación"},
-    {"id": "S2", "titulo": "Semana 2", "dias": "días 11-17", "objetivo": "Núcleo social y primer contador en vivo"},
-    {"id": "S3", "titulo": "Semana 3", "dias": "días 18-24", "objetivo": "Comentarios, búsqueda, notificaciones y chat"},
-    {"id": "S4", "titulo": "Semana 4", "dias": "días 25-30", "objetivo": "Funciones congeladas el día 25: pruebas, endurecimiento y entrega"}
+    {"id": "S0", "titulo": "Semana 0", "dias": "14 al 16 oct", "inicio": "2026-10-14", "fin": "2026-10-16", "objetivo": "Decidir y preparar"},
+    {"id": "S1", "titulo": "Semana 1", "dias": "17 al 23 oct", "inicio": "2026-10-17", "fin": "2026-10-23", "objetivo": "Esqueleto en producción y autenticación"},
+    {"id": "S2", "titulo": "Semana 2", "dias": "24 al 30 oct", "inicio": "2026-10-24", "fin": "2026-10-30", "objetivo": "Núcleo social y primer contador en vivo"},
+    {"id": "S3", "titulo": "Semana 3", "dias": "31 oct al 6 nov", "inicio": "2026-10-31", "fin": "2026-11-06", "objetivo": "Comentarios, búsqueda, notificaciones y chat"},
+    {"id": "S4", "titulo": "Semana 4", "dias": "7 al 12 nov", "inicio": "2026-11-07", "fin": "2026-11-12", "objetivo": "Funciones congeladas el 7 nov: pruebas, endurecimiento y entrega"}
   ],
   "issues": [
     {"id": "S0-01", "semana": "S0", "dev": "dev3", "area": "infra", "titulo": "Monorepo y estructura base", "hu": [], "depende": [], "criterios": ["Workspaces con apps/web, apps/api, packages/api-types, infra/ y docs/", "README con la estructura y cómo levantar el entorno local", "docker-compose.dev.yml levanta PostgreSQL local"]},
     {"id": "S0-02", "semana": "S0", "dev": "dev3", "area": "infra", "titulo": "CI en pull requests y protección de main", "hu": [], "depende": ["S0-01"], "criterios": ["ci.yml ejecuta lint, tsc --noEmit y build de web y api en cada PR", "main exige PR, 1 aprobación y CI en verde, sin excepciones para administradores"]},
-    {"id": "S0-03", "semana": "S0", "dev": "dev3", "area": "infra", "titulo": "Conseguir el VPS y el dominio", "hu": [], "depende": [], "criterios": ["Se intenta primero Student Pack o Azure for Students; si el día 3 no hay máquina, se paga un VPS barato", "Mínimo 2 GB de RAM y swap configurado", "Acceso SSH solo con llave, usuario sin root, firewall con 22, 80 y 443", "Docker instalado y el dominio apuntando a la IP"]},
+    {"id": "S0-03", "semana": "S0", "dev": "dev3", "area": "infra", "titulo": "Conseguir el VPS y el dominio", "hu": [], "depende": [], "criterios": ["Se intenta primero Student Pack o Azure for Students; si el 16 de octubre (día 3) no hay máquina, se paga un VPS barato", "Mínimo 2 GB de RAM y swap configurado", "Acceso SSH solo con llave, usuario sin root, firewall con 22, 80 y 443", "Docker instalado y el dominio apuntando a la IP"]},
     {"id": "S0-04", "semana": "S0", "dev": "dev2", "area": "datos", "titulo": "Esquema Prisma y migración inicial", "hu": [], "depende": ["S0-01"], "criterios": ["schema.prisma basado en plan-red-social/schema.prisma", "La migración incluye a mano las extensiones, CHECKs e índices parciales y GIN de schema_propuesto.sql", "prisma migrate reset reconstruye la base desde cero sin errores"]},
     {"id": "S0-05", "semana": "S0", "dev": "dev2", "area": "backend", "titulo": "Contrato de API v0", "hu": [], "depende": [], "criterios": ["docs/api-contract.md con endpoints, DTOs, códigos de error y eventos de socket", "Revisado y aprobado por los tres"]},
     {"id": "S0-06", "semana": "S0", "dev": "dev1", "area": "frontend", "titulo": "Wireframes de las 8 vistas", "hu": [], "depende": [], "criterios": ["Portada con login, registro, feed, perfil, editar perfil, detalle de publicación, chat y notificaciones", "Incluye el buscador en la barra superior y los estados vacíos"]},
