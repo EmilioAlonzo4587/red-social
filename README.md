@@ -37,6 +37,16 @@ La documentación vive en [`docs/`](docs) y GitHub muestra sus diagramas directa
 
 El PDF de entrega se genera con `pnpm docs:pdf` (queda en `dist/documentacion.pdf`) y automáticamente en GitHub Actions con cada cambio en `docs/`.
 
-## Inicio rápido
+## Entorno local
 
-Ver la [guía de inicio](docs/09-guia-de-inicio.md). Variables de entorno en [`.env.example`](.env.example).
+Requisitos: Node 22, pnpm 12.11.2 (`npm install -g pnpm@12.11.2`), Docker y Git.
+
+```bash
+git clone https://github.com/EmilioAlonzo4587/red-social.git && cd red-social
+cp .env.example .env
+docker compose -f infra/docker-compose.dev.yml up -d   # PostgreSQL en localhost:5432
+pnpm install
+pnpm dev                                               # api en http://localhost:3000
+```
+
+La web se agrega en S0-07 y las migraciones de la base en S0-04. Detalle completo en la [guía de inicio](docs/09-guia-de-inicio.md); variables de entorno en [`.env.example`](.env.example).

@@ -1,0 +1,8 @@
+{
+  "name": "@red/api-types",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Tipos compartidos entre web y api, generados desde OpenAPI.",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}
