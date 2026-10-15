@@ -1,0 +1,6 @@
+{
+  "name": "web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Frontend Next.js. Se inicializa en la issue S0-07."
+}
