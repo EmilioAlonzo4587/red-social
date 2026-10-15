@@ -1,0 +1,33 @@
+# Verifica cada pull request a main (issue S0-02).
+# El nombre del job ("verificar") es el check obligatorio en la protección de main.
+# En S1-03 se agregan el servicio de PostgreSQL, prisma migrate deploy y las pruebas e2e contra la base.
+name: CI
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm -r --if-present lint
+      - name: Tipos (tsc --noEmit)
+        run: pnpm -r --if-present typecheck
+      - name: Pruebas unitarias
+        run: pnpm -r --if-present test
+      - name: Pruebas e2e de la API
+        run: pnpm --filter api test:e2e
+      - name: Build de web y api
+        run: pnpm -r --if-present build
