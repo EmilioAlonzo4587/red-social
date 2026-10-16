@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-[calc(100vh-56px)] max-w-md flex-col items-center justify-center gap-8 px-4 text-center">
       <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-bold">Mini Red Social</h1>
+        <h1 className="text-4xl font-bold">ChatInit</h1>
         <p className="text-black/60">
           Publica, sigue, comenta y chatea en tiempo real.
         </p>
