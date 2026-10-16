@@ -1,7 +1,7 @@
 export default function Home() {
   return (
-    <main>
-      <h1>Mini Red Social</h1>
+    <main className="flex min-h-screen items-center justify-center">
+      <h1 className="text-3xl font-bold">Mini Red Social</h1>
     </main>
   );
 }
