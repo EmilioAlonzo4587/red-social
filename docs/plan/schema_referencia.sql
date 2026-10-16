@@ -1,4 +1,4 @@
--- Esquema propuesto para la mini red social (PostgreSQL 16+)
+-- Esquema propuesto para ChatInit (PostgreSQL 16+)
 -- Validado en PostgreSQL 16. Con Prisma, las CHECK y los índices parciales
 -- se agregan editando el SQL de la migración generada (prisma migrate dev --create-only).
 

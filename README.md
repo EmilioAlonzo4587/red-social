@@ -1,4 +1,4 @@
-# Mini Red Social
+# ChatInit
 
 Red social web con publicaciones, likes, comentarios, seguimiento, notificaciones y chat en tiempo real.
 Monorepo con Next.js, NestJS, PostgreSQL y Prisma, desplegado con Docker en un VPS.

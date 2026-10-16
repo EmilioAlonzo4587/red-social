@@ -2,7 +2,7 @@
 
 ## Descripción
 
-Mini red social web desplegada en producción. Los usuarios se registran, publican texto e imágenes, siguen a otras personas, reaccionan y comentan, conversan por chat privado y reciben notificaciones en tiempo real.
+ChatInit es una red social web desplegada en producción. Los usuarios se registran, publican texto e imágenes, siguen a otras personas, reaccionan y comentan, conversan por chat privado y reciben notificaciones en tiempo real.
 
 El proyecto demuestra el desarrollo, la integración y el despliegue de una aplicación web moderna: autenticación segura, renderizado del lado del servidor, una API REST documentada con OpenAPI, comunicación en tiempo real, contenedores y despliegue continuo en un servidor propio.
 

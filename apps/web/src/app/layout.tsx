@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mini Red Social",
+  title: "ChatInit",
   description: "Publica, sigue, comenta y chatea en tiempo real.",
 };
 
