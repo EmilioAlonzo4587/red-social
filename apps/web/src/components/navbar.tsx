@@ -1,12 +1,31 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const PUBLIC_PATHS = ["/", "/login", "/registro"];
 
 export function Navbar() {
+  const pathname = usePathname();
+  const isPublic = PUBLIC_PATHS.includes(pathname);
+
   return (
-    <header className="sticky top-0 border-b border-border bg-surface">
-      <nav className="flex h-14 items-center px-4">
-        <Link href="/" className="text-lg font-bold text-primary">
+    <header className="sticky top-0 z-10 border-b border-border bg-surface">
+      <nav className="flex h-14 items-center gap-4 px-4">
+        <Link
+          href={isPublic ? "/" : "/feed"}
+          className="shrink-0 text-lg font-bold text-primary"
+        >
           ChatInit
         </Link>
+
+        {!isPublic && (
+          <input
+            type="search"
+            placeholder="Buscar personas..."
+            className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-primary"
+          />
+        )}
       </nav>
     </header>
   );
