@@ -20,11 +20,24 @@ export function Navbar() {
         </Link>
 
         {!isPublic && (
-          <input
-            type="search"
-            placeholder="Buscar personas..."
-            className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-primary"
-          />
+          <>
+            <input
+              type="search"
+              placeholder="Buscar personas..."
+              className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-primary"
+            />
+
+            <Link
+              href="/notificaciones"
+              aria-label="Notificaciones"
+              className="relative ml-auto shrink-0 text-xl"
+            >
+              🔔
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-white">
+                2
+              </span>
+            </Link>
+          </>
         )}
       </nav>
     </header>
