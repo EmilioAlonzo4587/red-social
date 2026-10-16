@@ -11,7 +11,7 @@ Pasos en orden para pasar de este documento a un proyecto funcionando. Los marca
 ## 2. Tablero e issues (cualquiera, una sola vez)
 
 1. Instalar y autenticar la CLI de GitHub: `gh auth login`, y luego `gh auth refresh -s project` para poder usar Projects.
-2. Crear el tablero: `gh project create --owner <usuario-u-organización> --title "Mini red social"`. Anotar el número que devuelve.
+2. Crear el tablero: `gh project create --owner <usuario-u-organización> --title "ChatInit"`. Anotar el número que devuelve.
 3. En la web del tablero, configurar la vista Board con las columnas Backlog, Ready, In progress, In review y Done.
 4. Crear etiquetas, milestones e issues y agregarlas al tablero:
 
