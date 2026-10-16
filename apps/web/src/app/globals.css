@@ -1,18 +1,16 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-primary: #16a34a;
+  --color-primary-hover: #15803d;
+  --color-background: #ffffff;
+  --color-surface: #f3faf5;
+  --color-foreground: #0f1a14;
+  --color-muted: #5b6b61;
+  --color-border: #d8ebdf;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: var(--color-foreground);
+  background: var(--color-background);
 }
