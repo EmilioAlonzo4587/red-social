@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const PUBLIC_PATHS = ["/", "/login", "/registro"];
+import { PUBLIC_PATHS } from "@/lib/public-paths";
 
 export function Navbar() {
   const pathname = usePathname();
