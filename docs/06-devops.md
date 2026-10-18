@@ -11,10 +11,11 @@ No hay entorno de staging: el CI con base de datos real y la revisión obligator
 
 ## Servidor
 
-- **Proveedor**: primero se intentan las opciones gratuitas (GitHub Student Pack, Azure for Students, Oracle Always Free). Si al 16 de octubre (día 3) no hay una máquina funcionando, se contrata un VPS económico (issue S0-03).
-- **Requisitos mínimos**: 2 GB de RAM, swap de 2 GB, Ubuntu LTS, Docker y el plugin de Compose.
-- **Acceso**: SSH solo con llave, usuario `deploy` sin privilegios de root, firewall con los puertos 22, 80 y 443.
-- **Dominio**: un único dominio o subdominio apuntando a la IP del VPS. Caddy obtiene y renueva el certificado HTTPS automáticamente.
+- **Proveedor**: Contabo, plan Cloud VPS 4 (4 vCPU, 8 GB de RAM, 100 GB SSD) en la región EE. UU. Central, contratado el 17 de octubre (issue S0-03). Las opciones gratuitas no cumplían los 2 GB de RAM o no estaban disponibles a tiempo, y este plan da margen de sobra por unos 8 USD al mes con pago mensual.
+- **Requisitos mínimos**: 2 GB de RAM, swap de 2 GB, Ubuntu LTS, Docker y el plugin de Compose. El servidor usa Ubuntu 24.04 con 2 GB de swap.
+- **Acceso**: SSH solo con llave, se trabaja con el usuario `deploy` (con sudo) y no con root, acceso como root y por contraseña deshabilitados, firewall (`ufw`) con los puertos 22, 80 y 443. Cada integrante que necesite entrar recibe su propio usuario y su propia llave.
+- **Dominio**: `chatinit.duckdns.org`, un subdominio gratuito de DuckDNS apuntando a la IP fija del VPS. Caddy obtiene y renueva el certificado HTTPS de Let's Encrypt automáticamente. Para cambiar de dominio basta con apuntar el nuevo a la misma IP y actualizar `DOMAIN` en el `.env` del servidor.
+- **Archivos en el servidor**: `~/app` contiene `docker-compose.yml`, `Caddyfile` y el `.env` de producción (permisos 600), que nunca se sube al repositorio.
 
 ## Contenedores
 
