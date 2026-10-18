@@ -27,11 +27,11 @@ El script crea una etiqueta por integrante (`dev1`, `dev2`, `dev3`, `todos`) y o
 
 ## 3. Protección de main (Dev 3, S0-02)
 
-En Settings → Branches → Add rule para `main`: exigir pull request, 1 aprobación, checks de estado obligatorios (el job **CI**, una vez creado) e incluir a los administradores.
+En Settings → Branches → Add rule para `main`: exigir pull request, 1 aprobación, el check de estado obligatorio `verificar` (job del workflow CI) e incluir a los administradores.
 
 ## 4. Entorno local (todos)
 
-Requisitos: Node 22, pnpm 9 o superior, Docker y Git.
+Requisitos: Node 22, pnpm 12.11.2 (`npm install -g pnpm@12.11.2`), Docker y Git.
 
 ```bash
 git clone <url-del-repo> && cd <repo>

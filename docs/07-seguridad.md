@@ -6,7 +6,7 @@
 | Robo de token por XSS | Cookies `HttpOnly; Secure; SameSite=Lax`; token de acceso de 15 minutos | S1-02 |
 | Reutilización de sesiones robadas | Token de renovación rotado en cada uso y guardado con hash; reutilizar uno rotado revoca todas las sesiones | S1-02 |
 | CSRF | `SameSite=Lax`, mismo dominio y ningún cambio de estado por `GET` | S1-02 |
-| Fuerza bruta | `@nestjs/throttler`: 5 intentos de login por minuto por IP | S1-02 |
+| Fuerza bruta | `@nestjs/throttler`: 5 intentos de login y 5 de registro por minuto por IP | S1-02 |
 | Acceso a recursos ajenos | Cada borrado o edición compara el autor con el usuario autenticado; prueba e2e del caso 403 | S2-04, S3-01, S3-04 |
 | Sockets sin control | Sesión validada en el handshake; entrar a `conv:{id}` solo si participa | S1-04, S3-05 |
 | Entradas maliciosas | `ValidationPipe` global con `whitelist` y `forbidNonWhitelisted`; mismos límites en DTOs y en la base | Todas |

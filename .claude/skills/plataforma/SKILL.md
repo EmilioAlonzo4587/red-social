@@ -31,7 +31,7 @@ En `apps/api/src/main.ts`, cuando lo pida su issue:
 - Contraseñas con argon2id. Nunca se registran en logs ni se devuelven.
 - Token de acceso de 15 minutos (`JWT_ACCESS_TTL`) en la cookie `access_token`; token de renovación (`REFRESH_TOKEN_TTL_DAYS`) en `refresh_token`. Ambas `HttpOnly`, `Secure` en producción y `SameSite=Lax`. Nunca en el cuerpo de la respuesta ni en `localStorage`.
 - El token de renovación se guarda con hash y se rota en cada `POST /api/auth/refresh`. Si llega uno ya rotado, se revocan todas las sesiones del usuario.
-- `@nestjs/throttler`: 5 intentos de login por minuto por IP, respuesta 429.
+- `@nestjs/throttler`: 5 intentos de login y 5 de registro por minuto por IP (RN13, S1-02), respuesta 429.
 - En login, el mismo mensaje para usuario inexistente y contraseña incorrecta.
 - Ningún cambio de estado por `GET` (CSRF).
 - Expón un guard de sesión y un decorador del usuario actual que usen los módulos de Dev 2. Las rutas 🔒 responden 401 sin sesión.
