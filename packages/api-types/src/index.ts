@@ -1,1 +1,1 @@
-echo 'export {};' > packages/api-types/src/index.ts
+export {};
