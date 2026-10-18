@@ -1,7 +1,7 @@
-// Equivalente Prisma del esquema propuesto (schema_propuesto.sql).
+// Equivalente Prisma del esquema de referencia (docs/plan/schema_referencia.sql).
 // Prisma no expresa CHECK ni índices parciales: créalos con
 //   npx prisma migrate dev --create-only
-// y añade al final del migration.sql las líneas marcadas "SQL manual" en schema_propuesto.sql
+// y añade al final del migration.sql lo que solo está en schema_referencia.sql
 // (CREATE EXTENSION citext y pg_trgm, CHECKs, índices WHERE deleted_at IS NULL / read_at IS NULL,
 // índices GIN de búsqueda de usuarios).
 

@@ -28,7 +28,7 @@ Versión 0, acordada al inicio del proyecto (issue S0-05). La referencia viva es
 | Método | Ruta | Descripción | Issue |
 |---|---|---|---|
 | GET | `/api/health` | Estado de la API y de la conexión a la base | S1-01 |
-| POST | `/api/auth/register` | Registro; inicia sesión | S1-02 |
+| POST | `/api/auth/register` | Registro; inicia sesión (5 por minuto por IP) | S1-02 |
 | POST | `/api/auth/login` | Inicio de sesión (5 por minuto por IP) | S1-02 |
 | POST | `/api/auth/refresh` | Rota el token de renovación | S1-02 |
 | POST | `/api/auth/logout` 🔒 | Revoca la sesión actual | S1-02 |

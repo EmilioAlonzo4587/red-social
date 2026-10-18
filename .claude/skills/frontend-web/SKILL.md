@@ -38,14 +38,14 @@ Sigue el patrón de `src/app/login/page.tsx` y `src/app/registro/page.tsx`:
 
 - Siempre a rutas relativas `/api/...` del mismo dominio (D02). En el servidor de Next usa `API_INTERNAL_URL`. No pongas URLs absolutas a mano.
 - La sesión vive en cookies `HttpOnly` (D03): el JavaScript no puede ni debe leer los tokens. Nunca guardes tokens ni datos de sesión en `localStorage` o `sessionStorage`. En `fetch` desde el cliente usa `credentials: "include"`.
-- Centraliza las llamadas en un cliente en `src/lib/` que: reintente una vez tras `POST /api/auth/refresh` si recibe 401 y, si vuelve a fallar, mande a `/login`; y convierta el error de la api (`{ statusCode, message, details }`) en un tipo conocido. Las páginas no repiten esa lógica.
+- Centraliza las llamadas en un cliente en `src/lib/` que: reintente una vez tras `POST /api/auth/refresh` si recibe 401 y, si vuelve a fallar, mande a la portada `/` (S1-09, igual que `proxy.ts`); y convierta el error de la api (`{ statusCode, message, details }`) en un tipo conocido. Las páginas no repiten esa lógica.
 - Usa los tipos de `@red/api-types` para peticiones y respuestas en lugar de declararlos en cada página. Los tipos locales de los wireframes (como `Post` en `post-card.tsx`) se reemplazan al conectar la api.
 - Listas: paginación por cursor con `{ items, nextCursor }`; pide la siguiente página con `?cursor=` y deja de pedir cuando `nextCursor` es `null`.
 
 ## Estados y errores en pantalla
 
 - Cada vista que carga datos tiene estado de carga, vacío y error. Usa `loading.tsx` y `error.tsx` del App Router donde aplique.
-- 401 lleva a `/login`; 403 muestra "No tienes permiso"; 404 usa `not-found`; 413 dice que la imagen pasa de 5 MB; 429 pide esperar un momento.
+- 401 sin refresh posible lleva a la portada `/`; 403 muestra "No tienes permiso"; 404 usa `not-found`; 413 dice que la imagen pasa de 5 MB; 429 pide esperar un momento.
 - No muestres al usuario mensajes técnicos ni trazas. No dejes `console.log` en el código.
 
 ## Seguridad

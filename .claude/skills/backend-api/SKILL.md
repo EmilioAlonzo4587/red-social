@@ -17,7 +17,7 @@ Si la tarea necesita algo que aún no existe (Prisma, `class-validator`, el pref
 
 - Un módulo por área en `src/<area>/`: `users`, `posts`, `feed`, `follows`, `likes`, `comments`, `search`, `notifications`. Cada uno con `<area>.module.ts`, `<area>.controller.ts`, `<area>.service.ts`, `dto/` y sus `*.spec.ts`.
 - El controlador solo recibe, valida con DTOs y llama al servicio. La lógica y el acceso a datos van en el servicio.
-- Los módulos no se importan entre sí para avisarse cosas. Un like, un comentario o un seguimiento emite un evento de dominio (por ejemplo `post.liked`) y notificaciones o Socket.io lo escuchan (D08). Así Dev 2 y Dev 3 no se bloquean.
+- Los módulos no se importan entre sí para avisarse cosas. Un like, un comentario o un seguimiento emite un evento de dominio con `@nestjs/event-emitter` y notificaciones o Socket.io lo escuchan (D08). Los nombres son los de S1-07 y `docs/03-arquitectura.md`: `like.changed`, `comment.changed`, `follow.created`, `message.created` y `notification.created`; no inventes otros sin agregarlos ahí. Así Dev 2 y Dev 3 no se bloquean.
 - Estilo del repo: Prettier con comillas simples y coma final; ESLint `recommendedTypeChecked`. Corre `pnpm --filter api lint` y `pnpm --filter api typecheck` antes de terminar.
 
 ## Contrato de la API (docs/05-api.md)
@@ -59,7 +59,7 @@ Si la tarea necesita algo que aún no existe (Prisma, `class-validator`, el pref
 - Todo por Prisma. Si hace falta SQL a mano (búsqueda con `pg_trgm`), usa `$queryRaw` con plantilla etiquetada; nunca `$queryRawUnsafe` ni concatenación de strings.
 - El esquema vive en `apps/api/prisma/schema.prisma`. Los CHECK, índices parciales (`WHERE deleted_at IS NULL`) y extensiones (`citext`, `pg_trgm`) van como SQL manual en la migración (`prisma migrate dev --create-only`), como explica el comentario del schema. Cualquier cambio de esquema se refleja en `docs/04-base-de-datos.md`.
 - Borrado lógico con `deletedAt`; las consultas de lectura filtran `deletedAt: null`. Un recurso borrado responde 404.
-- Los contadores (`likeCount`, `commentCount`, seguidores) están desnormalizados (D05): se actualizan en la misma transacción (`prisma.$transaction`) que crea o borra la fila.
+- Solo `likeCount` y `commentCount` de `posts` están desnormalizados (D05): se actualizan en la misma transacción (`prisma.$transaction`) que crea o borra el like o el comentario. Seguidores y seguidos no se guardan como contador: se cuentan con `_count` de Prisma sobre `follows`.
 - Selecciona solo los campos que devuelves. Nunca incluyas `passwordHash`, tokens ni el correo de otros usuarios en una respuesta.
 
 ## Permisos

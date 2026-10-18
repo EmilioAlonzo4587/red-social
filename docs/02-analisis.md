@@ -51,7 +51,7 @@
 | RN10 | Siguiendo muestra las publicaciones propias y las de los seguidos; Explorar muestra todas. Ambas en orden cronológico inverso, 20 por página. |
 | RN11 | Sin sesión solo se accede a la portada, al login y al registro. |
 | RN12 | La sesión usa un token de acceso de 15 minutos y uno de renovación de 7 días que se rota en cada uso. Reutilizar uno ya rotado cierra todas las sesiones del usuario. |
-| RN13 | Se permiten 5 intentos de login por minuto por dirección IP. |
+| RN13 | Se permiten 5 intentos de login y 5 de registro por minuto por dirección IP. |
 | RN14 | La búsqueda de usuarios requiere al menos 2 caracteres y devuelve como máximo 20 resultados. |
 
 ## Historias de usuario
