@@ -11,7 +11,7 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de lo transver
 
 - CI: `.github/workflows/ci.yml`, job `verificar`, en cada PR a `main` con Node 22. Instala con `--frozen-lockfile` y corre lint, typecheck, pruebas unitarias, `pnpm --filter api test:e2e` y build de todos los paquetes. Es el check obligatorio de `main`.
 - Documentación: `.github/workflows/docs-pdf.yml` genera el PDF (artefacto `documentacion-pdf`).
-- Servidor listo (S0-03): VPS con Ubuntu 24.04, usuario `deploy` con llave, firewall con 22, 80 y 443, Docker y Compose, HTTPS de Caddy probado y `~/app` con `docker-compose.yml`, `Caddyfile` y `.env`. Secrets `VPS_HOST`, `VPS_USER` y `VPS_SSH_KEY` cargados en Actions.
+- Servidor listo (S0-03): VPS con Ubuntu 24.04, usuario `deploy` con llave, firewall con 22, 80 y 443 (443 también UDP), Docker y Compose, HTTPS de Caddy probado y `~/app` con `docker-compose.yml`, `Caddyfile` y `.env`. Secrets `VPS_HOST`, `VPS_USER` y `VPS_SSH_KEY` cargados en Actions.
 - Pendiente: mover `infra/plantillas/deploy.yml` a `.github/workflows/` (S1-01), PostgreSQL y migraciones en el CI (S1-03), auth (S1-02), Socket.io (S1-04), media (S2-01), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
 
 ## Configuración global de la api
@@ -61,6 +61,7 @@ En `apps/api/src/main.ts`, cuando lo pida su issue:
 
 - Imágenes construidas en CI y publicadas en GHCR (D06); el VPS solo hace `docker compose pull` y `up -d`. Nunca compilar en el servidor.
 - Etiqueta cada imagen con el SHA del commit para poder volver atrás.
+- La imagen de la web recibe `NEXT_PUBLIC_APP_URL` y `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` como `build-args` desde las Variables de GitHub (no Secrets: no son secretas). Su Dockerfile las declara con `ARG` y `ENV` antes de `next build`. Ponerlas solo en el `environment` del compose no sirve, porque Next ya las escribió en el JavaScript.
 - PostgreSQL sin puertos publicados: solo en la red interna de Docker.
 - Caddy enruta `/api/*` y `/socket.io/*` a la api y lo demás a la web, con HTTPS automático (D07). El dominio sale de `DOMAIN` en el `.env` del servidor.
 - Secretos solo en GitHub Secrets y en `~/app/.env` del VPS. Nunca en el repo, en issues, en PRs ni en los logs del workflow. Tampoco la IP, el usuario SSH ni el proveedor: el repo es público.

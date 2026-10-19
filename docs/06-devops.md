@@ -13,7 +13,7 @@ No hay entorno de staging: el CI con base de datos real y la revisión obligator
 
 - **Proveedor**: Contabo, plan Cloud VPS 4 (4 vCPU, 8 GB de RAM, 100 GB SSD) en la región EE. UU. Central, contratado el 17 de octubre (issue S0-03). Las opciones gratuitas no cumplían los 2 GB de RAM o no estaban disponibles a tiempo, y este plan da margen de sobra por unos 8 USD al mes con pago mensual.
 - **Requisitos mínimos**: 2 GB de RAM, swap de 2 GB, Ubuntu LTS, Docker y el plugin de Compose. El servidor usa Ubuntu 24.04 con 2 GB de swap.
-- **Acceso**: SSH solo con llave, se trabaja con el usuario `deploy` (con sudo) y no con root, acceso como root y por contraseña deshabilitados, firewall (`ufw`) con los puertos 22, 80 y 443. Cada integrante que necesite entrar recibe su propio usuario y su propia llave.
+- **Acceso**: SSH solo con llave, se trabaja con el usuario `deploy` (con sudo) y no con root, acceso como root y por contraseña deshabilitados, firewall (`ufw`) con los puertos 22, 80 y 443 (TCP, y UDP para HTTP/3). Cada integrante que necesite entrar recibe su propio usuario y su propia llave.
 - **Dominio**: `chatinit.duckdns.org`, un subdominio gratuito de DuckDNS apuntando a la IP fija del VPS. Caddy obtiene y renueva el certificado HTTPS de Let's Encrypt automáticamente. Para cambiar de dominio basta con apuntar el nuevo a la misma IP y actualizar `DOMAIN` en el `.env` del servidor.
 - **Archivos en el servidor**: `~/app` contiene `docker-compose.yml`, `Caddyfile` y el `.env` de producción (permisos 600), que nunca se sube al repositorio.
 
@@ -21,7 +21,7 @@ No hay entorno de staging: el CI con base de datos real y la revisión obligator
 
 | Servicio | Imagen | Puertos expuestos | Notas |
 |---|---|---|---|
-| caddy | `caddy:2` | 80, 443 | Proxy inverso y HTTPS (`infra/Caddyfile`) |
+| caddy | `caddy:2` | 80, 443 (TCP y UDP) | Proxy inverso y HTTPS (`infra/Caddyfile`) |
 | web | `ghcr.io/<owner>/<repo>-web:<sha>` | ninguno | Next.js en modo producción |
 | api | `ghcr.io/<owner>/<repo>-api:<sha>` | ninguno | NestJS; health check en `/api/health` |
 | db | `postgres:16` | **ninguno** | Volumen `pgdata`; Docker abriría el puerto saltándose el firewall |
@@ -46,6 +46,8 @@ flowchart LR
 
 **Secrets de GitHub**: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`. El `.env` de producción vive solo en el VPS.
 
+**Variables de GitHub** (no secretas): `NEXT_PUBLIC_APP_URL` y `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`. Se pasan al build de la imagen web porque Next las escribe en el JavaScript al compilar.
+
 ## Variables de entorno
 
 | Variable | Usada por | Descripción |
@@ -58,7 +60,7 @@ flowchart LR
 | `CORS_ORIGIN` | api | Origen permitido |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | api | Subida y borrado de imágenes |
 | `API_INTERNAL_URL` | web | URL de la API para el renderizado en servidor |
-| `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | web | URL pública y nombre de la cuenta de Cloudinary |
+| `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | web (build) | URL pública y nombre de la cuenta de Cloudinary; se fijan al construir la imagen |
 
 La lista completa con valores de ejemplo está en `.env.example`.
 

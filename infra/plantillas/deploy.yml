@@ -1,5 +1,5 @@
 # Plantilla para .github/workflows/deploy.yml (issue S1-01).
-# Secrets necesarios: VPS_HOST, VPS_USER, VPS_SSH_KEY. El VPS tiene infra/ copiado en ~/app con su .env.
+# Secrets necesarios: VPS_HOST, VPS_USER, VPS_SSH_KEY. Variables (no secretas): NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME. El VPS tiene infra/ copiado en ~/app con su .env.
 name: Deploy
 on:
   push:
@@ -29,6 +29,10 @@ jobs:
           context: .
           file: apps/${{ matrix.app }}/Dockerfile
           push: true
+          # Solo las usa la web: Next escribe las NEXT_PUBLIC_* en el JavaScript durante el build
+          build-args: |
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
+            NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=${{ vars.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME }}
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest

@@ -36,6 +36,7 @@ Requisitos: Node 22, pnpm 12.11.2 (`npm install -g pnpm@12.11.2`), Docker y Git.
 ```bash
 git clone <url-del-repo> && cd <repo>
 cp .env.example .env               # completar las claves de Cloudinary
+sed -n '/^# --- Frontend/,$p' .env.example > apps/web/.env.local   # la web solo lee los .env de su carpeta
 docker compose -f infra/docker-compose.dev.yml up -d
 pnpm install
 pnpm --filter api prisma migrate dev
