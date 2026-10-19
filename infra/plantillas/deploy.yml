@@ -16,6 +16,9 @@ jobs:
         app: [web, api]
     steps:
       - uses: actions/checkout@v4
+      # GHCR exige nombres en minúsculas; coincide con GHCR_OWNER y REPO_NAME del .env del VPS
+      - name: Nombre de la imagen
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.app }}" >> "$GITHUB_ENV"
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -27,8 +30,8 @@ jobs:
           file: apps/${{ matrix.app }}/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}-${{ matrix.app }}:${{ github.sha }}
-            ghcr.io/${{ github.repository }}-${{ matrix.app }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
   desplegar:
     needs: imagenes
     runs-on: ubuntu-latest

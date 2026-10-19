@@ -40,7 +40,7 @@ flowchart LR
   SM -->|no| RB[Vuelve a la etiqueta anterior]
 ```
 
-Los workflows parten de las plantillas `infra/plantillas/ci.yml` y `infra/plantillas/deploy.yml`, que se mueven a `.github/workflows/` en las issues S0-02 y S1-01. El workflow `docs-pdf.yml` ya está activo y genera el PDF de esta documentación.
+`ci.yml` (S0-02) y `docs-pdf.yml` ya están activos en `.github/workflows/`. El despliegue parte de la plantilla `infra/plantillas/deploy.yml`, que se mueve ahí en la issue S1-01.
 
 **Protección de `main`**: pull request obligatorio, una aprobación, CI en verde y sin excepciones para administradores.
 
@@ -64,7 +64,7 @@ La lista completa con valores de ejemplo está en `.env.example`.
 
 ## Respaldos
 
-`scripts/backup-db.sh` ejecuta `pg_dump` todos los días a las 03:00 UTC por cron, conserva los últimos 7 respaldos y los copia fuera del VPS. En la semana 4 se restaura el último respaldo en una base limpia para comprobar que sirve (issue S4-03).
+`scripts/backup-db.sh`, copiado a `~/app` en el VPS, ejecuta `pg_dump` todos los días a las 03:00 UTC por cron, conserva los últimos 7 respaldos y los copia fuera del VPS con el comando de `BACKUP_UPLOAD_CMD`. En la semana 4 se restaura el último respaldo en una base limpia para comprobar que sirve (issue S4-03).
 
 ## Observabilidad
 

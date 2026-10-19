@@ -46,7 +46,7 @@ git clone https://github.com/EmilioAlonzo4587/red-social.git && cd red-social
 cp .env.example .env
 docker compose -f infra/docker-compose.dev.yml up -d   # PostgreSQL en localhost:5432
 pnpm install
-pnpm dev                                               # api en http://localhost:3000
+pnpm dev                                               # api en :3000, web en http://localhost:3001
 ```
 
-La web se agrega en S0-07 y las migraciones de la base en S0-04. Detalle completo en la [guía de inicio](docs/09-guia-de-inicio.md); variables de entorno en [`.env.example`](.env.example).
+Las migraciones de la base llegan con S0-04. Detalle completo en la [guía de inicio](docs/09-guia-de-inicio.md); variables de entorno en [`.env.example`](.env.example).

@@ -6,7 +6,7 @@ Instrucciones para agentes de IA que trabajan en este repositorio. Las reglas po
 - `backend-api`: Dev 2, NestJS y Prisma en `apps/api` (usuarios, publicaciones, feed, seguimientos, likes, comentarios, búsqueda, notificaciones).
 - `plataforma`: Dev 3, autenticación, Cloudinary, chat y Socket.io, CI/CD, VPS y respaldos.
 
-La fuente de verdad es `docs/`. Antes de cambiar algo, lee la sección que aplica: reglas de negocio RN01 a RN09 en `docs/02-analisis.md`, decisiones D01 a D09 en `docs/03-arquitectura.md`, esquema en `docs/04-base-de-datos.md`, contrato en `docs/05-api.md`, despliegue en `docs/06-devops.md`, seguridad en `docs/07-seguridad.md`, flujo y definición de terminado en `docs/08-plan-de-trabajo.md`. Si el código y la documentación no coinciden, avisa en lugar de elegir uno en silencio.
+La fuente de verdad es `docs/`. Antes de cambiar algo, lee la sección que aplica: reglas de negocio RN01 a RN14 en `docs/02-analisis.md`, decisiones D01 a D09 en `docs/03-arquitectura.md`, esquema en `docs/04-base-de-datos.md`, contrato en `docs/05-api.md`, despliegue en `docs/06-devops.md`, seguridad en `docs/07-seguridad.md`, flujo y definición de terminado en `docs/08-plan-de-trabajo.md`. Si el código y la documentación no coinciden, avisa en lugar de elegir uno en silencio.
 
 ## Estructura
 

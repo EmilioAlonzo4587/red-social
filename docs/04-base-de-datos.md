@@ -34,6 +34,8 @@ erDiagram
     timestamptz expires_at
     timestamptz revoked_at
     uuid replaced_by FK
+    text user_agent
+    timestamptz created_at
   }
   posts {
     uuid id PK
@@ -42,6 +44,7 @@ erDiagram
     int like_count "desnormalizado"
     int comment_count "desnormalizado"
     timestamptz created_at
+    timestamptz updated_at
     timestamptz deleted_at "borrado lógico"
   }
   post_media {
@@ -49,6 +52,8 @@ erDiagram
     uuid post_id FK
     text public_id "Cloudinary"
     varchar media_type "image o video"
+    int width
+    int height
     smallint position
   }
   comments {
@@ -138,6 +143,8 @@ erDiagram
 | expires_at | timestamptz | NOT NULL | Vencimiento (7 días, RN12). |
 | revoked_at | timestamptz | | Fecha de rotación o cierre. |
 | replaced_by | uuid | FK refresh_tokens | Token que lo reemplazó; permite detectar reutilización. |
+| user_agent | text | | Navegador que abrió la sesión. |
+| created_at | timestamptz | NOT NULL | |
 
 ### posts
 

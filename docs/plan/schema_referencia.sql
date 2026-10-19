@@ -1,6 +1,8 @@
--- Esquema propuesto para ChatInit (PostgreSQL 16+)
--- Validado en PostgreSQL 16. Con Prisma, las CHECK y los índices parciales
--- se agregan editando el SQL de la migración generada (prisma migrate dev --create-only).
+-- Esquema de referencia de ChatInit (PostgreSQL 16+). Validado en PostgreSQL 16.
+-- La fuente de verdad es apps/api/prisma/schema.prisma; este archivo sirve para copiar
+-- lo que Prisma no expresa (extensiones, CHECK, índices parciales y GIN) a la migración.
+-- Los ids los genera Prisma en la aplicación con UUID v7 (uuid(7)). El DEFAULT gen_random_uuid()
+-- de aquí (UUID v4) solo existe para probar este SQL por separado: no lo copies a la migración.
 
 CREATE EXTENSION IF NOT EXISTS citext;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- búsqueda de usuarios por fragmento
@@ -10,7 +12,7 @@ CREATE TABLE users (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   username       citext      NOT NULL UNIQUE,              -- "Juan" y "juan" son el mismo
   email          citext      NOT NULL UNIQUE,
-  password_hash  text        NOT NULL,                     -- argon2id / bcrypt
+  password_hash  text        NOT NULL,                     -- argon2id (RN02)
   display_name   varchar(80),
   bio            varchar(300),
   avatar_public_id text,                                   -- id de Cloudinary, no la URL
@@ -23,7 +25,7 @@ CREATE TABLE users (
 CREATE INDEX users_username_trgm_idx ON users USING gin ((lower(username::text)) gin_trgm_ops);
 CREATE INDEX users_display_name_trgm_idx ON users USING gin ((lower(display_name)) gin_trgm_ops);
 
--- Sesiones para refresh tokens con rotación (el plan la menciona pero no tiene tabla)
+-- Sesiones para refresh tokens con rotación (RN12)
 CREATE TABLE refresh_tokens (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -117,7 +119,7 @@ CREATE TABLE messages (
 );
 CREATE INDEX messages_conv_created_idx ON messages (conversation_id, created_at DESC, id DESC);
 
--- ---------- Notificaciones (requisito obligatorio, faltaba en el plan) ----------
+-- ---------- Notificaciones (RN08) ----------
 CREATE TABLE notifications (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   recipient_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
