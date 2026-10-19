@@ -37,7 +37,7 @@ Sigue el patrón de `src/app/login/page.tsx` y `src/app/registro/page.tsx`:
 ## Llamadas a la api
 
 - Siempre a rutas relativas `/api/...` del mismo dominio (D02). En el servidor de Next usa `API_INTERNAL_URL`. No pongas URLs absolutas a mano.
-- En local no hay Caddy: `/api/...` llegaría a Next (:3001) y no a la api (:3000). Por eso `next.config.ts` lleva un `rewrites()` que manda `/api/:path*` a `API_INTERNAL_URL` (se agrega en S1-09). En producción Caddy atiende `/api` antes de llegar a Next, así que el rewrite no interviene. Las cookies quedan en el mismo origen en ambos casos.
+- En local no hay Caddy: `/api/...` llegaría a Next (:3001) y no a la api (:3000). Por eso `next.config.ts` lleva un `rewrites()` que manda `/api/:path*` a `API_INTERNAL_URL` (se agrega en S1-09). El rewrite se agrega solo en desarrollo (`process.env.NODE_ENV !== "production"`): `next build` evalúa `rewrites()` al compilar y en el build de la imagen `API_INTERNAL_URL` no existe, así que el destino quedaría `undefined/api/...` y el build fallaría. En producción Caddy atiende `/api` antes de llegar a Next, así que no hace falta. Las cookies quedan en el mismo origen en ambos casos.
 - La sesión vive en cookies `HttpOnly` (D03): el JavaScript no puede ni debe leer los tokens. Nunca guardes tokens ni datos de sesión en `localStorage` o `sessionStorage`. En `fetch` desde el cliente usa `credentials: "include"`.
 - Centraliza las llamadas en un cliente en `src/lib/` que: reintente una vez tras `POST /api/auth/refresh` si recibe 401 y, si vuelve a fallar, mande a la portada `/` (S1-09, igual que `proxy.ts`); y convierta el error de la api (`{ statusCode, message, details }`) en un tipo conocido. Las páginas no repiten esa lógica.
 - Usa los tipos de `@red/api-types` para peticiones y respuestas en lugar de declararlos en cada página. Los tipos locales de los wireframes (como `Post` en `post-card.tsx`) se reemplazan al conectar la api.
@@ -58,12 +58,13 @@ Sigue el patrón de `src/app/login/page.tsx` y `src/app/registro/page.tsx`:
 
 ## Variables de entorno
 
-- Next solo lee los `.env*` de `apps/web`, no el `.env` de la raíz. En local cada uno crea `apps/web/.env.local` con `API_INTERNAL_URL`, `NEXT_PUBLIC_APP_URL` y `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` (la sección Frontend de `.env.example`; la guía de inicio trae el comando). `apps/web/.gitignore` ya ignora `.env*`.
+- Next solo lee los `.env*` de `apps/web`, no el `.env` de la raíz. En local cada uno crea `apps/web/.env.local` con `API_INTERNAL_URL`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` y `NEXT_PUBLIC_SOCKET_URL` (la sección Frontend de `.env.example`; la guía de inicio trae el comando). `apps/web/.gitignore` ya ignora `.env*`.
 - Las `NEXT_PUBLIC_*` se escriben dentro del JavaScript al hacer `next build`, no al arrancar. En producción llegan como argumentos de build de la imagen (ver la skill `plataforma`); cambiarlas en el `.env` del VPS no tiene efecto hasta reconstruir la imagen.
 - `API_INTERNAL_URL` se lee en el servidor al arrancar, así que esa sí puede venir del compose.
 
 ## Tiempo real
 
-- El cliente de Socket.io se conecta al mismo dominio en `/socket.io` y se autentica con la cookie, sin pasar tokens a mano. En local el rewrite de Next no garantiza websockets, así que se conecta directo a `http://localhost:3000` (la cookie de `localhost` sirve en los dos puertos).
+- El cliente de Socket.io se conecta al mismo dominio en `/socket.io` y se autentica con la cookie, sin pasar tokens a mano. En local el rewrite de Next no garantiza websockets, así que se conecta directo a la api (la cookie de `localhost` sirve en los dos puertos).
+- La URL sale de `NEXT_PUBLIC_SOCKET_URL`: en local `http://localhost:3000`; en producción vacía, y entonces el cliente usa el mismo origen. Crea el cliente con `io(process.env.NEXT_PUBLIC_SOCKET_URL || undefined, { withCredentials: true })`; sin `withCredentials` el navegador no manda la cookie a otro puerto y el handshake se rechaza.
 - Usa solo los eventos de `docs/05-api.md`: `post:watch` y `post:unwatch` con las publicaciones visibles, `conversation:join` al abrir un chat; escucha `post:likes`, `post:comments`, `message:new`, `conversation:updated` y `notification:new`.
 - Quita los listeners y haz `unwatch` al desmontar el componente para no duplicar eventos.

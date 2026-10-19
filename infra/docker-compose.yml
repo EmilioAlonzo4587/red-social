@@ -20,8 +20,9 @@ services:
     image: ghcr.io/${GHCR_OWNER}/${REPO_NAME}-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
+      # Las NEXT_PUBLIC_* no van aquí: Next las escribe en el JavaScript al construir la imagen
+      # (build-args desde las Variables de GitHub en deploy.yml).
       API_INTERNAL_URL: http://api:3000
-      NEXT_PUBLIC_APP_URL: https://${DOMAIN}
     depends_on: [api]
 
   api:
