@@ -43,18 +43,18 @@ pnpm --filter api prisma db seed
 pnpm dev                            # web en :3001, api en :3000
 ```
 
-Las apps se crean en las issues S0-04 (api) y S0-07 (web); hasta entonces solo funcionan los comandos de base de datos y de documentación.
+La api y la web ya existen. Los comandos de `prisma` funcionan desde la issue S0-04, que instala Prisma y crea la primera migración.
 
 ## 5. Servidor (Dev 3, S0-03 y S1-01)
 
 1. Crear el VPS con Ubuntu LTS y al menos 2 GB de RAM; agregar 2 GB de swap.
 2. Crear el usuario `deploy`, copiar la llave SSH, desactivar el acceso por contraseña y el login de root.
-3. Firewall: `ufw allow 22,80,443/tcp && ufw enable`.
+3. Firewall: `ufw allow OpenSSH`, `ufw allow 80/tcp`, `ufw allow 443/tcp`, `ufw allow 443/udp` y `ufw enable`.
 4. Instalar Docker y el plugin de Compose; agregar `deploy` al grupo `docker`.
 5. Apuntar el dominio a la IP del VPS.
-6. Copiar `infra/` a `~/app` en el VPS y crear allí `.env` a partir de `.env.example` con valores reales.
+6. Copiar `infra/docker-compose.yml`, `infra/Caddyfile` y `.env.example` a `~/app` en el VPS y crear allí `.env` a partir del ejemplo con valores reales.
 7. Cargar los secrets `VPS_HOST`, `VPS_USER` y `VPS_SSH_KEY` en GitHub y mover `infra/plantillas/deploy.yml` a `.github/workflows/`.
-8. Programar el respaldo: `crontab -e` con la línea indicada en `scripts/backup-db.sh`.
+8. Copiar `scripts/backup-db.sh` a `~/app` y programarlo con `crontab -e` usando la línea indicada en el script.
 
 ## 6. Mantener esta documentación
 

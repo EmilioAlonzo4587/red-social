@@ -1,9 +1,12 @@
 // Equivalente Prisma del esquema de referencia (docs/plan/schema_referencia.sql).
-// Prisma no expresa CHECK ni índices parciales: créalos con
+// Prisma no expresa CHECK, índices parciales ni GIN. Genera la migración con
 //   npx prisma migrate dev --create-only
-// y añade al final del migration.sql lo que solo está en schema_referencia.sql
-// (CREATE EXTENSION citext y pg_trgm, CHECKs, índices WHERE deleted_at IS NULL / read_at IS NULL,
-// índices GIN de búsqueda de usuarios).
+// y antes de aplicarla edita su migration.sql:
+//   - Al inicio: CREATE EXTENSION citext y pg_trgm.
+//   - Los dos CREATE INDEX de posts que genera Prisma: agrégales WHERE deleted_at IS NULL
+//     (no los dupliques; Prisma no compara la condición, así que no los vuelve a cambiar).
+//   - Al final: los CHECK, el índice de notificaciones no leídas (WHERE read_at IS NULL)
+//     y los índices GIN de búsqueda de usuarios, copiados de schema_referencia.sql.
 
 generator client {
   provider = "prisma-client-js"

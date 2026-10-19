@@ -12,7 +12,7 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de `apps/web`.
 - Páginas en `src/app/`: `/` (portada), `/login`, `/registro`, `/feed`, `/p/[id]`, `/u/[username]`, `/perfil/editar`, `/notificaciones`, `/chat`. Hoy muestran datos de ejemplo: son los wireframes.
 - Componentes en `src/components/`: `avatar`, `navbar`, `post-card`.
 - `src/proxy.ts` redirige a `/` si la ruta no está en `PUBLIC_PATHS` (`src/lib/public-paths.ts`) y no hay cookie `access_token`. Sin sesión solo se ve la portada, login y registro (D09); no agregues rutas públicas sin que lo pida una issue.
-- Login y registro validan en el cliente pero todavía no llaman a la api (eso llega con S1-02).
+- Login y registro validan en el cliente pero todavía no llaman a la api: eso llega con el cliente de API (S1-09), que usa los endpoints de S1-02.
 - Next 16 tiene cambios respecto a versiones anteriores (por ejemplo, `middleware.ts` ahora es `proxy.ts`). Ante la duda, consulta la documentación de Next 16 antes de escribir código de Next en lugar de copiar ejemplos de versiones viejas.
 
 ## Estructura y estilo

@@ -1,4 +1,4 @@
-# Reemplazar {$DOMAIN} con la variable de entorno DOMAIN (ej. mired.duckdns.org)
+# Reemplazar {$DOMAIN} con la variable de entorno DOMAIN (ej. chatinit.duckdns.org)
 {$DOMAIN} {
 	encode zstd gzip
 
