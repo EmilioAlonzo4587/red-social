@@ -61,7 +61,7 @@ flowchart LR
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | api | Subida y borrado de imágenes |
 | `API_INTERNAL_URL` | web | URL de la API para el renderizado en servidor |
 | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | web (build) | URL pública y nombre de la cuenta de Cloudinary; se fijan al construir la imagen |
-| `NEXT_PUBLIC_SOCKET_URL` | web (build) | URL de Socket.io. Solo en local (`http://localhost:3000`); en producción queda vacía y el cliente usa el mismo dominio |
+| `NEXT_PUBLIC_SOCKET_URL` | web (solo local) | URL de Socket.io. Solo en local (`http://localhost:3000`); en producción queda vacía y el cliente usa el mismo dominio |
 
 La lista completa con valores de ejemplo está en `.env.example`.
 
