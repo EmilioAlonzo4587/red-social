@@ -24,7 +24,7 @@ Si la tarea necesita algo que aún no existe (`class-validator`, el prefijo `/ap
 
 - Rutas bajo `/api`, JSON en camelCase. Rutas, métodos y códigos tal como están en la tabla de endpoints; si necesitas cambiar uno, actualiza `docs/05-api.md` en el mismo PR.
 - Seguir y dar like son `PUT` (idempotentes) y deshacer es `DELETE`. Repetir un `PUT` no crea otra fila ni cambia el contador (RN05, RN06).
-- Listas con paginación por cursor: respuesta `{ items, nextCursor }`, tamaño fijo 20, siguiente página con `?cursor=`. Ordena por `createdAt` e `id` descendentes y usa ese par como cursor; nunca `offset`.
+- Listas con paginación por cursor: respuesta `{ items, nextCursor }`, tamaño fijo 20, siguiente página con `?cursor=`. Ordena por `createdAt` e `id` descendentes y usa ese par como cursor; nunca `offset`. La excepción son los comentarios, que van ascendentes (del más antiguo al más reciente), como dice `docs/05-api.md`. El cursor es opaco para la web.
 - Errores siempre con el formato único:
 
 ```json
@@ -47,6 +47,7 @@ Si la tarea necesita algo que aún no existe (`class-validator`, el prefijo `/ap
 | `displayName` | máximo 80 |
 | `bio` | máximo 300 |
 | `post.content` | máximo 2000; puede faltar si hay imágenes, pero no ambos vacíos; máximo 4 imágenes (RN03) |
+| `post.media[]` | `{ publicId, width, height }` con medidas enteras positivas; `publicId` del usuario de la sesión (`users/{id}/`), si no 400. Igual para `avatarPublicId` |
 | `comment.content` | 1 a 1000 tras recortar espacios (RN07) |
 | búsqueda `q` | mínimo 2 caracteres |
 | ids | `ParseUUIDPipe` |
