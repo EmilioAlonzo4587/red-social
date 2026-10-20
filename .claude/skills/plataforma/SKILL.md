@@ -45,6 +45,7 @@ En `apps/api/src/main.ts`, cuando lo pida su issue:
 ## Socket.io y chat
 
 - El handshake valida la misma cookie de sesión; sin sesión válida se rechaza la conexión.
+- El Gateway declara su propio CORS: `@WebSocketGateway({ cors: { origin: CORS_ORIGIN, credentials: true } })`. El `enableCors` de HTTP no lo cubre. En local la web (:3001) se conecta directo a la api (:3000) con `NEXT_PUBLIC_SOCKET_URL`; en producción es el mismo origen a través de Caddy.
 - `conversation:join` y el envío de mensajes verifican que el usuario participa en la conversación; si no, error o 403 (RN09). Mensajes de 1 a 2000 caracteres.
 - Solo los eventos de `docs/05-api.md`. Cualquier evento nuevo se documenta ahí en el mismo PR.
 - Los contadores en vivo y las notificaciones salen de eventos de dominio que emiten los módulos de Dev 2 (D08); el gateway escucha y emite, no lo llaman directamente los servicios.
