@@ -257,7 +257,8 @@ Ejecutadas en PostgreSQL 16 con datos sintéticos:
 
 ## Migraciones y datos de prueba
 
-- Desarrollo: `pnpm --filter api prisma migrate dev`. Para agregar SQL manual: `prisma migrate dev --create-only`, editar el `migration.sql` generado y aplicar.
+- Versión: Prisma 6.19.3, fijada sin `^`. El script `prisma` de `apps/api` carga el `.env` de la raíz.
+- Desarrollo: `pnpm --filter api prisma migrate dev`. Para agregar SQL manual: `prisma migrate dev --create-only`, editar el `migration.sql` generado y aplicar. Los índices parciales no se declaran en `schema.prisma` (Prisma no los reconoce y los volvería a crear); viven solo en el SQL. Un segundo `migrate dev` debe responder que no hay cambios.
 - Producción: `prisma migrate deploy`, ejecutado por el pipeline antes de levantar la nueva versión. Nunca `prisma db push`.
-- Reconstrucción completa: `prisma migrate reset` aplica todas las migraciones desde cero y ejecuta el seed.
+- Reconstrucción completa: `prisma migrate reset` borra la base local, aplica todas las migraciones desde cero y ejecuta el seed (desde S1-06). Solo en desarrollo.
 - Datos de prueba: `prisma db seed` crea 20 usuarios con seguimientos, publicaciones con imágenes, likes y comentarios.

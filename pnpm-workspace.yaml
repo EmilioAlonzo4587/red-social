@@ -3,6 +3,9 @@ packages:
   - "packages/*"
 allowBuilds:
   '@parcel/watcher': false
+  '@prisma/client': true
+  '@prisma/engines': true
+  prisma: true
   unrs-resolver: false
 minimumReleaseAgeExclude:
   - "@next/env@16.4.2"
