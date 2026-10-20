@@ -32,7 +32,7 @@ CREATE TABLE refresh_tokens (
   token_hash  text        NOT NULL UNIQUE,                 -- nunca el token en claro
   expires_at  timestamptz NOT NULL,
   revoked_at  timestamptz,
-  replaced_by uuid REFERENCES refresh_tokens(id),
+  replaced_by uuid UNIQUE REFERENCES refresh_tokens(id) ON DELETE SET NULL,
   user_agent  text,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
