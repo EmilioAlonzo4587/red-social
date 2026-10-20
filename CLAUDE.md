@@ -37,11 +37,11 @@ pnpm --filter api test:e2e
 pnpm -r --if-present build
 ```
 
-## Estado actual (18 oct 2026)
+## Estado actual (20 oct 2026)
 
-Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), VPS con HTTPS (S0-03), web inicializada (S0-07), wireframes como páginas con datos de ejemplo, y portada, login y registro solo en el frontend (S1-08, sin llamar a la api).
+Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), VPS con HTTPS (S0-03), web inicializada (S0-07), wireframes como páginas con datos de ejemplo, portada, login y registro solo en el frontend (S1-08, sin llamar a la api), y Prisma 6.19.3 con la migración inicial (S0-04).
 
-Todavía no existe, aunque los docs lo describan: Prisma instalado y migraciones (S0-04), prefijo global `/api`, `ValidationPipe` global, helmet, cookie-parser, throttler, autenticación, Swagger, Socket.io, Cloudinary, `deploy.yml` activo (S1-01) y PostgreSQL en el CI (S1-03). `apps/api/src` sigue siendo el esqueleto de Nest (`GET /` devuelve "Hello World!"). Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
+Todavía no existe, aunque los docs lo describan: módulo de Prisma en Nest (`PrismaService`), seed (S1-06), prefijo global `/api`, `ValidationPipe` global, helmet, cookie-parser, throttler, autenticación, Swagger, Socket.io, Cloudinary, `deploy.yml` activo (S1-01) y PostgreSQL en el CI (S1-03). `apps/api/src` sigue siendo el esqueleto de Nest (`GET /` devuelve "Hello World!"). Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
 

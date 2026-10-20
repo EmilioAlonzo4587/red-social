@@ -9,9 +9,9 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de `apps/api`.
 
 ## Estado actual
 
-`apps/api/src` es el esqueleto de Nest: `AppController` con `GET /` que devuelve "Hello World!", su prueba unitaria y una e2e. Dependencias instaladas: `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `rxjs`, `reflect-metadata`. `prisma/schema.prisma` ya tiene el modelo completo, pero Prisma todavía no está instalado (S0-04).
+`apps/api/src` es el esqueleto de Nest: `AppController` con `GET /` que devuelve "Hello World!", su prueba unitaria y una e2e. Dependencias instaladas: `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `rxjs`, `reflect-metadata`. Prisma 6.19.3 está instalado con la migración inicial en `prisma/migrations/` (S0-04); todavía no hay `PrismaService` en Nest ni seed (S1-06). Los comandos van con `pnpm --filter api prisma <comando>`: el script `prisma` de `apps/api` carga el `.env` de la raíz con `dotenv-cli`. No actualices Prisma a 7 u 8 sin una issue: cambian la configuración.
 
-Si la tarea necesita algo que aún no existe (Prisma, `class-validator`, el prefijo `/api`, el `ValidationPipe` global, el filtro de errores), dilo y créalo como parte de la issue que lo pide, sin adelantarte a otras.
+Si la tarea necesita algo que aún no existe (`class-validator`, el prefijo `/api`, el `ValidationPipe` global, el filtro de errores), dilo y créalo como parte de la issue que lo pide, sin adelantarte a otras.
 
 ## Estructura
 
@@ -57,7 +57,7 @@ Si la tarea necesita algo que aún no existe (Prisma, `class-validator`, el pref
 ## Acceso a datos
 
 - Todo por Prisma. Si hace falta SQL a mano (búsqueda con `pg_trgm`), usa `$queryRaw` con plantilla etiquetada; nunca `$queryRawUnsafe` ni concatenación de strings.
-- El esquema vive en `apps/api/prisma/schema.prisma`. Los CHECK, índices parciales (`WHERE deleted_at IS NULL`) y extensiones (`citext`, `pg_trgm`) van como SQL manual en la migración (`prisma migrate dev --create-only`), como explica el comentario del schema. Cualquier cambio de esquema se refleja en `docs/04-base-de-datos.md`.
+- El esquema vive en `apps/api/prisma/schema.prisma`. Los CHECK, índices parciales (`WHERE deleted_at IS NULL`) y extensiones (`citext`, `pg_trgm`) van como SQL manual en la migración (`prisma migrate dev --create-only`), como explica el comentario del schema. Nunca declares con `@@index` un índice que en la base es parcial: Prisma no lo reconoce y lo intentaría crear de nuevo. Después de cada migración, un segundo `pnpm --filter api prisma migrate dev` debe decir que todo está sincronizado. Cualquier cambio de esquema se refleja en `docs/04-base-de-datos.md`.
 - Borrado lógico con `deletedAt`; las consultas de lectura filtran `deletedAt: null`. Un recurso borrado responde 404.
 - Solo `likeCount` y `commentCount` de `posts` están desnormalizados (D05): se actualizan en la misma transacción (`prisma.$transaction`) que crea o borra el like o el comentario. Seguidores y seguidos no se guardan como contador: se cuentan con `_count` de Prisma sobre `follows`.
 - Selecciona solo los campos que devuelves. Nunca incluyas `passwordHash`, tokens ni el correo de otros usuarios en una respuesta.
