@@ -33,7 +33,7 @@ erDiagram
     text token_hash UK
     timestamptz expires_at
     timestamptz revoked_at
-    uuid replaced_by FK
+    uuid replaced_by FK, UK
     text user_agent
     timestamptz created_at
   }
@@ -142,7 +142,7 @@ erDiagram
 | token_hash | text | NOT NULL, UNIQUE | Hash del token; nunca se guarda en claro. |
 | expires_at | timestamptz | NOT NULL | Vencimiento (7 días, RN12). |
 | revoked_at | timestamptz | | Fecha de rotación o cierre. |
-| replaced_by | uuid | FK refresh_tokens | Token que lo reemplazó; permite detectar reutilización. |
+| replaced_by | uuid | FK refresh_tokens, UNIQUE, ON DELETE SET NULL | Token que lo reemplazó; permite detectar reutilización. |
 | user_agent | text | | Navegador que abrió la sesión. |
 | created_at | timestamptz | NOT NULL | |
 
