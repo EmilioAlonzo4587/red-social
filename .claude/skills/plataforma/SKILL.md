@@ -30,7 +30,7 @@ En `apps/api/src/main.ts`, cuando lo pida su issue:
 
 - Contraseñas con argon2id. Nunca se registran en logs ni se devuelven.
 - Token de acceso de 15 minutos (`JWT_ACCESS_TTL`) en la cookie `access_token`; token de renovación (`REFRESH_TOKEN_TTL_DAYS`) en `refresh_token`. Ambas `HttpOnly`, `Secure` en producción y `SameSite=Lax`. Nunca en el cuerpo de la respuesta ni en `localStorage`.
-- El token de renovación se guarda con hash y se rota en cada `POST /api/auth/refresh`. Si llega uno ya rotado, se revocan todas las sesiones del usuario.
+- El token de renovación se guarda con hash y se rota en cada `POST /api/auth/refresh`. Si llega uno ya rotado, se revocan todas las sesiones del usuario (RN12). Un token reutilizado se detecta porque tiene `revoked_at` no nulo, no por `replaced_by`: esa columna queda en `null` si se borra el token nuevo (`ON DELETE SET NULL`), y además el logout revoca sin reemplazar.
 - `@nestjs/throttler`: 5 intentos de login y 5 de registro por minuto por IP (RN13, S1-02), respuesta 429.
 - En login, el mismo mensaje para usuario inexistente y contraseña incorrecta.
 - Ningún cambio de estado por `GET` (CSRF).
@@ -39,14 +39,15 @@ En `apps/api/src/main.ts`, cuando lo pida su issue:
 ## Imágenes (S2-01)
 
 - Se suben por el backend (D04) con `POST /api/media`, multipart. Solo jpeg, png y webp, máximo 5 MB (413 si se pasa). Valida el tamaño en el límite de multer, no después de leer el archivo.
-- Las claves de Cloudinary solo existen en el servidor. La respuesta devuelve `publicId`, `width` y `height`.
+- Las claves de Cloudinary solo existen en el servidor. La respuesta es el objeto `Media` de `docs/05-api.md`, con `publicId`, `width` y `height`.
+- Sube cada imagen a la carpeta del usuario (`users/{id}/`) y ofrece a Dev 2 una función que verifique que un `publicId` le pertenece (empieza con `users/{id}/`, con la barra final), para responder 400 en publicaciones y avatar.
 - Ofrece a Dev 2 una función para borrar imágenes por `publicId` (RN04).
 
 ## Socket.io y chat
 
 - El handshake valida la misma cookie de sesión; sin sesión válida se rechaza la conexión.
 - El Gateway declara su propio CORS: `@WebSocketGateway({ cors: { origin: CORS_ORIGIN, credentials: true } })`. El `enableCors` de HTTP no lo cubre. En local la web (:3001) se conecta directo a la api (:3000) con `NEXT_PUBLIC_SOCKET_URL`; en producción es el mismo origen a través de Caddy.
-- `conversation:join` y el envío de mensajes verifican que el usuario participa en la conversación; si no, error o 403 (RN09). Mensajes de 1 a 2000 caracteres.
+- `conversation:join` y el envío de mensajes verifican que el usuario participa en la conversación (RN09): `conversation:join` responde por acknowledgement `{ ok: false, error: "forbidden" }` y el envío por HTTP, 403. Mensajes de 1 a 2000 caracteres.
 - Solo los eventos de `docs/05-api.md`. Cualquier evento nuevo se documenta ahí en el mismo PR.
 - Los contadores en vivo y las notificaciones salen de eventos de dominio que emiten los módulos de Dev 2 (D08); el gateway escucha y emite, no lo llaman directamente los servicios.
 - Valida los datos que llegan por socket igual que un DTO HTTP.
