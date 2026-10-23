@@ -16,4 +16,5 @@
 | CORS abierto | `CORS_ORIGIN` limitado al dominio de producción | S4-02 |
 | Base expuesta a internet | PostgreSQL sin puertos publicados; acceso solo por la red interna de Docker | S1-01 |
 | Secretos filtrados | Solo en GitHub Secrets y en el `.env` del VPS; `.env` en `.gitignore`; `.env.example` sin valores reales | S0-01 |
+| Dependencias con vulnerabilidades | `pnpm audit` en cada cambio de dependencias; los avisos revisados que no llegan a producción se listan con su motivo en `auditConfig.ignoreGhsas` de `pnpm-workspace.yaml` | Todas |
 | Pérdida de datos | Respaldo diario fuera del servidor y restauración probada | S2-02, S4-03 |

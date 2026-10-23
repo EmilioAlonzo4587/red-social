@@ -20,3 +20,10 @@ minimumReleaseAgeExclude:
   - "@next/swc-win32-x64-msvc@16.4.2"
   - eslint-config-next@16.4.2
   - next@16.4.2
+
+# Avisos de pnpm audit revisados y aceptados: ninguno se alcanza con datos de usuarios (ver docs/07-seguridad.md)
+auditConfig:
+  ignoreGhsas:
+    - GHSA-ggr8-5vv4-36mx # deepmerge-ts en la config de la CLI de Prisma 6; sin entrada externa
+    - GHSA-vfj7-8cjw-p6xm # braces en eslint-config-next; solo lint, sin versión corregida
+    - GHSA-238p-pmpm-9mq7 # katex en mermaid; solo genera el PDF de docs
