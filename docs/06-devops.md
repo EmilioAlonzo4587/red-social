@@ -40,7 +40,13 @@ flowchart LR
   SM -->|no| RB[Vuelve a la etiqueta anterior]
 ```
 
-`ci.yml` (S0-02) y `docs-pdf.yml` ya están activos en `.github/workflows/`. El despliegue parte de la plantilla `infra/plantillas/deploy.yml`, que se mueve ahí en la issue S1-01.
+`ci.yml` (S0-02), `docs-pdf.yml` y `deploy.yml` (S1-01) están en `.github/workflows/`. `deploy.yml` corre en cada push a `main` y también a mano desde la pestaña Actions (`workflow_dispatch`):
+
+1. Construye las imágenes `web` y `api` y las publica en GHCR con la etiqueta del commit y `latest`. Los paquetes de GHCR son públicos, así que el VPS las descarga sin credenciales.
+2. Copia `infra/docker-compose.yml`, `infra/Caddyfile` e `infra/deploy.sh` a `~/app/infra-nuevo` en el VPS. El repositorio es la fuente de verdad: esos archivos no se editan en el servidor.
+3. Ejecuta `deploy.sh <sha>`, que copia compose y Caddyfile a `~/app` (y recarga Caddy si cambió), descarga las imágenes, aplica `prisma migrate deploy` con la CLI que trae la imagen de la api, reinicia los servicios y consulta `/api/health` durante un minuto. Si responde, guarda la etiqueta nueva en `IMAGE_TAG` del `.env`; si no, vuelve a la anterior.
+
+El rollback cambia las imágenes pero **no deshace migraciones**: cada migración tiene que funcionar también con la versión anterior de la api (por ejemplo, agregar una columna con valor por defecto en lugar de renombrarla).
 
 **Protección de `main`**: pull request obligatorio, una aprobación, CI en verde y sin excepciones para administradores.
 

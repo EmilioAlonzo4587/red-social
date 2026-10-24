@@ -13,6 +13,8 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de `apps/web`.
 - Componentes en `src/components/`: `avatar`, `navbar`, `post-card`.
 - `src/proxy.ts` redirige a `/` si la ruta no está en `PUBLIC_PATHS` (`src/lib/public-paths.ts`) y no hay cookie `access_token`. Sin sesión solo se ve la portada, login y registro (D09); no agregues rutas públicas sin que lo pida una issue.
 - Login y registro validan en el cliente pero todavía no llaman a la api: eso llega con el cliente de API (S1-09), que usa los endpoints de S1-02.
+- Producción (S1-01): la web corre en Docker con `output: "standalone"` (`next.config.ts`) y `node apps/web/server.js` en el puerto 3000 (`apps/web/Dockerfile`). No quites `output` ni `outputFileTracingRoot`. En local se usa `pnpm dev` (3001); `next start` no funciona con standalone.
+- Si la web empieza a importar un paquete del monorepo (por ejemplo `@red/api-types` en S1-09), agrega en `apps/web/Dockerfile` el `COPY` de su `package.json` antes del `pnpm install` y el de su carpeta después; si no, el build de la imagen falla.
 - Next 16 tiene cambios respecto a versiones anteriores (por ejemplo, `middleware.ts` ahora es `proxy.ts`). Ante la duda, consulta la documentación de Next 16 antes de escribir código de Next en lugar de copiar ejemplos de versiones viejas.
 
 ## Estructura y estilo

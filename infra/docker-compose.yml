@@ -1,5 +1,5 @@
 # Producción en el VPS. Las imágenes se construyen en GitHub Actions y se publican en GHCR.
-# Uso en el VPS:  docker compose --env-file .env pull && docker compose --env-file .env up -d
+# deploy.yml copia este archivo a ~/app en el VPS en cada despliegue: no se edita en el servidor.
 services:
   caddy:
     image: caddy:2
@@ -36,10 +36,12 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      # node ya viene en la imagen; wget o curl no siempre
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
   db:
     image: postgres:16

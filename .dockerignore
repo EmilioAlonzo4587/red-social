@@ -1,0 +1,18 @@
+# Lo que no entra al "contexto" de docker build (la carpeta que se envía a Docker).
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/*.log
+.env
+.env.*
+!.env.example
+**/.env.local
+.git
+.github
+.vscode
+.claude
+docs
+tools
+scripts
+infra
