@@ -14,7 +14,7 @@ La fuente de verdad es `docs/`. Antes de cambiar algo, lee la sección que aplic
 apps/api            NestJS 11 + Jest. Prisma en apps/api/prisma/
 apps/web            Next.js 16 (App Router) + React 19 + Tailwind 4
 packages/api-types  @red/api-types: tipos compartidos entre api y web
-infra/              docker-compose (dev y prod), Caddyfile, plantillas/deploy.yml
+infra/              docker-compose (dev y prod), Caddyfile, deploy.sh (lo ejecuta deploy.yml en el VPS)
 docs/               documentación; se compila a PDF con tools/docs-pdf
 scripts/            crear_issues.mjs, backup-db.sh
 ```
@@ -39,9 +39,9 @@ pnpm -r --if-present build
 
 ## Estado actual (20 oct 2026)
 
-Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), VPS con HTTPS (S0-03), web inicializada (S0-07), wireframes como páginas con datos de ejemplo, portada, login y registro solo en el frontend (S1-08, sin llamar a la api), y Prisma 6.19.3 con la migración inicial (S0-04).
+Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), VPS con HTTPS (S0-03), web inicializada (S0-07), wireframes como páginas con datos de ejemplo, portada, login y registro solo en el frontend (S1-08, sin llamar a la api), Prisma 6.19.3 con la migración inicial (S0-04), contrato de API v0 (S0-05) y esqueleto desplegado (S1-01): Dockerfiles de api y web, `deploy.yml` activo con rollback, prefijo global `/api`, `PrismaModule` global, `GET /api/health` y Swagger en `/api/docs`.
 
-Todavía no existe, aunque los docs lo describan: módulo de Prisma en Nest (`PrismaService`), seed (S1-06), prefijo global `/api`, `ValidationPipe` global, helmet, cookie-parser, throttler, autenticación, Swagger, Socket.io, Cloudinary, `deploy.yml` activo (S1-01) y PostgreSQL en el CI (S1-03). `apps/api/src` sigue siendo el esqueleto de Nest (`GET /` devuelve "Hello World!"). Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
+Todavía no existe, aunque los docs lo describan: seed (S1-06), `ValidationPipe` global, filtro global de errores, helmet, cookie-parser, throttler, autenticación, Socket.io, Cloudinary y PostgreSQL en el CI (S1-03; mientras tanto las e2e simulan `PrismaService`). La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
 

@@ -54,7 +54,7 @@ La api y la web ya existen. Los comandos de `prisma` funcionan desde la issue S0
 4. Instalar Docker y el plugin de Compose; agregar `deploy` al grupo `docker`.
 5. Apuntar el dominio a la IP del VPS.
 6. Copiar `infra/docker-compose.yml`, `infra/Caddyfile` y `.env.example` a `~/app` en el VPS y crear allí `.env` a partir del ejemplo con valores reales.
-7. Cargar los secrets `VPS_HOST`, `VPS_USER` y `VPS_SSH_KEY` en GitHub y mover `infra/plantillas/deploy.yml` a `.github/workflows/`.
+7. Cargar los secrets `VPS_HOST`, `VPS_USER` y `VPS_SSH_KEY` en GitHub (`deploy.yml` ya está en `.github/workflows/` desde S1-01).
 8. Copiar `scripts/backup-db.sh` a `~/app` y programarlo con `crontab -e` usando la línea indicada en el script.
 
 ## 6. Mantener esta documentación

@@ -12,11 +12,12 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de lo transver
 - CI: `.github/workflows/ci.yml`, job `verificar`, en cada PR a `main` con Node 22. Instala con `--frozen-lockfile` y corre lint, typecheck, pruebas unitarias, `pnpm --filter api test:e2e` y build de todos los paquetes. Es el check obligatorio de `main`.
 - Documentación: `.github/workflows/docs-pdf.yml` genera el PDF (artefacto `documentacion-pdf`).
 - Servidor listo (S0-03): VPS con Ubuntu 24.04, usuario `deploy` con llave, firewall con 22, 80 y 443 (443 también UDP), Docker y Compose, HTTPS de Caddy probado y `~/app` con `docker-compose.yml`, `Caddyfile` y `.env`. Secrets `VPS_HOST`, `VPS_USER` y `VPS_SSH_KEY` cargados en Actions.
-- Pendiente: mover `infra/plantillas/deploy.yml` a `.github/workflows/` (S1-01), PostgreSQL y migraciones en el CI (S1-03), auth (S1-02), Socket.io (S1-04), media (S2-01), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
+- Despliegue (S1-01): `.github/workflows/deploy.yml` construye `apps/api/Dockerfile` y `apps/web/Dockerfile`, publica en GHCR (paquetes públicos), copia `infra/` al VPS y ejecuta `infra/deploy.sh`, que migra, reinicia y vuelve a la etiqueta anterior si `/api/health` falla. Compose y Caddyfile se cambian en el repo, nunca en el servidor.
+- Pendiente: PostgreSQL y migraciones en el CI (S1-03), auth (S1-02), Socket.io (S1-04), media (S2-01), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
 
 ## Configuración global de la api
 
-En `apps/api/src/main.ts`, cuando lo pida su issue:
+En `apps/api/src/configure-app.ts` (lo usan `main.ts` y las e2e), cuando lo pida su issue. Ya están el prefijo, `PrismaModule`, `/api/health` y Swagger:
 
 - `app.setGlobalPrefix('api')`.
 - `ValidationPipe` global con `whitelist: true`, `forbidNonWhitelisted: true` y `transform: true`.
