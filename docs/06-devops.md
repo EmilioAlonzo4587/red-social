@@ -48,6 +48,8 @@ flowchart LR
 
 El rollback cambia las imágenes pero **no deshace migraciones**: cada migración tiene que funcionar también con la versión anterior de la api (por ejemplo, agregar una columna con valor por defecto en lugar de renombrarla).
 
+Tampoco restaura `docker-compose.yml` ni `Caddyfile`: `deploy.sh` ya los copió a `~/app` antes de probar la versión nueva. Si un despliegue falla por un cambio en esos archivos, revierte el cambio con un PR a `main` (el siguiente despliegue copia la versión corregida) o, en una emergencia, cópialos a mano desde el último commit bueno al VPS.
+
 **Protección de `main`**: pull request obligatorio, una aprobación, CI en verde y sin excepciones para administradores.
 
 **Secrets de GitHub**: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`. El `.env` de producción vive solo en el VPS.

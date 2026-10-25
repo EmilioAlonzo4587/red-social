@@ -15,6 +15,7 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de `apps/web`.
 - Login y registro validan en el cliente pero todavía no llaman a la api: eso llega con el cliente de API (S1-09), que usa los endpoints de S1-02.
 - Producción (S1-01): la web corre en Docker con `output: "standalone"` (`next.config.ts`) y `node apps/web/server.js` en el puerto 3000 (`apps/web/Dockerfile`). No quites `output` ni `outputFileTracingRoot`. En local se usa `pnpm dev` (3001); `next start` no funciona con standalone.
 - Si la web empieza a importar un paquete del monorepo (por ejemplo `@red/api-types` en S1-09), agrega en `apps/web/Dockerfile` el `COPY` de su `package.json` antes del `pnpm install` y el de su carpeta después; si no, el build de la imagen falla.
+- `output: "standalone"` no incluye `apps/web/public`. Hoy esa carpeta no existe; quien la cree (logo, favicon, imágenes fijas) agrega en la etapa `runtime` de `apps/web/Dockerfile`, junto al `COPY` de `.next/static`: `COPY --from=build --chown=node:node /repo/apps/web/public ./apps/web/public`. Si falta, las imágenes funcionan en local y salen rotas (404) solo en producción.
 - Next 16 tiene cambios respecto a versiones anteriores (por ejemplo, `middleware.ts` ahora es `proxy.ts`). Ante la duda, consulta la documentación de Next 16 antes de escribir código de Next en lugar de copiar ejemplos de versiones viejas.
 
 ## Estructura y estilo
