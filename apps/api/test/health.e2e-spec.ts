@@ -6,7 +6,8 @@ import { AppModule } from './../src/app.module';
 import { configureApp } from './../src/configure-app';
 import { PrismaService } from './../src/prisma/prisma.service';
 
-// Hasta S1-03 el CI no tiene PostgreSQL: se simula PrismaService.
+// Se simula PrismaService para poder provocar la caída de la base (503).
+// La prueba contra la base real está en database.e2e-spec.ts.
 describe('GET /api/health (e2e)', () => {
   let app: INestApplication<App>;
   const queryRaw = jest.fn();

@@ -1,6 +1,5 @@
-# Verifica cada pull request a main (issue S0-02).
+# Verifica cada pull request a main (issues S0-02 y S1-03).
 # El nombre del job ("verificar") es el check obligatorio en la protección de main.
-# En S1-03 se agregan el servicio de PostgreSQL, prisma migrate deploy y las pruebas e2e contra la base.
 name: CI
 on:
   pull_request:
@@ -13,6 +12,24 @@ concurrency:
 jobs:
   verificar:
     runs-on: ubuntu-latest
+    # PostgreSQL de servicio: un contenedor que vive mientras dura el job, solo para las e2e
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: minired_test
+        ports:
+          - 5432:5432
+        # El job espera a que la base acepte conexiones antes del primer paso
+        options: >-
+          --health-cmd "pg_isready -U app -d minired_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://app:app@localhost:5432/minired_test
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -27,7 +44,25 @@ jobs:
         run: pnpm -r --if-present typecheck
       - name: Pruebas unitarias
         run: pnpm -r --if-present test
+      - name: Migraciones en la base de pruebas
+        run: pnpm --filter api test:e2e:db
       - name: Pruebas e2e de la API
         run: pnpm --filter api test:e2e
       - name: Build de web y api
         run: pnpm -r --if-present build
+      # Las mismas imágenes que publica deploy.yml, sin subirlas: un Dockerfile roto falla aquí y no en main
+      - uses: docker/setup-buildx-action@v3
+      - name: Imagen de la api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false
+          cache-from: type=gha,scope=api
+      - name: Imagen de la web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: false
+          cache-from: type=gha,scope=web

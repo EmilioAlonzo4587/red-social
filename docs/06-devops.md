@@ -40,7 +40,11 @@ flowchart LR
   SM -->|no| RB[Vuelve a la etiqueta anterior]
 ```
 
-`ci.yml` (S0-02), `docs-pdf.yml` y `deploy.yml` (S1-01) están en `.github/workflows/`. `deploy.yml` corre en cada push a `main` y también a mano desde la pestaña Actions (`workflow_dispatch`):
+`ci.yml` (S0-02), `docs-pdf.yml` y `deploy.yml` (S1-01) están en `.github/workflows/`.
+
+`ci.yml` levanta un PostgreSQL 16 de servicio con la base `minired_test`, aplica las migraciones y corre las e2e contra ella (S1-03). Las e2e vacían las tablas antes de cada prueba y solo aceptan una base cuyo nombre termine en `_test`. Al final construye las imágenes de api y web sin publicarlas, para que un Dockerfile roto falle en el PR y no en el despliegue.
+
+`deploy.yml` corre en cada push a `main`, salvo si solo cambian `docs/`, archivos `.md` o `.claude/`, y también a mano desde la pestaña Actions (`workflow_dispatch`):
 
 1. Construye las imágenes `web` y `api` y las publica en GHCR con la etiqueta del commit y `latest`. Los paquetes de GHCR son públicos, así que el VPS las descarga sin credenciales.
 2. Copia `infra/docker-compose.yml`, `infra/Caddyfile` e `infra/deploy.sh` a `~/app/infra-nuevo` en el VPS. El repositorio es la fuente de verdad: esos archivos no se editan en el servidor.
