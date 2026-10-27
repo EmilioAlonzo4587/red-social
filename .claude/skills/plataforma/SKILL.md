@@ -9,11 +9,11 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de lo transver
 
 ## Estado actual
 
-- CI: `.github/workflows/ci.yml`, job `verificar`, en cada PR a `main` con Node 22. Instala con `--frozen-lockfile` y corre lint, typecheck, pruebas unitarias, `pnpm --filter api test:e2e` y build de todos los paquetes. Es el check obligatorio de `main`.
+- CI: `.github/workflows/ci.yml`, job `verificar`, en cada PR a `main` con Node 22. Instala con `--frozen-lockfile` y corre lint, typecheck, pruebas unitarias, migraciones y e2e contra un PostgreSQL 16 de servicio (`minired_test`, S1-03), build de todos los paquetes y `docker build` de api y web sin publicar. Es el check obligatorio de `main`. `deploy.yml` ignora los push que solo cambian `docs/`, `*.md` o `.claude/`.
 - Documentación: `.github/workflows/docs-pdf.yml` genera el PDF (artefacto `documentacion-pdf`).
 - Servidor listo (S0-03): VPS con Ubuntu 24.04, usuario `deploy` con llave, firewall con 22, 80 y 443 (443 también UDP), Docker y Compose, HTTPS de Caddy probado y `~/app` con `docker-compose.yml`, `Caddyfile` y `.env`. Secrets `VPS_HOST`, `VPS_USER` y `VPS_SSH_KEY` cargados en Actions.
 - Despliegue (S1-01): `.github/workflows/deploy.yml` construye `apps/api/Dockerfile` y `apps/web/Dockerfile`, publica en GHCR (paquetes públicos), copia `infra/` al VPS y ejecuta `infra/deploy.sh`, que migra, reinicia y vuelve a la etiqueta anterior si `/api/health` falla. Compose y Caddyfile se cambian en el repo, nunca en el servidor.
-- Pendiente: PostgreSQL y migraciones en el CI (S1-03), auth (S1-02), Socket.io (S1-04), media (S2-01), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
+- Pendiente: auth (S1-02), Socket.io (S1-04), media (S2-01), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
 
 ## Configuración global de la api
 
@@ -56,7 +56,7 @@ En `apps/api/src/configure-app.ts` (lo usan `main.ts` y las e2e), cuando lo pida
 ## CI
 
 - `verificar` debe seguir siendo el único check obligatorio y debe correr lo mismo que un desarrollador corre en local (ver `CLAUDE.md`).
-- Cuando se agreguen pasos, mantén `--frozen-lockfile` y Node 22. En S1-03: servicio de PostgreSQL 16, `prisma migrate deploy` y las e2e contra esa base.
+- Cuando se agreguen pasos, mantén `--frozen-lockfile` y Node 22. Las e2e usan la base del servicio de PostgreSQL; una variable nueva que la api exija al arrancar se define también en `apps/api/test/setup-env.ts`.
 - Nunca desactives ni saltes una prueba para que el CI pase.
 - Subir cambios en `.github/workflows/` requiere el permiso `workflow` en `gh` (`gh auth refresh -s workflow`).
 

@@ -49,4 +49,4 @@ pnpm install
 pnpm dev                                               # api en :3000, web en http://localhost:3001
 ```
 
-Las migraciones de la base llegan con S0-04. Detalle completo en la [guía de inicio](docs/09-guia-de-inicio.md); variables de entorno en [`.env.example`](.env.example).
+Para crear las tablas: `pnpm --filter api prisma migrate dev`. Las pruebas e2e usan otra base, `minired_test`: `pnpm --filter api test:e2e:db` la crea y migra, y `pnpm --filter api test:e2e` corre las pruebas. Detalle completo en la [guía de inicio](docs/09-guia-de-inicio.md); variables de entorno en [`.env.example`](.env.example).
