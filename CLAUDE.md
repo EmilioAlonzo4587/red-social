@@ -44,7 +44,9 @@ Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), V
 
 PostgreSQL en el CI (S1-03): las e2e corren contra una base real (`minired_test`) que se migra con `pnpm --filter api test:e2e:db` y se vacía con `resetDatabase` de `apps/api/test/utils/database.ts`; el CI también construye las imágenes Docker sin publicarlas.
 
-Todavía no existe, aunque los docs lo describan: seed (S1-06), `ValidationPipe` global, filtro global de errores, helmet, cookie-parser, throttler, autenticación, Socket.io y Cloudinary. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
+Autenticación (S1-02): `ValidationPipe` global, filtro global de errores (`AllExceptionsFilter`), cookie-parser, `trust proxy`, variables validadas al arrancar (`src/config/env.ts`), `src/auth/` con register, login, refresh, logout y me, throttler en register y login, y guard de sesión **global**: toda ruta exige sesión salvo las marcadas con `@Public()`; el usuario llega con `@CurrentUser()`.
+
+Todavía no existe, aunque los docs lo describan: seed (S1-06), helmet y CORS (S4-02), Socket.io y Cloudinary. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
 

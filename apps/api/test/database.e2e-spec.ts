@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -9,7 +9,7 @@ import { resetDatabase } from './utils/database';
 
 // Primera prueba contra la base real (S1-03): la del CI o la minired_test local.
 describe('Base de pruebas (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: NestExpressApplication;
   let prisma: PrismaService;
 
   beforeAll(async () => {
@@ -17,7 +17,7 @@ describe('Base de pruebas (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.init();
     prisma = app.get(PrismaService);
@@ -32,7 +32,7 @@ describe('Base de pruebas (e2e)', () => {
   });
 
   it('GET /api/health responde 200 con la base real', () => {
-    return request(app.getHttpServer())
+    return request(app.getHttpServer() as App)
       .get('/api/health')
       .expect(200)
       .expect({ status: 'ok', database: 'ok' });

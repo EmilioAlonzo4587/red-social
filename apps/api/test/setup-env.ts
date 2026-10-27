@@ -9,3 +9,8 @@ if (!dbName.endsWith('_test')) {
     `Las pruebas e2e borran datos y solo corren en una base que termine en _test (recibí "${dbName}")`,
   );
 }
+// Valores solo para pruebas: la api exige estas variables al arrancar (src/config/env.ts)
+process.env.JWT_ACCESS_SECRET ??=
+  'secreto-de-pruebas-e2e-de-al-menos-32-caracteres';
+process.env.JWT_ACCESS_TTL ??= '15m';
+process.env.REFRESH_TOKEN_TTL_DAYS ??= '7';

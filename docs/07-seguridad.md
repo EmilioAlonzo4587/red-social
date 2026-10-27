@@ -2,11 +2,13 @@
 
 | Riesgo | Medida | Dónde |
 |---|---|---|
-| Robo de contraseñas | Hash argon2id; la contraseña nunca se registra en logs | S1-02 |
+| Robo de contraseñas | Hash argon2id (`@node-rs/argon2`, 19 MiB y 2 pasadas); contraseña de 8 a 128 caracteres; la contraseña nunca se registra en logs | S1-02 |
+| Descubrir qué cuentas existen | Login responde el mismo 401 y tarda lo mismo con un usuario inexistente: verifica contra un hash de relleno | S1-02 |
 | Robo de token por XSS | Cookies `HttpOnly; Secure; SameSite=Lax`; token de acceso de 15 minutos | S1-02 |
-| Reutilización de sesiones robadas | Token de renovación rotado en cada uso y guardado con hash; reutilizar uno rotado revoca todas las sesiones | S1-02 |
+| Reutilización de sesiones robadas | Token de renovación de 32 bytes aleatorios, guardado como SHA-256, rotado en cada uso y con la cookie limitada a `/api/auth`; reutilizar uno rotado revoca todas las sesiones | S1-02 |
+| Ruta nueva sin protección | Guard de sesión global: toda ruta exige sesión salvo las marcadas con `@Public()` | S1-02 |
 | CSRF | `SameSite=Lax`, mismo dominio y ningún cambio de estado por `GET` | S1-02 |
-| Fuerza bruta | `@nestjs/throttler`: 5 intentos de login y 5 de registro por minuto por IP | S1-02 |
+| Fuerza bruta | `@nestjs/throttler`: 5 intentos de login y 5 de registro por minuto por IP. La api confía en un salto de proxy (`trust proxy`, 1) para tomar la IP real de `X-Forwarded-For`, que Caddy reemplaza en cada petición; sin eso todos los visitantes compartirían la IP de Caddy | S1-02 |
 | Acceso a recursos ajenos | Cada borrado o edición compara el autor con el usuario autenticado; prueba e2e del caso 403 | S2-04, S3-01, S3-04 |
 | Sockets sin control | Sesión validada en el handshake; entrar a `conv:{id}` solo si participa | S1-04, S3-05 |
 | Entradas maliciosas | `ValidationPipe` global con `whitelist` y `forbidNonWhitelisted`; mismos límites en DTOs y en la base | Todas |

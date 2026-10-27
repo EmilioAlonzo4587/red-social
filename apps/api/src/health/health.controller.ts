@@ -7,8 +7,10 @@ import {
 import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { HealthResponseDto } from './health-response.dto';
+import { Public } from '../auth/public.decorator';
 
 @ApiTags('health')
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
