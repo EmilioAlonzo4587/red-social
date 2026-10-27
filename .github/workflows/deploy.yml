@@ -5,6 +5,10 @@ name: Deploy
 on:
   push:
     branches: [main]
+    paths-ignore: # Un cambio que solo toca documentación o reglas de agentes no redespliega
+      - 'docs/**'
+      - '**/*.md'
+      - '.claude/**'
   workflow_dispatch:
 
 # Un despliegue a la vez; el siguiente espera a que termine el anterior
