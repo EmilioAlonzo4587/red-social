@@ -13,29 +13,32 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de lo transver
 - Documentación: `.github/workflows/docs-pdf.yml` genera el PDF (artefacto `documentacion-pdf`).
 - Servidor listo (S0-03): VPS con Ubuntu 24.04, usuario `deploy` con llave, firewall con 22, 80 y 443 (443 también UDP), Docker y Compose, HTTPS de Caddy probado y `~/app` con `docker-compose.yml`, `Caddyfile` y `.env`. Secrets `VPS_HOST`, `VPS_USER` y `VPS_SSH_KEY` cargados en Actions.
 - Despliegue (S1-01): `.github/workflows/deploy.yml` construye `apps/api/Dockerfile` y `apps/web/Dockerfile`, publica en GHCR (paquetes públicos), copia `infra/` al VPS y ejecuta `infra/deploy.sh`, que migra, reinicia y vuelve a la etiqueta anterior si `/api/health` falla. Compose y Caddyfile se cambian en el repo, nunca en el servidor.
-- Pendiente: auth (S1-02), Socket.io (S1-04), media (S2-01), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
+- Autenticación (S1-02): `src/auth/` y la configuración global de `configure-app.ts` (abajo).
+- Pendiente: Socket.io (S1-04), media (S2-01), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
 
 ## Configuración global de la api
 
-En `apps/api/src/configure-app.ts` (lo usan `main.ts` y las e2e), cuando lo pida su issue. Ya están el prefijo, `PrismaModule`, `/api/health` y Swagger:
+En `apps/api/src/configure-app.ts` (lo usan `main.ts` y las e2e), cuando lo pida su issue. Ya están el prefijo, `PrismaModule`, `/api/health`, Swagger, `ValidationPipe`, `AllExceptionsFilter`, cookie-parser y `trust proxy`; faltan helmet y CORS (S4-02):
 
 - `app.setGlobalPrefix('api')`.
-- `ValidationPipe` global con `whitelist: true`, `forbidNonWhitelisted: true` y `transform: true`.
+- `ValidationPipe` global con `whitelist: true`, `forbidNonWhitelisted: true` y `transform: true` (`src/common/validation.ts`), que arma `details` con un elemento por campo.
+- `app.set('trust proxy', 1)`: un solo proxy (Caddy) delante. No lo subas a `true` ni a más saltos: cualquiera podría elegir su IP con `X-Forwarded-For` y saltarse el throttler.
 - Un filtro global de excepciones que responda siempre `{ statusCode, error, message, details }` (`docs/05-api.md`) y traduzca los errores de Prisma `P2002` a 409 y `P2025` a 404. Ningún error interno ni traza llega al cliente.
 - `cookie-parser`, `helmet` y `enableCors` solo con `CORS_ORIGIN` y `credentials: true`; nunca `origin: '*'`.
 - Swagger en `/api/docs` y el JSON en `/api/docs-json`, que alimenta `packages/api-types`.
 - `GET /api/health` que verifica la conexión a la base (S1-01).
-- Las variables se leen y validan al arrancar: si falta una obligatoria, la api no arranca. Toda variable nueva va a `.env.example` con un valor de ejemplo.
+- Las variables se leen y validan al arrancar en `src/config/env.ts` (se inyectan con `@Inject(ENV)`): si falta una obligatoria, la api no arranca. Toda variable nueva va a `.env.example` con un valor de ejemplo, a `test/setup-env.ts` y, antes del merge, al `.env` del VPS.
 
 ## Autenticación (docs/07-seguridad.md)
 
-- Contraseñas con argon2id. Nunca se registran en logs ni se devuelven.
-- Token de acceso de 15 minutos (`JWT_ACCESS_TTL`) en la cookie `access_token`; token de renovación (`REFRESH_TOKEN_TTL_DAYS`) en `refresh_token`. Ambas `HttpOnly`, `Secure` en producción y `SameSite=Lax`. Nunca en el cuerpo de la respuesta ni en `localStorage`.
+- Contraseñas con argon2id (`@node-rs/argon2`, que trae binarios para Alpine y no necesita `allowBuilds`). Nunca se registran en logs ni se devuelven.
+- `@nestjs/jwt` se queda en 11.x: la 12 es solo ESM y Jest (CommonJS) no la carga.
+- Token de acceso de 15 minutos (`JWT_ACCESS_TTL`, JWT HS256 con `sub` = id) en la cookie `access_token` (`Path=/`); token de renovación (`REFRESH_TOKEN_TTL_DAYS`, 32 bytes aleatorios guardados como SHA-256) en `refresh_token` (`Path=/api/auth`). Las dos cookies duran lo que el refresh, para que `proxy.ts` de la web siga viendo `access_token`. Ambas `HttpOnly`, `Secure` en producción y `SameSite=Lax`. Nunca en el cuerpo de la respuesta ni en `localStorage`.
 - El token de renovación se guarda con hash y se rota en cada `POST /api/auth/refresh`. Si llega uno ya rotado, se revocan todas las sesiones del usuario (RN12). Un token reutilizado se detecta porque tiene `revoked_at` no nulo, no por `replaced_by`: esa columna queda en `null` si se borra el token nuevo (`ON DELETE SET NULL`), y además el logout revoca sin reemplazar.
 - `@nestjs/throttler`: 5 intentos de login y 5 de registro por minuto por IP (RN13, S1-02), respuesta 429.
 - En login, el mismo mensaje para usuario inexistente y contraseña incorrecta.
 - Ningún cambio de estado por `GET` (CSRF).
-- Expón un guard de sesión y un decorador del usuario actual que usen los módulos de Dev 2. Las rutas 🔒 responden 401 sin sesión.
+- `SessionGuard` es global (`APP_GUARD` en `AuthModule`): toda ruta exige sesión salvo las marcadas con `@Public()` (health, register, login, refresh y logout). `@CurrentUser()` entrega `{ id }`. Las rutas 🔒 responden 401 sin sesión.
 
 ## Imágenes (S2-01)
 

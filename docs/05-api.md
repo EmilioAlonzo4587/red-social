@@ -5,7 +5,7 @@ Versión 0, acordada al inicio del proyecto (issue S0-05). La referencia viva es
 ## Convenciones
 
 - Todas las rutas empiezan con `/api`. Formato JSON en `camelCase`.
-- Autenticación por cookies `access_token` y `refresh_token` (`HttpOnly`, `Secure`, `SameSite=Lax`). Las rutas marcadas 🔒 responden 401 sin sesión.
+- Autenticación por cookies `access_token` y `refresh_token` (`HttpOnly`, `Secure`, `SameSite=Lax`). Las rutas marcadas 🔒 responden 401 sin sesión o con el token de acceso vencido.
 - Listas paginadas por cursor: la respuesta es un `Page<T>` con `items` y `nextCursor`; la siguiente página se pide con `?cursor=<nextCursor>`. Tamaño fijo de 20. `nextCursor` es `null` en la última página. El cursor es opaco: la web lo reenvía tal cual, sin leerlo ni armarlo.
 - Fechas en ISO 8601 y UTC (`"2026-10-20T05:40:15.000Z"`). La web les da formato ("hace 5 min").
 - Imágenes por su `publicId` de Cloudinary, nunca por URL. La web arma la URL con `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`.
@@ -84,15 +84,19 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 
 | Método | Ruta | Body | Respuesta | Errores |
 |---|---|---|---|---|
-| POST | `/api/auth/register` | `{ username, email, password }` | 201 `Me` e inicia sesión | 400 (RN01, RN02), 409 con `details` en `username` o `email`, 429 (RN13) |
+| POST | `/api/auth/register` | `{ username, email, password }` | 201 `Me` e inicia sesión | 400 (RN01, RN02), 409 con `details` en `username` o `email` y `rule: "unique"`, 429 (RN13) |
 | POST | `/api/auth/login` | `{ identifier, password }` | 200 `Me` | 400 si falta un campo, 401, 429 (RN13) |
 | POST | `/api/auth/refresh` | cookie `refresh_token` | 204 con cookies nuevas | 401 |
-| POST | `/api/auth/logout` 🔒 | | 204 y borra las cookies | |
+| POST | `/api/auth/logout` | cookie `refresh_token` | 204 y borra las cookies, siempre | |
 | GET | `/api/auth/me` 🔒 | | `Me` | |
 
+- Límites: `username` de 3 a 30 caracteres `[A-Za-z0-9_]`, `email` hasta 254 y `password` de 8 a 128 (RN01, RN02). Se recortan los espacios de `username`, `email` e `identifier`, no los de `password`.
+- Cookies: `access_token` lleva un JWT que vence a los 15 minutos (`JWT_ACCESS_TTL`) y viaja a todo el sitio (`Path=/`); `refresh_token` es un valor aleatorio que solo viaja a `/api/auth` (`Path=/api/auth`). Las dos cookies duran 7 días (`REFRESH_TOKEN_TTL_DAYS`), así la web sabe que hay sesión aunque el JWT haya vencido. Cuando una ruta 🔒 responde 401, la web llama una vez a `refresh` y repite la petición; si `refresh` también responde 401, la sesión terminó.
+- `refresh` y `logout` no llevan 🔒: funcionan con el token de acceso vencido. `logout` responde 204 aunque no haya sesión.
 - `identifier` es el usuario o el correo: si contiene `@` se busca por correo, si no por usuario (un nombre de usuario no puede tener `@`, RN01).
 - Login responde el mismo 401 si el usuario no existe o si la contraseña es incorrecta, para no revelar qué cuentas existen.
-- Reutilizar un `refresh_token` ya rotado responde 401 y cierra todas las sesiones del usuario (RN12).
+- Reutilizar un `refresh_token` ya rotado responde 401 y cierra todas las sesiones del usuario (RN12). Dos `refresh` al mismo tiempo con el mismo token cuentan como reutilización, así que la web hace uno a la vez, también entre pestañas.
+- Un `refresh` que falla responde 401 y borra las dos cookies.
 
 ### Usuarios y seguimiento
 

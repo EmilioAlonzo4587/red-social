@@ -9,9 +9,9 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de `apps/api`.
 
 ## Estado actual
 
-`apps/api/src` tiene el prefijo global `/api` (en `configure-app.ts`), `PrismaModule` global (inyecta `PrismaService` en cualquier servicio sin importar el módulo), `GET /api/health` y Swagger en `/api/docs` (S1-01). Dependencias instaladas: `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `@nestjs/swagger`, `rxjs`, `reflect-metadata`. Prisma 6.19.3 (`prisma` va en `dependencies` porque la imagen de producción corre `migrate deploy`) con la migración inicial en `prisma/migrations/` (S0-04); todavía no hay seed (S1-06). Las e2e corren contra una base real que termina en `_test` (`test/setup-env.ts` se niega a usar otra), llaman a `configureApp(app)` y vacían las tablas con `resetDatabase(prisma)` en `beforeEach` (ver `test/database.e2e-spec.ts`). Jest las corre en serie (`--runInBand`) porque comparten la base. Solo se simula `PrismaService` con `overrideProvider` para provocar fallas de la base, como el 503 de `test/health.e2e-spec.ts`. Los comandos van con `pnpm --filter api prisma <comando>`: el script `prisma` de `apps/api` carga el `.env` de la raíz con `dotenv-cli`. No actualices Prisma a 7 u 8 sin una issue: cambian la configuración.
+`apps/api/src` tiene el prefijo global `/api` (en `configure-app.ts`), `PrismaModule` global (inyecta `PrismaService` en cualquier servicio sin importar el módulo), `GET /api/health` y Swagger en `/api/docs` (S1-01). Dependencias instaladas: `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `@nestjs/swagger`, `@nestjs/jwt`, `@nestjs/throttler`, `class-validator`, `class-transformer`, `cookie-parser`, `@node-rs/argon2`, `rxjs`, `reflect-metadata`. Desde S1-02 existen el `ValidationPipe` global, el filtro global de errores (`src/common/filters/all-exceptions.filter.ts`, traduce P2002 y P2025), el helper `trim` para `@Transform` (`src/common/transforms.ts`), `ErrorResponseDto` para Swagger y el guard de sesión global. Prisma 6.19.3 (`prisma` va en `dependencies` porque la imagen de producción corre `migrate deploy`) con la migración inicial en `prisma/migrations/` (S0-04); todavía no hay seed (S1-06). Las e2e corren contra una base real que termina en `_test` (`test/setup-env.ts` se niega a usar otra), llaman a `configureApp(app)` y vacían las tablas con `resetDatabase(prisma)` en `beforeEach` (ver `test/database.e2e-spec.ts`). Jest las corre en serie (`--runInBand`) porque comparten la base. Solo se simula `PrismaService` con `overrideProvider` para provocar fallas de la base, como el 503 de `test/health.e2e-spec.ts`. Los comandos van con `pnpm --filter api prisma <comando>`: el script `prisma` de `apps/api` carga el `.env` de la raíz con `dotenv-cli`. No actualices Prisma a 7 u 8 sin una issue: cambian la configuración.
 
-Si la tarea necesita algo que aún no existe (`class-validator`, el prefijo `/api`, el `ValidationPipe` global, el filtro de errores), dilo y créalo como parte de la issue que lo pide, sin adelantarte a otras.
+Si la tarea necesita algo que aún no existe, dilo y créalo como parte de la issue que lo pide, sin adelantarte a otras.
 
 ## Estructura
 
@@ -65,7 +65,8 @@ Si la tarea necesita algo que aún no existe (`class-validator`, el prefijo `/ap
 
 ## Permisos
 
-- Toda ruta 🔒 lleva el guard de sesión (lo crea Dev 3 en S1-02).
+- El guard de sesión es global: toda ruta exige sesión sin hacer nada. Solo una ruta pública lleva `@Public()` (de `src/auth/public.decorator.ts`); ninguna de Dev 2 lo necesita. El usuario de la sesión llega con `@CurrentUser() user: SessionUser` (`user.id`), nunca del body. Documenta las rutas con `@ApiCookieAuth()` y `@ApiUnauthorizedResponse({ type: ErrorResponseDto })`.
+- En las e2e, inicia sesión con `POST /api/auth/register` y manda la cookie `access_token` con `.set('Cookie', ...)`; `test/utils/cookies.ts` lee las `Set-Cookie` (ver `test/auth.e2e-spec.ts`).
 - Editar o borrar compara el autor con el usuario autenticado y responde 403 si no coincide (RN04). Cada caso así tiene su prueba e2e del 403.
 - Nadie se sigue a sí mismo (RN06) y nadie se notifica a sí mismo (RN08).
 - Al borrar una publicación, sus imágenes se borran de Cloudinary (RN04) a través del servicio de media de Dev 3.
