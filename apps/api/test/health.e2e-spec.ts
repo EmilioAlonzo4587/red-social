@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -9,7 +9,7 @@ import { PrismaService } from './../src/prisma/prisma.service';
 // Se simula PrismaService para poder provocar la caída de la base (503).
 // La prueba contra la base real está en database.e2e-spec.ts.
 describe('GET /api/health (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: NestExpressApplication;
   const queryRaw = jest.fn();
 
   beforeEach(async () => {
@@ -21,7 +21,7 @@ describe('GET /api/health (e2e)', () => {
       .useValue({ $queryRaw: queryRaw, $disconnect: jest.fn() })
       .compile();
 
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.init();
   });
@@ -47,6 +47,8 @@ describe('GET /api/health (e2e)', () => {
   });
 
   it('sin el prefijo /api no existe', () => {
-    return request(app.getHttpServer()).get('/health').expect(404);
+    return request(app.getHttpServer() as App)
+      .get('/health')
+      .expect(404);
   });
 });
