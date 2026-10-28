@@ -100,6 +100,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["UsersController_updateMe"];
+        trace?: never;
+    };
+    "/api/users/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["UsersController_profile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -160,6 +192,40 @@ export interface components {
              * @enum {string}
              */
             database: "ok" | "error";
+        };
+        UpdateMeDto: {
+            /** @example Ana López */
+            displayName?: string | null;
+            /** @example Me gusta la fotografía */
+            bio?: string | null;
+        };
+        ProfileDto: {
+            /** Format: uuid */
+            id: string;
+            /** @example ana_lopez */
+            username: string;
+            /** @example Ana López */
+            displayName: string | null;
+            /** @example null */
+            avatarPublicId: string | null;
+            /** @example Me gusta la fotografía */
+            bio: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * @description Sin contar las eliminadas
+             * @example 12
+             */
+            postCount: number;
+            /** @example 30 */
+            followerCount: number;
+            /** @example 25 */
+            followingCount: number;
+            /**
+             * @description Si el usuario con sesión lo sigue; false en el perfil propio
+             * @example false
+             */
+            isFollowing: boolean;
         };
     };
     responses: never;
@@ -366,6 +432,83 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponseDto"];
+                };
+            };
+        };
+    };
+    UsersController_updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeDto"];
+                };
+            };
+            /** @description displayName pasa de 80, bio de 300 o un campo no permitido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    UsersController_profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                username: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
         };

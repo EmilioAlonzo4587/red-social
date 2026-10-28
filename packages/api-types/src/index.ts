@@ -8,3 +8,5 @@ export type MeDto = components["schemas"]["MeDto"];
 export type ErrorResponseDto = components["schemas"]["ErrorResponseDto"];
 export type ErrorDetailDto = components["schemas"]["ErrorDetailDto"];
 export type HealthResponseDto = components["schemas"]["HealthResponseDto"];
+export type ProfileDto = components["schemas"]["ProfileDto"];
+export type UpdateMeDto = components["schemas"]["UpdateMeDto"];
