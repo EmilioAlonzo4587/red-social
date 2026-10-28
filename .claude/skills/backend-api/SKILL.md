@@ -24,7 +24,8 @@ Si la tarea necesita algo que aún no existe, dilo y créalo como parte de la is
 
 - Rutas bajo `/api`, JSON en camelCase. Rutas, métodos y códigos tal como están en la tabla de endpoints; si necesitas cambiar uno, actualiza `docs/05-api.md` en el mismo PR.
 - Seguir y dar like son `PUT` (idempotentes) y deshacer es `DELETE`. Repetir un `PUT` no crea otra fila ni cambia el contador (RN05, RN06).
-- Listas con paginación por cursor: respuesta `{ items, nextCursor }`, tamaño fijo 20, siguiente página con `?cursor=`. Ordena por `createdAt` e `id` descendentes y usa ese par como cursor; nunca `offset`. La excepción son los comentarios, que van ascendentes (del más antiguo al más reciente), como dice `docs/05-api.md`. El cursor es opaco para la web.
+- Listas con paginación por cursor: respuesta `{ items, nextCursor }`, tamaño fijo 20, siguiente página con `?cursor=`. Ordena por `createdAt` e `id` descendentes y usa ese par como cursor; nunca `offset`. La excepción son los comentarios, que van ascendentes (del más antiguo al más reciente), como dice `docs/05-api.md`. El cursor es opaco para la web. Usa `src/common/pagination.ts` (S2-06): `CursorQueryDto` para el `?cursor=`, `decodeCursor` (400 si es inválido) y `toPage` con `PAGE_SIZE + 1` filas. El cursor lleva `created_at` con microsegundos: lee la columna con `$queryRaw` y `to_char(... AT TIME ZONE 'UTC', CURSOR_AT_FORMAT)` y compara con `(${createdAt}::timestamptz, ${id}::uuid)`, como `src/follows/follows.service.ts`. Un `Date` de Prisma pierde los microsegundos y la paginación saltaría filas.
+- Si agregas o cambias un endpoint, regenera `packages/api-types` en el mismo PR: levanta la api (`pnpm --filter api dev`), corre `pnpm --filter @red/api-types generate` y exporta los DTOs nuevos desde `packages/api-types/src/index.ts`. El CI no lo revisa, pero la web depende de esos tipos.
 - Errores siempre con el formato único:
 
 ```json

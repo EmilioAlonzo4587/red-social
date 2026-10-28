@@ -10,3 +10,6 @@ export type ErrorDetailDto = components["schemas"]["ErrorDetailDto"];
 export type HealthResponseDto = components["schemas"]["HealthResponseDto"];
 export type ProfileDto = components["schemas"]["ProfileDto"];
 export type UpdateMeDto = components["schemas"]["UpdateMeDto"];
+export type UserSummaryDto = components["schemas"]["UserSummaryDto"];
+export type UserSummaryPageDto = components["schemas"]["UserSummaryPageDto"];
+export type FollowStatusDto = components["schemas"]["FollowStatusDto"];

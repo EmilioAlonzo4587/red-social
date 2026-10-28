@@ -40,7 +40,7 @@ pnpm -r --if-present build
 
 ## Estado actual (28 oct 2026)
 
-Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), VPS con HTTPS (S0-03), web inicializada (S0-07), wireframes como páginas con datos de ejemplo, portada, login y registro solo en el frontend (S1-08, sin llamar a la api), Prisma 6.19.3 con la migración inicial (S0-04), contrato de API v0 (S0-05) y esqueleto desplegado en producción (S1-01): Dockerfiles de api y web, `deploy.yml` activo con `infra/deploy.sh` y rollback de imágenes, prefijo global `/api`, `PrismaModule` global, `GET /api/health` y Swagger en `/api/docs`.
+Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), VPS con HTTPS (S0-03), web inicializada (S0-07), wireframes como páginas con datos de ejemplo, portada, login y registro (S1-08), Prisma 6.19.3 con la migración inicial (S0-04), contrato de API v0 (S0-05) y esqueleto desplegado en producción (S1-01): Dockerfiles de api y web, `deploy.yml` activo con `infra/deploy.sh` y rollback de imágenes, prefijo global `/api`, `PrismaModule` global, `GET /api/health` y Swagger en `/api/docs`.
 
 PostgreSQL en el CI (S1-03): las e2e corren contra una base real (`minired_test`) que se migra con `pnpm --filter api test:e2e:db` y se vacía con `resetDatabase` de `apps/api/test/utils/database.ts`; el CI también construye las imágenes Docker sin publicarlas.
 
@@ -64,6 +64,6 @@ Todavía no existe, aunque los docs lo describan: helmet y CORS (S4-02), Socket.
 - Nunca subas `.env`, contraseñas, tokens, llaves ni la IP o el usuario del servidor. El repo es público. Las variables nuevas van a `.env.example` con un valor de ejemplo, nunca el real.
 - TypeScript estricto: sin `any` (usa `unknown` y estrecha el tipo), sin `@ts-ignore` ni `eslint-disable` para silenciar un error real.
 - Nombres y mensajes visibles para el usuario en español; identificadores de código y JSON en inglés y camelCase, como en `docs/05-api.md`.
-- Los tipos de petición y respuesta que comparten api y web van en `packages/api-types`.
+- Los tipos de petición y respuesta que comparten api y web van en `packages/api-types`. Si agregas o cambias un endpoint, regenera esos tipos (`pnpm --filter @red/api-types generate` con la api corriendo) y exporta los DTOs nuevos desde su `index.ts` en el mismo PR.
 - Si cambias el comportamiento de la api, actualiza `docs/05-api.md` en el mismo PR. Si cambias el esquema, actualiza `docs/04-base-de-datos.md`.
 - No instales dependencias que la issue no necesite. Si una es necesaria, justifícala en el PR.
