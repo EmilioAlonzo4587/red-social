@@ -112,7 +112,8 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 | DELETE | `/api/users/:username/follow` 🔒 | | `{ isFollowing: false, followerCount }` | 404 | S2-06 |
 
 - Búsqueda: primero los usuarios cuyo `username` o `displayName` empieza con el texto (S3-02).
-- `PATCH /users/me`: `displayName` hasta 80 caracteres y `bio` hasta 300; enviar `null` borra el valor. Para cambiar el avatar, la web sube la imagen con `POST /api/media` y manda aquí su `publicId`; el anterior se borra de Cloudinary (S2-01). `avatarPublicId: null` quita la foto. Un `avatarPublicId` que no es del usuario responde 400 (ver Imágenes).
+- `GET /users/:username` no distingue mayúsculas (`/users/ANA_LOPEZ` encuentra a `ana_lopez`) y responde el `username` como se registró. `postCount` no cuenta publicaciones eliminadas.
+- `PATCH /users/me`: `displayName` hasta 80 caracteres y `bio` hasta 300, sin contar espacios al inicio y al final; un campo que no se envía no cambia, y enviar `null` o un texto vacío borra el valor. Cualquier otro campo (por ejemplo `username`) responde 400. `avatarPublicId` se acepta desde S2-01; antes responde 400. Para cambiar el avatar, la web sube la imagen con `POST /api/media` y manda aquí su `publicId`; el anterior se borra de Cloudinary (S2-01). `avatarPublicId: null` quita la foto. Un `avatarPublicId` que no es del usuario responde 400 (ver Imágenes).
 - `followerCount` en la respuesta de seguir permite actualizar el perfil sin volver a pedirlo.
 
 ### Imágenes (S2-01)
