@@ -5,10 +5,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import { ACCESS_COOKIE } from './cookies';
 import { IS_PUBLIC } from './public.decorator';
+import { SessionTokenService } from './session-token.service';
 
 export interface SessionUser {
   id: string;
@@ -18,17 +18,13 @@ export interface AuthenticatedRequest extends Request {
   user: SessionUser;
 }
 
-interface AccessPayload {
-  sub: string;
-}
-
 // Guard global (APP_GUARD en AuthModule): corre antes de cada ruta. Si la ruta no es
 // @Public(), exige un JWT válido en la cookie access_token y deja req.user = { id }.
 @Injectable()
 export class SessionGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly jwt: JwtService,
+    private readonly tokens: SessionTokenService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -44,13 +40,9 @@ export class SessionGuard implements CanActivate {
       throw new UnauthorizedException('Inicia sesión para continuar');
     }
 
-    try {
-      // Verifica la firma con JWT_ACCESS_SECRET y que no haya vencido (exp)
-      const payload = await this.jwt.verifyAsync<AccessPayload>(token);
-      req.user = { id: payload.sub };
-      return true;
-    } catch {
-      throw new UnauthorizedException('Sesión vencida');
-    }
+    const claims = await this.tokens.verify(token);
+    if (!claims) throw new UnauthorizedException('Sesión vencida');
+    req.user = { id: claims.userId };
+    return true;
   }
 }

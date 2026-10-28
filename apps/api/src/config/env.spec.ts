@@ -15,6 +15,7 @@ describe('loadEnv', () => {
       jwtAccessSecret: 'x'.repeat(32),
       jwtAccessTtlSeconds: 900,
       refreshTokenTtlDays: 7,
+      corsOrigin: 'http://localhost:3001',
       isProduction: false,
       cloudinaryCloudName: 'demo',
       cloudinaryApiKey: 'demo-key',
@@ -45,6 +46,15 @@ describe('loadEnv', () => {
       'JWT_ACCESS_TTL',
     );
   });
+
+  it.each(['https://ejemplo.com/', 'ejemplo.com', 'https://ejemplo.com/app'])(
+    'falla si CORS_ORIGIN no es un origen exacto: %s',
+    (value) => {
+      expect(() => loadEnv({ ...valid, CORS_ORIGIN: value })).toThrow(
+        'CORS_ORIGIN',
+      );
+    },
+  );
 
   it('Secure solo en producción', () => {
     expect(loadEnv({ ...valid, NODE_ENV: 'production' }).isProduction).toBe(

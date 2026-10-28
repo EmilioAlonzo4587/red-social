@@ -12,6 +12,7 @@ describe('AuthService', () => {
     jwtAccessSecret: 'x'.repeat(32),
     jwtAccessTtlSeconds: 900,
     refreshTokenTtlDays: 7,
+    corsOrigin: 'http://localhost:3001',
     isProduction: false,
     cloudinaryCloudName: 'demo',
     cloudinaryApiKey: 'demo-key',
