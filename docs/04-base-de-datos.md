@@ -5,7 +5,7 @@
 - **Tercera forma normal**, con una única desnormalización deliberada: los contadores `like_count` y `comment_count` en `posts`, actualizados en la misma transacción que el like o el comentario (decisión D05).
 - **La base impide los datos inválidos**, no solo la aplicación: restricciones `UNIQUE`, `CHECK` y claves foráneas con comportamiento de borrado definido.
 - **Índices diseñados para las consultas reales**: el feed, el perfil, los comentarios de una publicación, los mensajes de una conversación y las notificaciones sin leer.
-- **Paginación por cursor** `(created_at, id)` en todas las listas largas; nunca `OFFSET`.
+- **Paginación por cursor** `(created_at, id)` en todas las listas largas; nunca `OFFSET`. En `follows`, que no tiene `id`, el desempate es el id del otro usuario. El cursor guarda `created_at` con sus microsegundos (`apps/api/src/common/pagination.ts`): un `Date` de JavaScript solo llega a milisegundos y haría saltar las filas creadas en el mismo milisegundo, así que las listas leen esa columna con `$queryRaw`.
 - Nombres de tablas en plural y minúsculas (`users`, `post_likes`) para evitar palabras reservadas de SQL como `user` y `like`.
 - Identificadores UUID v7 (ordenables por tiempo) y fechas `timestamptz`.
 
