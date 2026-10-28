@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { LoginDto } from "@red/api-types";
+import { apiFetchClient } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-error";
+import { fieldErrorsFromDetails } from "@/lib/api-field-errors";
 
 type FormErrors = {
   identifier?: string;
   password?: string;
+  general?: string;
 };
 
 function validate(identifier: string, password: string): FormErrors {
@@ -23,18 +29,58 @@ function validate(identifier: string, password: string): FormErrors {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setErrors(validate(identifier, password));
+
+    const clientErrors = validate(identifier, password);
+    if (Object.keys(clientErrors).length > 0) {
+      setErrors(clientErrors);
+      return;
+    }
+
+    setErrors({});
+    setSubmitting(true);
+    try {
+      await apiFetchClient<unknown>("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, password } satisfies LoginDto),
+      });
+      router.push("/feed");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.statusCode === 400) {
+          setErrors(fieldErrorsFromDetails(error.details));
+        } else if (error.statusCode === 401) {
+          setErrors({ general: "Usuario o contraseña incorrectos." });
+        } else if (error.statusCode === 429) {
+          setErrors({ general: "Demasiados intentos. Espera un momento." });
+        } else {
+          setErrors({ general: error.message });
+        }
+      } else {
+        setErrors({ general: "No se pudo conectar con el servidor." });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-56px)] max-w-sm flex-col justify-center gap-6 px-4">
       <h1 className="text-2xl font-bold">Iniciar sesión</h1>
+
+      {errors.general && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {errors.general}
+        </p>
+      )}
 
       <form method="post" noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
@@ -77,9 +123,10 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          className="w-full rounded-md bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover"
+          disabled={submitting}
+          className="w-full rounded-md bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
         >
-          Iniciar sesión
+          {submitting ? "Iniciando sesión..." : "Iniciar sesión"}
         </button>
       </form>
 
