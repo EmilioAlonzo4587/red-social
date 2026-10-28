@@ -184,11 +184,22 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 
 La conexión se autentica con la misma cookie de sesión; sin ella el servidor la rechaza. Los datos usan los objetos de arriba.
 
+**Conexión (S1-04).** El cliente se conecta a `/socket.io` en el mismo dominio (en local, directo a la api con `NEXT_PUBLIC_SOCKET_URL`) con `withCredentials: true`; nunca manda el token a mano.
+
+- El servidor revisa el handshake antes de aceptar la conexión. Si lo rechaza, el cliente recibe `connect_error` con `error.message`:
+  - `"unauthorized"`: falta la cookie `access_token`, es falsa o el JWT ya venció.
+  - `"forbidden"`: la cabecera `Origin` no es la de la web (`CORS_ORIGIN`).
+- Con la sesión válida, el socket entra a la sala `user:{id}` y recibe `session:ready`.
+- El servidor cierra el socket cuando vence el JWT con el que se conectó (15 minutos como máximo). El cliente recibe `disconnect` con el motivo `"io server disconnect"`.
+- Socket.io no reconecta solo después de un `connect_error` del handshake ni de una desconexión del servidor. En los dos casos el cliente llama a `POST /api/auth/refresh` y, si responde 204, a `socket.connect()`; si responde 401, la sesión terminó y va a `/login`.
+- Al cerrar sesión, el cliente llama a `socket.disconnect()` antes de `POST /api/auth/logout`.
+
 | Dirección | Evento | Datos | Efecto |
 |---|---|---|---|
 | Cliente → servidor | `post:watch` | `{ postIds: string[] }` | Entra a las salas de las publicaciones en pantalla |
 | Cliente → servidor | `post:unwatch` | `{ postIds: string[] }` | Sale de esas salas |
 | Cliente → servidor | `conversation:join` | `{ conversationId }` | Entra a la sala si participa. Responde por acknowledgement: `{ ok: true }` o `{ ok: false, error: "forbidden" }` si no participa o no existe (RN09) |
+| Servidor → cliente | `session:ready` | `{ userId }` | Llega a ese socket al conectarse: la sesión es válida y el socket ya está en `user:{id}` |
 | Servidor → cliente | `post:likes` | `{ postId, likeCount }` | Actualiza el contador de likes |
 | Servidor → cliente | `post:comments` | `{ postId, commentCount }` | Actualiza el contador de comentarios |
 | Servidor → cliente | `message:new` | `Message` | Agrega el mensaje a la conversación abierta |

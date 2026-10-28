@@ -5,6 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ENV, type Env } from '../config/env';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { SessionTokenService } from './session-token.service';
 import { SessionGuard } from './session.guard';
 
 @Module({
@@ -28,8 +29,11 @@ import { SessionGuard } from './session.guard';
   controllers: [AuthController],
   providers: [
     AuthService,
+    SessionTokenService,
     // Guard global: toda ruta exige sesión salvo las marcadas con @Public()
     { provide: APP_GUARD, useClass: SessionGuard },
   ],
+  // RealtimeModule valida la cookie del handshake con el mismo servicio
+  exports: [SessionTokenService],
 })
 export class AuthModule {}

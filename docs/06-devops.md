@@ -69,7 +69,7 @@ Tampoco restaura `docker-compose.yml` ni `Caddyfile`: `deploy.sh` ya los copió 
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | db, api | Credenciales de la base |
 | `DATABASE_URL` | api | Cadena de conexión de Prisma |
 | `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL`, `REFRESH_TOKEN_TTL_DAYS` | api | Sesión (RN12) |
-| `CORS_ORIGIN` | api | Origen permitido |
+| `CORS_ORIGIN` | api | Origen de la web (`https://` + dominio, sin `/` final). Obligatoria desde S1-04: Socket.io solo acepta ese `Origin`. En producción la pone el compose |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | api | Subida y borrado de imágenes |
 | `API_INTERNAL_URL` | web | URL de la API para el renderizado en servidor |
 | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | web (build) | URL pública y nombre de la cuenta de Cloudinary; se fijan al construir la imagen |
@@ -83,6 +83,7 @@ La lista completa con valores de ejemplo está en `.env.example`.
 
 ## Observabilidad
 
+- `apps/api/scripts/probar-socket.mjs` comprueba el socket a través de Caddy después de un despliegue: inicia sesión con una cuenta de prueba y revisa que llegue `session:ready` y que se rechacen la conexión sin cookie y la de otro `Origin` (S1-04). El uso está en el comentario del archivo.
 - `GET /api/health` informa el estado de la API y de la conexión a PostgreSQL; el pipeline lo usa para decidir si el despliegue fue correcto.
 - Logs en formato JSON por salida estándar, consultables con `docker compose logs -f api`.
 - Monitoreo externo opcional con un servicio gratuito de uptime apuntando a `/api/health`.

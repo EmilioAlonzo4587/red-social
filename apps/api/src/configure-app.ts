@@ -2,6 +2,8 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { createValidationPipe } from './common/validation';
+import { ENV, type Env } from './config/env';
+import { SocketIoAdapter } from './realtime/socket-io.adapter';
 
 // Configuración global que comparten main.ts y las pruebas e2e, para que las pruebas
 // vean la api igual que producción.
@@ -19,4 +21,8 @@ export function configureApp(app: NestExpressApplication): void {
 
   app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new AllExceptionsFilter());
+
+  // Socket.io con CORS_ORIGIN ya validado. Va antes de app.init(): ahí se crea el servidor.
+  const { corsOrigin } = app.get<Env>(ENV);
+  app.useWebSocketAdapter(new SocketIoAdapter(app, corsOrigin));
 }
