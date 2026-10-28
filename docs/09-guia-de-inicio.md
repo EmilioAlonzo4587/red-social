@@ -44,6 +44,8 @@ pnpm --filter api prisma db seed
 pnpm dev                            # web en :3001, api en :3000
 ```
 
+El seed crea 20 cuentas de demostración (`ana_lopez`, `carlos_mendez`, etc., ver `apps/api/prisma/seed.ts`) con la contraseña `demo12345`, cada una con seguimientos, publicaciones, comentarios y likes de ejemplo.
+
 La api y la web ya existen. Los comandos de `prisma` funcionan desde la issue S0-04, que instala Prisma y crea la primera migración.
 
 ## 5. Servidor (Dev 3, S0-03 y S1-01)
