@@ -1,23 +1,21 @@
+import type { ProfileDto } from "@red/api-types";
+import { apiFetchServer } from "@/lib/api-server";
 import { Avatar } from "@/components/avatar";
 import { PostCard, type Post } from "@/components/post-card";
-
-function displayNameFromUsername(username: string) {
-  return username
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
 
 export default async function ProfilePage({
   params,
 }: PageProps<"/u/[username]">) {
   const { username } = await params;
-  const displayName = displayNameFromUsername(username);
+  const profile = await apiFetchServer<ProfileDto>(`/api/users/${username}`);
+  const displayName = profile.displayName ?? profile.username;
 
+  // Placeholder: las publicaciones reales llegan con /users/:username/posts (S2-05)
   const posts: Post[] = [
     {
       id: "p1",
       authorName: displayName,
-      authorUsername: username,
+      authorUsername: profile.username,
       content: "Probando la nueva cuenta por aquí 👋",
       mediaCount: 0,
       likeCount: 9,
@@ -27,7 +25,7 @@ export default async function ProfilePage({
     {
       id: "p2",
       authorName: displayName,
-      authorUsername: username,
+      authorUsername: profile.username,
       content: "",
       mediaCount: 2,
       likeCount: 15,
@@ -42,25 +40,24 @@ export default async function ProfilePage({
         <Avatar name={displayName} size="lg" />
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-bold">{displayName}</h1>
-          <span className="text-sm text-muted">@{username}</span>
+          <span className="text-sm text-muted">@{profile.username}</span>
         </div>
       </div>
 
-      <p className="pb-4 text-sm">
-        Estudiante de ingeniería, apasionada por el café y las caminatas de
-        fin de semana.
-      </p>
+      {profile.bio && <p className="pb-4 text-sm">{profile.bio}</p>}
 
       <div className="flex gap-6 border-y border-border py-3 text-sm">
         <span>
-          <strong>{posts.length}</strong>{" "}
+          <strong>{profile.postCount}</strong>{" "}
           <span className="text-muted">publicaciones</span>
         </span>
         <span>
-          <strong>340</strong> <span className="text-muted">seguidores</span>
+          <strong>{profile.followerCount}</strong>{" "}
+          <span className="text-muted">seguidores</span>
         </span>
         <span>
-          <strong>180</strong> <span className="text-muted">seguidos</span>
+          <strong>{profile.followingCount}</strong>{" "}
+          <span className="text-muted">seguidos</span>
         </span>
       </div>
 
@@ -69,7 +66,7 @@ export default async function ProfilePage({
           type="button"
           className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
         >
-          Seguir
+          {profile.isFollowing ? "Siguiendo" : "Seguir"}
         </button>
         <button
           type="button"
