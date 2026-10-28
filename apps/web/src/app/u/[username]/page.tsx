@@ -1,13 +1,24 @@
+import { notFound } from "next/navigation";
 import type { ProfileDto } from "@red/api-types";
 import { apiFetchServer } from "@/lib/api-server";
+import { ApiError } from "@/lib/api-error";
 import { Avatar } from "@/components/avatar";
 import { PostCard, type Post } from "@/components/post-card";
+
+async function getProfile(username: string): Promise<ProfileDto> {
+  try {
+    return await apiFetchServer<ProfileDto>(`/api/users/${username}`);
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode === 404) notFound();
+    throw error;
+  }
+}
 
 export default async function ProfilePage({
   params,
 }: PageProps<"/u/[username]">) {
   const { username } = await params;
-  const profile = await apiFetchServer<ProfileDto>(`/api/users/${username}`);
+  const profile = await getProfile(username);
   const displayName = profile.displayName ?? profile.username;
 
   // Placeholder: las publicaciones reales llegan con /users/:username/posts (S2-05)
