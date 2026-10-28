@@ -55,6 +55,26 @@ flowchart TB
 
 Los módulos de contenido **no llaman al Gateway**: publican eventos con `@nestjs/event-emitter`, y el Gateway los escucha y los envía por socket. Ese contrato permite que Dev 2 y Dev 3 trabajen en paralelo y que cada lado se pruebe por separado.
 
+### Eventos de dominio
+
+Los tipos están en `apps/api/src/events/domain-events.ts`. Un servicio emite con `DomainEvents.emit('like.changed', datos)` y un listener escucha con `@OnDomainEvent('like.changed')`. Los dos están tipados: un nombre que no existe o datos que no corresponden no compilan. Las fechas viajan como `Date`; el Gateway las convierte a texto al enviarlas.
+
+| Evento | Lo emite | Datos | Quién lo escucha |
+|---|---|---|---|
+| `like.changed` | Likes (S2-07), solo si el contador cambió | `{ postId, postAuthorId, actorId, change: "added" \| "removed", likeCount }` | Gateway: `post:likes` a `post:{postId}`. Notificaciones: crea la de like si `change` es `added` |
+| `comment.changed` | Comentarios (S3-01) | `{ postId, postAuthorId, actorId, commentId, change, commentCount }` | Gateway: `post:comments` a `post:{postId}`. Notificaciones: crea la de comentario si `change` es `added` |
+| `follow.created` | Seguimiento (S2-06), solo si se creó la fila | `{ followerId, followingId }` | Notificaciones |
+| `message.created` | Chat (S3-04) | `{ message: Message, recipientId }` | Gateway: `message:new` a `conv:{conversationId}` y `conversation:updated` a los dos participantes. Notificaciones |
+| `notification.created` | Notificaciones (S3-03) | `{ recipientId, notification: Notification }` | Gateway: `notification:new` a `user:{recipientId}` |
+
+Reglas:
+
+- Se emite **después** de confirmar la transacción, nunca dentro de ella: así nadie avisa de un cambio que terminó deshaciéndose.
+- Repetir un `PUT` idempotente (like o seguir) no emite nada, porque no cambió nada (RN05, RN06).
+- Quien escucha decide si actúa: notificaciones ignora los eventos en que `actorId` es el mismo destinatario (RN08).
+- Si un listener lanza un error, se registra en el log y no le llega a quien emitió: un fallo al notificar no tumba la petición del usuario.
+- Un evento nuevo se agrega a `DomainEventMap` y a esta tabla en el mismo PR.
+
 ## Renderizado en el servidor con sesión
 
 ```mermaid
