@@ -15,5 +15,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // /api/* no pasa por aquí: la api tiene sus propias rutas públicas (@Public(), ej. /api/health,
+  // /api/docs, /api/auth/login) y el resto exige sesión con su propio guard, no con este proxy.
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

@@ -8,8 +8,10 @@ RUN npm install -g pnpm@12.11.2
 WORKDIR /repo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/web/package.json apps/web/
+COPY packages/api-types/package.json packages/api-types/
 RUN pnpm install --frozen-lockfile --filter web
 COPY apps/web apps/web
+COPY packages/api-types packages/api-types
 # Next escribe las NEXT_PUBLIC_* dentro del JavaScript al compilar: tienen que existir aquí
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME

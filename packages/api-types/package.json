@@ -4,5 +4,11 @@
   "private": true,
   "description": "Tipos compartidos entre web y api, generados desde OpenAPI.",
   "main": "src/index.ts",
-  "types": "src/index.ts"
+  "types": "src/index.ts",
+  "scripts": {
+    "generate": "openapi-typescript http://localhost:3000/api/docs-json -o src/openapi.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0"
+  }
 }

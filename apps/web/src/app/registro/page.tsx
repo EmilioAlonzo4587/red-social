@@ -2,11 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { RegisterDto } from "@red/api-types";
+import { apiFetchClient } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-error";
+import { fieldErrorsFromDetails } from "@/lib/api-field-errors";
 
 type FormErrors = {
   username?: string;
   email?: string;
   password?: string;
+  general?: string;
 };
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,30}$/;
@@ -32,19 +38,59 @@ function validate(username: string, email: string, password: string): FormErrors
 }
 
 export default function RegistroPage() {
+  const router = useRouter();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setErrors(validate(username, email, password));
+
+    const clientErrors = validate(username, email, password);
+    if (Object.keys(clientErrors).length > 0) {
+      setErrors(clientErrors);
+      return;
+    }
+
+    setErrors({});
+    setSubmitting(true);
+    try {
+      await apiFetchClient<unknown>("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+        } satisfies RegisterDto),
+      });
+      router.push("/feed");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.statusCode === 400 || error.statusCode === 409) {
+          setErrors(fieldErrorsFromDetails(error.details));
+        } else {
+          setErrors({ general: error.message });
+        }
+      } else {
+        setErrors({ general: "No se pudo conectar con el servidor." });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-56px)] max-w-sm flex-col justify-center gap-6 px-4">
       <h1 className="text-2xl font-bold">Crear cuenta</h1>
+
+      {errors.general && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {errors.general}
+        </p>
+      )}
 
       <form method="post" noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
@@ -55,6 +101,7 @@ export default function RegistroPage() {
             id="username"
             name="username"
             type="text"
+            maxLength={30}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             aria-invalid={Boolean(errors.username)}
@@ -74,6 +121,7 @@ export default function RegistroPage() {
             id="email"
             name="email"
             type="email"
+            maxLength={254}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={Boolean(errors.email)}
@@ -91,6 +139,7 @@ export default function RegistroPage() {
             id="password"
             name="password"
             type="password"
+            maxLength={128}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={Boolean(errors.password)}
@@ -104,9 +153,10 @@ export default function RegistroPage() {
 
         <button
           type="submit"
-          className="w-full rounded-md bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover"
+          disabled={submitting}
+          className="w-full rounded-md bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
         >
-          Crear cuenta
+          {submitting ? "Creando cuenta..." : "Crear cuenta"}
         </button>
       </form>
 
