@@ -14,3 +14,6 @@ process.env.JWT_ACCESS_SECRET ??=
   'secreto-de-pruebas-e2e-de-al-menos-32-caracteres';
 process.env.JWT_ACCESS_TTL ??= '15m';
 process.env.REFRESH_TOKEN_TTL_DAYS ??= '7';
+process.env.CLOUDINARY_CLOUD_NAME ??= 'demo';
+process.env.CLOUDINARY_API_KEY ??= 'demo-key';
+process.env.CLOUDINARY_API_SECRET ??= 'demo-secret';

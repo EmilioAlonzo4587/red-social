@@ -13,6 +13,9 @@ describe('AuthService', () => {
     jwtAccessTtlSeconds: 900,
     refreshTokenTtlDays: 7,
     isProduction: false,
+    cloudinaryCloudName: 'demo',
+    cloudinaryApiKey: 'demo-key',
+    cloudinaryApiSecret: 'demo-secret',
   };
   const prisma = {
     user: { findUnique: jest.fn() },
