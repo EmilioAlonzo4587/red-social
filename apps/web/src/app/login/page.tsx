@@ -91,6 +91,7 @@ export default function LoginPage() {
             id="identifier"
             name="identifier"
             type="text"
+            maxLength={254}
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
             aria-invalid={Boolean(errors.identifier)}
@@ -110,6 +111,7 @@ export default function LoginPage() {
             id="password"
             name="password"
             type="password"
+            maxLength={128}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={Boolean(errors.password)}

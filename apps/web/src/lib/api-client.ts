@@ -2,15 +2,23 @@ import { toApiError } from "./api-error";
 
 let refreshPromise: Promise<boolean> | null = null;
 
-function refreshSession(): Promise<boolean> {
-  refreshPromise ??= fetch("/api/auth/refresh", {
-    method: "POST",
-    credentials: "include",
-  })
-    .then((res) => res.ok)
-    .finally(() => {
-      refreshPromise = null;
+// Un solo refresh a la vez: dentro de la pestaña se comparte la misma promesa;
+// entre pestañas, el candado de Web Locks evita que dos pestañas rotén el mismo
+// refresh_token a la vez (RN12: reutilizar un token ya rotado cierra todas las sesiones).
+async function requestRefreshLock(): Promise<boolean> {
+  return await navigator.locks.request("auth-refresh", async () => {
+    const res = await fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
     });
+    return res.ok;
+  });
+}
+
+function refreshSession(): Promise<boolean> {
+  refreshPromise ??= requestRefreshLock().finally(() => {
+    refreshPromise = null;
+  });
 
   return refreshPromise;
 }

@@ -101,6 +101,7 @@ export default function RegistroPage() {
             id="username"
             name="username"
             type="text"
+            maxLength={30}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             aria-invalid={Boolean(errors.username)}
@@ -120,6 +121,7 @@ export default function RegistroPage() {
             id="email"
             name="email"
             type="email"
+            maxLength={254}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={Boolean(errors.email)}
@@ -137,6 +139,7 @@ export default function RegistroPage() {
             id="password"
             name="password"
             type="password"
+            maxLength={128}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={Boolean(errors.password)}
