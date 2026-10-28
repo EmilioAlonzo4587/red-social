@@ -14,11 +14,12 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de lo transver
 - Servidor listo (S0-03): VPS con Ubuntu 24.04, usuario `deploy` con llave, firewall con 22, 80 y 443 (443 también UDP), Docker y Compose, HTTPS de Caddy probado y `~/app` con `docker-compose.yml`, `Caddyfile` y `.env`. Secrets `VPS_HOST`, `VPS_USER` y `VPS_SSH_KEY` cargados en Actions.
 - Despliegue (S1-01): `.github/workflows/deploy.yml` construye `apps/api/Dockerfile` y `apps/web/Dockerfile`, publica en GHCR (paquetes públicos), copia `infra/` al VPS y ejecuta `infra/deploy.sh`, que migra, reinicia y vuelve a la etiqueta anterior si `/api/health` falla. Compose y Caddyfile se cambian en el repo, nunca en el servidor.
 - Autenticación (S1-02): `src/auth/` y la configuración global de `configure-app.ts` (abajo).
-- Pendiente: Socket.io (S1-04), media (S2-01), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
+- Socket.io (S1-04): `src/realtime/` con el adaptador, el Gateway y la sala `user:{id}` (abajo).
+- Pendiente: media (S2-01), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
 
 ## Configuración global de la api
 
-En `apps/api/src/configure-app.ts` (lo usan `main.ts` y las e2e), cuando lo pida su issue. Ya están el prefijo, `PrismaModule`, `/api/health`, Swagger, `ValidationPipe`, `AllExceptionsFilter`, cookie-parser y `trust proxy`; faltan helmet y CORS (S4-02):
+En `apps/api/src/configure-app.ts` (lo usan `main.ts` y las e2e), cuando lo pida su issue. Ya están el prefijo, `PrismaModule`, `/api/health`, Swagger, `ValidationPipe`, `AllExceptionsFilter`, cookie-parser, `trust proxy` y el adaptador de Socket.io; faltan helmet y CORS (S4-02):
 
 - `app.setGlobalPrefix('api')`.
 - `ValidationPipe` global con `whitelist: true`, `forbidNonWhitelisted: true` y `transform: true` (`src/common/validation.ts`), que arma `details` con un elemento por campo.
@@ -49,11 +50,18 @@ En `apps/api/src/configure-app.ts` (lo usan `main.ts` y las e2e), cuando lo pida
 
 ## Socket.io y chat
 
-- El handshake valida la misma cookie de sesión; sin sesión válida se rechaza la conexión.
-- El Gateway declara su propio CORS: `@WebSocketGateway({ cors: { origin: CORS_ORIGIN, credentials: true } })`. El `enableCors` de HTTP no lo cubre. En local la web (:3001) se conecta directo a la api (:3000) con `NEXT_PUBLIC_SOCKET_URL`; en producción es el mismo origen a través de Caddy.
+- Todo vive en `src/realtime/`: `socket-io.adapter.ts`, `realtime.gateway.ts`, `realtime.events.ts` y `realtime.module.ts`. Un solo Gateway; S2-03 y S3-05 le agregan sus `@SubscribeMessage` y sus listeners de eventos de dominio en lugar de crear otro.
+- Dependencias: `@nestjs/websockets` y `@nestjs/platform-socket.io` en 11.x, como el resto de Nest (`pnpm add` sin versión instala la 12). `socket.io` va fijo en la misma versión que trae `@nestjs/platform-socket.io` (hoy 4.8.3), para que haya una sola copia y los tipos coincidan; si se actualiza Nest, se ajusta. `socket.io-client` solo en devDependencies, para las e2e y `scripts/probar-socket.mjs`.
+- El CORS y las opciones del servidor van en `SocketIoAdapter`, que `configure-app.ts` registra con `CORS_ORIGIN` ya validado. No los pongas en `@WebSocketGateway({ cors })`: el decorador se evalúa al importar el archivo, antes de `env.ts`. El `enableCors` de HTTP no cubre Socket.io. En local la web (:3001) se conecta directo a la api (:3000) con `NEXT_PUBLIC_SOCKET_URL`; en producción es el mismo origen a través de Caddy.
+- El adaptador monta cookie-parser en el motor (`server.engine.use`), así las cookies llegan en `socket.request.cookies` tanto por polling como por WebSocket.
+- El middleware del handshake (`server.use` en `afterInit`) rechaza con `new Error('forbidden')` si `Origin` existe y no es `CORS_ORIGIN`, y con `new Error('unauthorized')` si la cookie no trae un JWT válido (`SessionTokenService`, la misma regla que `SessionGuard`). Sin `Origin` se sigue, porque el navegador no lo manda en un GET del mismo origen. Guarda `userId` y `expiresAt` en `socket.data`. Nunca registra cookies ni tokens.
+- `handleConnection` mete el socket en `user:{id}`, programa `socket.disconnect(true)` para cuando vence el JWT (lo cancela en `disconnect`) y emite `session:ready` solo a ese socket.
+- `SessionGuard` (`APP_GUARD`) no corre en los handlers de Socket.io: la sesión del socket se valida una vez, en el handshake. Un `@SubscribeMessage` recibe el usuario de `socket.data.userId`, nunca del cuerpo del evento.
+- Para emitir a un usuario: `this.server.to(userRoom(id)).emit(...)`. Cada evento nuevo se declara en `ServerToClientEvents` de `realtime.events.ts` (si no, no compila) y en `docs/05-api.md`. Cuando la web los necesite, esos tipos pasan a `packages/api-types` (y el Dockerfile de la api tendría que copiar ese paquete).
+- Las e2e del socket (`test/realtime.e2e-spec.ts`) usan `app.listen(0)` y `socket.io-client` con `reconnection: false`, y la cookie en `extraHeaders`.
 - `conversation:join` y el envío de mensajes verifican que el usuario participa en la conversación (RN09): `conversation:join` responde por acknowledgement `{ ok: false, error: "forbidden" }` y el envío por HTTP, 403. Mensajes de 1 a 2000 caracteres.
 - Solo los eventos de `docs/05-api.md`. Cualquier evento nuevo se documenta ahí en el mismo PR.
-- Los contadores en vivo y las notificaciones salen de eventos de dominio que emiten los módulos de Dev 2 (D08); el gateway escucha y emite, no lo llaman directamente los servicios.
+- Los contadores en vivo y las notificaciones salen de eventos de dominio que emiten los módulos de Dev 2 (D08); el gateway escucha y emite, no lo llaman directamente los servicios. Desde S1-07 el Gateway escucha con `@OnDomainEvent('like.changed')` de `src/events/` (tipado con `domain-events.ts`) y convierte las fechas `Date` a texto ISO antes de emitir; la tabla de qué evento va a qué sala está en `docs/03-arquitectura.md`.
 - Valida los datos que llegan por socket igual que un DTO HTTP.
 
 ## CI

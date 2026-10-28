@@ -6,6 +6,8 @@ export interface Env {
   jwtAccessTtlSeconds: number;
   /** Vida del token de renovación, en días (REFRESH_TOKEN_TTL_DAYS). */
   refreshTokenTtlDays: number;
+  /** Origen de la web (CORS_ORIGIN, por ejemplo https://ejemplo.com). Socket.io solo lo acepta a él. */
+  corsOrigin: string;
   /** En producción las cookies llevan Secure (solo viajan por HTTPS). */
   isProduction: boolean;
 }
@@ -57,10 +59,20 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     throw new Error('REFRESH_TOKEN_TTL_DAYS debe ser un número entero de días');
   }
 
+  // Un origen es esquema + dominio + puerto, sin ruta ni / final: así lo manda el navegador
+  // en la cabecera Origin, y la comparación es texto exacto
+  const corsOrigin = required(source, 'CORS_ORIGIN');
+  if (!URL.canParse(corsOrigin) || new URL(corsOrigin).origin !== corsOrigin) {
+    throw new Error(
+      'CORS_ORIGIN debe ser un origen como https://ejemplo.com, sin / al final',
+    );
+  }
+
   return {
     jwtAccessSecret,
     jwtAccessTtlSeconds,
     refreshTokenTtlDays,
+    corsOrigin,
     isProduction: source.NODE_ENV === 'production',
   };
 }

@@ -14,3 +14,4 @@ process.env.JWT_ACCESS_SECRET ??=
   'secreto-de-pruebas-e2e-de-al-menos-32-caracteres';
 process.env.JWT_ACCESS_TTL ??= '15m';
 process.env.REFRESH_TOKEN_TTL_DAYS ??= '7';
+process.env.CORS_ORIGIN ??= 'http://localhost:3001';

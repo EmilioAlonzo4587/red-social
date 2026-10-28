@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auht.module';
+import { AuthModule } from './auth/auth.module';
 import { EnvModule } from './config/env.module';
 import { EventsModule } from './events/events.module';
 import { FollowsModule } from './follows/follows.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { UsersModule } from './users/users.module';
     HealthModule,
     UsersModule,
     FollowsModule,
+    RealtimeModule,
   ],
 })
 export class AppModule {}

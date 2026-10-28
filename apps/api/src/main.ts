@@ -11,7 +11,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('ChatInit API')
     .setVersion('0')
-    // la sesion viaja en la cookie access_token, (HttpOnly): Swagger la manda solo atraes del login.
+    // La sesión viaja en la cookie access_token (HttpOnly): Swagger la manda sola después del login.
     .addCookieAuth('access_token')
     .build();
   SwaggerModule.setup(
