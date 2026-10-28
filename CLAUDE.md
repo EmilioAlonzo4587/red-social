@@ -38,7 +38,7 @@ pnpm --filter api test:e2e
 pnpm -r --if-present build
 ```
 
-## Estado actual (25 oct 2026)
+## Estado actual (28 oct 2026)
 
 Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), VPS con HTTPS (S0-03), web inicializada (S0-07), wireframes como páginas con datos de ejemplo, portada, login y registro solo en el frontend (S1-08, sin llamar a la api), Prisma 6.19.3 con la migración inicial (S0-04), contrato de API v0 (S0-05) y esqueleto desplegado en producción (S1-01): Dockerfiles de api y web, `deploy.yml` activo con `infra/deploy.sh` y rollback de imágenes, prefijo global `/api`, `PrismaModule` global, `GET /api/health` y Swagger en `/api/docs`.
 
@@ -46,7 +46,9 @@ PostgreSQL en el CI (S1-03): las e2e corren contra una base real (`minired_test`
 
 Autenticación (S1-02): `ValidationPipe` global, filtro global de errores (`AllExceptionsFilter`), cookie-parser, `trust proxy`, variables validadas al arrancar (`src/config/env.ts`), `src/auth/` con register, login, refresh, logout y me, throttler en register y login, y guard de sesión **global**: toda ruta exige sesión salvo las marcadas con `@Public()`; el usuario llega con `@CurrentUser()`.
 
-Todavía no existe, aunque los docs lo describan: seed (S1-06), helmet y CORS (S4-02), Socket.io y Cloudinary. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
+Seed de datos de demostración (S1-06): `apps/api/prisma/seed.ts` crea 20 usuarios (contraseña `demo12345`) con seguimientos, publicaciones, comentarios y likes, y recalcula `likeCount`/`commentCount` al final para que queden coherentes con D05. Se corre con `pnpm --filter api prisma db seed`. La configuración de Prisma vive en `apps/api/prisma.config.ts` (reemplaza el `package.json#prisma` deprecado); `prisma.config.ts` y `prisma/seed.ts` están excluidos de `tsconfig.build.json` para no mover la salida de `nest build`.
+
+Todavía no existe, aunque los docs lo describan: helmet y CORS (S4-02), Socket.io y Cloudinary. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
 
