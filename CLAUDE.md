@@ -38,13 +38,17 @@ pnpm --filter api test:e2e
 pnpm -r --if-present build
 ```
 
-## Estado actual (25 oct 2026)
+## Estado actual (28 oct 2026)
 
-Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), VPS con HTTPS (S0-03), web inicializada (S0-07), wireframes como páginas con datos de ejemplo, portada, login y registro solo en el frontend (S1-08, sin llamar a la api), Prisma 6.19.3 con la migración inicial (S0-04), contrato de API v0 (S0-05) y esqueleto desplegado en producción (S1-01): Dockerfiles de api y web, `deploy.yml` activo con `infra/deploy.sh` y rollback de imágenes, prefijo global `/api`, `PrismaModule` global, `GET /api/health` y Swagger en `/api/docs`.
+Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), VPS con HTTPS (S0-03), web inicializada (S0-07), wireframes como páginas con datos de ejemplo, portada, login y registro (S1-08), Prisma 6.19.3 con la migración inicial (S0-04), contrato de API v0 (S0-05) y esqueleto desplegado en producción (S1-01): Dockerfiles de api y web, `deploy.yml` activo con `infra/deploy.sh` y rollback de imágenes, prefijo global `/api`, `PrismaModule` global, `GET /api/health` y Swagger en `/api/docs`.
 
 PostgreSQL en el CI (S1-03): las e2e corren contra una base real (`minired_test`) que se migra con `pnpm --filter api test:e2e:db` y se vacía con `resetDatabase` de `apps/api/test/utils/database.ts`; el CI también construye las imágenes Docker sin publicarlas.
 
 Autenticación (S1-02): `ValidationPipe` global, filtro global de errores (`AllExceptionsFilter`), cookie-parser, `trust proxy`, variables validadas al arrancar (`src/config/env.ts`), `src/auth/` con register, login, refresh, logout y me, throttler en register y login, y guard de sesión **global**: toda ruta exige sesión salvo las marcadas con `@Public()`; el usuario llega con `@CurrentUser()`.
+
+Cliente de api tipado (S1-09): `packages/api-types` se genera desde Swagger con `pnpm --filter @red/api-types generate` (con la api corriendo en :3000); la web llama a la api desde `apps/web/src/lib/` (`api-client.ts` en el navegador, `api-server.ts` en el servidor) y login y registro ya usan la api. En local, `next.config.ts` reenvía `/api` a la api.
+
+Usuarios y perfil (S1-05): `GET /api/users/:username` con contadores e `isFollowing`, y `PATCH /api/users/me` para nombre visible y biografía; la web lo muestra renderizado en el servidor en `/u/[username]` (S1-10). Eventos de dominio (S1-07): `src/events/` global con `DomainEvents.emit` y `@OnDomainEvent`, tipados en `domain-events.ts`. Seguimiento (S2-06): seguir y dejar de seguir idempotentes, listas `followers` y `following`, y el helper de paginación por cursor `src/common/pagination.ts` que deben usar todas las listas.
 
 Todavía no existe, aunque los docs lo describan: seed (S1-06), helmet y CORS (S4-02), Socket.io y Cloudinary. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
@@ -62,6 +66,6 @@ Todavía no existe, aunque los docs lo describan: seed (S1-06), helmet y CORS (S
 - Nunca subas `.env`, contraseñas, tokens, llaves ni la IP o el usuario del servidor. El repo es público. Las variables nuevas van a `.env.example` con un valor de ejemplo, nunca el real.
 - TypeScript estricto: sin `any` (usa `unknown` y estrecha el tipo), sin `@ts-ignore` ni `eslint-disable` para silenciar un error real.
 - Nombres y mensajes visibles para el usuario en español; identificadores de código y JSON en inglés y camelCase, como en `docs/05-api.md`.
-- Los tipos de petición y respuesta que comparten api y web van en `packages/api-types`.
+- Los tipos de petición y respuesta que comparten api y web van en `packages/api-types`. Si agregas o cambias un endpoint, regenera esos tipos (`pnpm --filter @red/api-types generate` con la api corriendo) y exporta los DTOs nuevos desde su `index.ts` en el mismo PR.
 - Si cambias el comportamiento de la api, actualiza `docs/05-api.md` en el mismo PR. Si cambias el esquema, actualiza `docs/04-base-de-datos.md`.
 - No instales dependencias que la issue no necesite. Si una es necesaria, justifícala en el PR.

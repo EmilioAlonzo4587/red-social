@@ -6,7 +6,7 @@ Versión 0, acordada al inicio del proyecto (issue S0-05). La referencia viva es
 
 - Todas las rutas empiezan con `/api`. Formato JSON en `camelCase`.
 - Autenticación por cookies `access_token` y `refresh_token` (`HttpOnly`, `Secure`, `SameSite=Lax`). Las rutas marcadas 🔒 responden 401 sin sesión o con el token de acceso vencido.
-- Listas paginadas por cursor: la respuesta es un `Page<T>` con `items` y `nextCursor`; la siguiente página se pide con `?cursor=<nextCursor>`. Tamaño fijo de 20. `nextCursor` es `null` en la última página. El cursor es opaco: la web lo reenvía tal cual, sin leerlo ni armarlo.
+- Listas paginadas por cursor: la respuesta es un `Page<T>` con `items` y `nextCursor`; la siguiente página se pide con `?cursor=<nextCursor>`. Tamaño fijo de 20. `nextCursor` es `null` en la última página. El cursor es opaco: la web lo reenvía tal cual, sin leerlo ni armarlo. Un cursor que la api no generó responde 400 con `details: [{ field: "cursor", rule: "cursor" }]`.
 - Fechas en ISO 8601 y UTC (`"2026-10-20T05:40:15.000Z"`). La web les da formato ("hace 5 min").
 - Imágenes por su `publicId` de Cloudinary, nunca por URL. La web arma la URL con `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`.
 - Un campo sin valor va como `null`, no se omite.
@@ -115,6 +115,8 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 - `GET /users/:username` no distingue mayúsculas (`/users/ANA_LOPEZ` encuentra a `ana_lopez`) y responde el `username` como se registró. `postCount` no cuenta publicaciones eliminadas.
 - `PATCH /users/me`: `displayName` hasta 80 caracteres y `bio` hasta 300, sin contar espacios al inicio y al final; un campo que no se envía no cambia, y enviar `null` o un texto vacío borra el valor. Cualquier otro campo (por ejemplo `username`) responde 400. `avatarPublicId` se acepta desde S2-01; antes responde 400. Para cambiar el avatar, la web sube la imagen con `POST /api/media` y manda aquí su `publicId`; el anterior se borra de Cloudinary (S2-01). `avatarPublicId: null` quita la foto. Un `avatarPublicId` que no es del usuario responde 400 (ver Imágenes).
 - `followerCount` en la respuesta de seguir permite actualizar el perfil sin volver a pedirlo.
+- Seguir y dejar de seguir son idempotentes (RN06): repetir `PUT` no crea otra fila ni emite otro `follow.created`, y `DELETE` sobre alguien a quien no sigo responde igual, `{ isFollowing: false, followerCount }`. Las dos rutas aceptan el `username` con cualquier combinación de mayúsculas.
+- `followers` y `following` ordenan por el momento en que empezó el seguimiento, del más reciente al más antiguo.
 
 ### Imágenes (S2-01)
 
