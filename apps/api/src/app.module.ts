@@ -19,6 +19,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     FollowsModule,
     MediaModule,
+    RealtimeModule,
   ],
 })
 export class AppModule {}

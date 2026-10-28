@@ -5,6 +5,7 @@ describe('loadEnv', () => {
     JWT_ACCESS_SECRET: 'x'.repeat(32),
     JWT_ACCESS_TTL: '15m',
     REFRESH_TOKEN_TTL_DAYS: '7',
+    CORS_ORIGIN: 'http://localhost:3001',
     CLOUDINARY_CLOUD_NAME: 'demo',
     CLOUDINARY_API_KEY: 'demo-key',
     CLOUDINARY_API_SECRET: 'demo-secret',

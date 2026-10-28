@@ -220,9 +220,6 @@ importers:
       cloudinary:
         specifier: ^2.11.0
         version: 2.11.0
-      cookie-parse:
-        specifier: ^0.4.0
-        version: 0.4.0
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
