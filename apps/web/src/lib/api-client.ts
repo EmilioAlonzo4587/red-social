@@ -1,0 +1,50 @@
+import { toApiError } from "./api-error";
+
+let refreshPromise: Promise<boolean> | null = null;
+
+function refreshSession(): Promise<boolean> {
+  refreshPromise ??= fetch("/api/auth/refresh", {
+    method: "POST",
+    credentials: "include",
+  })
+    .then((res) => res.ok)
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
+
+async function parse<T>(response: Response): Promise<T> {
+  if (!response.ok) throw await toApiError(response);
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}
+
+/**
+ * Llama a la api desde el navegador (cookies HttpOnly, D03). Si recibe un 401, intenta
+ * refrescar la sesión una vez; si falla, manda a la portada, igual que proxy.ts.
+ * `path` empieza con "/api/...".
+ */
+export async function apiFetchClient<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const response = await fetch(path, { ...init, credentials: "include" });
+
+  if (response.status !== 401 || path === "/api/auth/refresh") {
+    return parse<T>(response);
+  }
+
+  const refreshed = await refreshSession();
+  if (!refreshed) {
+    // Recarga completa a propósito: limpia todo el estado del cliente al perder la sesión,
+    // igual que la redirección del proxy en el servidor.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = "/";
+    throw await toApiError(response);
+  }
+
+  const retry = await fetch(path, { ...init, credentials: "include" });
+  return parse<T>(retry);
+}
