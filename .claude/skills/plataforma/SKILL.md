@@ -14,7 +14,8 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de lo transver
 - Servidor listo (S0-03): VPS con Ubuntu 24.04, usuario `deploy` con llave, firewall con 22, 80 y 443 (443 también UDP), Docker y Compose, HTTPS de Caddy probado y `~/app` con `docker-compose.yml`, `Caddyfile` y `.env`. Secrets `VPS_HOST`, `VPS_USER` y `VPS_SSH_KEY` cargados en Actions.
 - Despliegue (S1-01): `.github/workflows/deploy.yml` construye `apps/api/Dockerfile` y `apps/web/Dockerfile`, publica en GHCR (paquetes públicos), copia `infra/` al VPS y ejecuta `infra/deploy.sh`, que migra, reinicia y vuelve a la etiqueta anterior si `/api/health` falla. Compose y Caddyfile se cambian en el repo, nunca en el servidor.
 - Autenticación (S1-02): `src/auth/` y la configuración global de `configure-app.ts` (abajo).
-- Pendiente: Socket.io (S1-04), media (S2-01), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
+- Media (S2-01): `src/media/` (`MediaModule`), `POST /api/media` y las funciones `belongsToUser`/`deleteByPublicId` de `CloudinaryService`, exportadas para que Dev 2 las use en publicaciones (S2-04) y avatar (S2-11).
+- Pendiente: Socket.io (S1-04), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
 
 ## Configuración global de la api
 

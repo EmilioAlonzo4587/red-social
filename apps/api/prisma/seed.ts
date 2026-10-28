@@ -150,7 +150,8 @@ const POST_TEXTS = [
   'Nuevo rollo de fotos revelado, me encantan los resultados.',
 ];
 
-// No hay Cloudinary todavía (S2-01): public_id de relleno, no un archivo real.
+// El seed escribe directo en la base, sin pasar por POST /api/media: public_id de
+// relleno, no un archivo real subido a Cloudinary.
 function samplePostMedia(count: number) {
   return Array.from({ length: count }, (_, i) => ({
     publicId: `seed/demo-${Math.floor(Math.random() * 500)}`,
