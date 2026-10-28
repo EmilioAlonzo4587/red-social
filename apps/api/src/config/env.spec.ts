@@ -6,6 +6,9 @@ describe('loadEnv', () => {
     JWT_ACCESS_TTL: '15m',
     REFRESH_TOKEN_TTL_DAYS: '7',
     CORS_ORIGIN: 'http://localhost:3001',
+    CLOUDINARY_CLOUD_NAME: 'demo',
+    CLOUDINARY_API_KEY: 'demo-key',
+    CLOUDINARY_API_SECRET: 'demo-secret',
   };
 
   it('convierte las duraciones', () => {
@@ -15,7 +18,16 @@ describe('loadEnv', () => {
       refreshTokenTtlDays: 7,
       corsOrigin: 'http://localhost:3001',
       isProduction: false,
+      cloudinaryCloudName: 'demo',
+      cloudinaryApiKey: 'demo-key',
+      cloudinaryApiSecret: 'demo-secret',
     });
+  });
+
+  it('falla si falta una variable de cloudinary', () => {
+    expect(() => loadEnv({ ...valid, CLOUDINARY_CLOUD_NAME: '' })).toThrow(
+      'Falta la variable de entorno CLOUDINARY_CLOUD_NAME',
+    );
   });
 
   it('falla si falta el secreto', () => {

@@ -10,6 +10,9 @@ export interface Env {
   corsOrigin: string;
   /** En producción las cookies llevan Secure (solo viajan por HTTPS). */
   isProduction: boolean;
+  cloudinaryCloudName: string;
+  cloudinaryApiKey: string;
+  cloudinaryApiSecret: string;
 }
 
 export const ENV = Symbol('ENV');
@@ -74,5 +77,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     refreshTokenTtlDays,
     corsOrigin,
     isProduction: source.NODE_ENV === 'production',
+    cloudinaryCloudName: required(source, 'CLOUDINARY_CLOUD_NAME'),
+    cloudinaryApiKey: required(source, 'CLOUDINARY_API_KEY'),
+    cloudinaryApiSecret: required(source, 'CLOUDINARY_API_SECRET'),
   };
 }

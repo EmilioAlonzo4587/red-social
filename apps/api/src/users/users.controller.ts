@@ -28,7 +28,8 @@ export class UsersController {
   @ApiOkResponse({ type: MeDto })
   @ApiBadRequestResponse({
     type: ErrorResponseDto,
-    description: 'displayName pasa de 80, bio de 300 o un campo no permitido',
+    description:
+      'displayName pasa de 80, bio de 300, avatarPublicId no es del usuario, o un campo no permitido',
   })
   updateMe(
     @CurrentUser() user: SessionUser,

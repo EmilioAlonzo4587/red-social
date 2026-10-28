@@ -48,13 +48,11 @@ Autenticación (S1-02): `ValidationPipe` global, filtro global de errores (`AllE
 
 Seed de datos de demostración (S1-06): `apps/api/prisma/seed.ts` crea 20 usuarios (contraseña `demo12345`) con seguimientos, publicaciones, comentarios y likes, y recalcula `likeCount`/`commentCount` al final para que queden coherentes con D05. Se corre con `pnpm --filter api prisma db seed`. La configuración de Prisma vive en `apps/api/prisma.config.ts` (reemplaza el `package.json#prisma` deprecado); `prisma.config.ts` y `prisma/seed.ts` están excluidos de `tsconfig.build.json` para no mover la salida de `nest build`.
 
-Usuarios y perfil (S1-05): `GET /api/users/:username` con contadores e `isFollowing`, y `PATCH /api/users/me` para nombre visible y biografía; la web lo muestra renderizado en el servidor en `/u/[username]` (S1-10). Eventos de dominio (S1-07): `src/events/` global con `DomainEvents.emit` y `@OnDomainEvent`, tipados en `domain-events.ts`. Seguimiento (S2-06): seguir y dejar de seguir idempotentes, listas `followers` y `following`, y el helper de paginación por cursor `src/common/pagination.ts` que deben usar todas las listas.
-
-Seed (S1-06): `pnpm --filter api prisma db seed` crea 20 cuentas de demostración con seguimientos, publicaciones, comentarios y likes (`apps/api/prisma/seed.ts`, ver `docs/09-guia-de-inicio.md`).
-
 Socket autenticado (S1-04): `src/realtime/` con un solo Gateway. El handshake valida la cookie con `SessionTokenService` (la misma regla que el guard HTTP) y el `Origin` contra `CORS_ORIGIN`, que ahora es obligatoria; cada socket entra a `user:{id}`, recibe `session:ready` y se cierra cuando vence su JWT. `apps/api/scripts/probar-socket.mjs` lo prueba en producción.
 
-Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05), el cliente de Socket.io en la web y Cloudinary. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
+Imágenes en Cloudinary (S2-01): `src/media/` (`MediaModule`) con `POST /api/media` (jpeg, png o webp, hasta 5 MB) y `CloudinaryService`, que sube cada imagen a `users/{id}/` y expone `belongsToUser`/`deleteByPublicId` para que Dev 2 las use en publicaciones (S2-04) y avatar (S2-11). Variables `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` validadas al arrancar.
+
+Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05), y el cliente de Socket.io en la web. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
 

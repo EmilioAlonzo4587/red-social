@@ -14,6 +14,9 @@ describe('AuthService', () => {
     refreshTokenTtlDays: 7,
     corsOrigin: 'http://localhost:3001',
     isProduction: false,
+    cloudinaryCloudName: 'demo',
+    cloudinaryApiKey: 'demo-key',
+    cloudinaryApiSecret: 'demo-secret',
   };
   const prisma = {
     user: { findUnique: jest.fn() },

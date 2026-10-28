@@ -15,7 +15,8 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de lo transver
 - Despliegue (S1-01): `.github/workflows/deploy.yml` construye `apps/api/Dockerfile` y `apps/web/Dockerfile`, publica en GHCR (paquetes públicos), copia `infra/` al VPS y ejecuta `infra/deploy.sh`, que migra, reinicia y vuelve a la etiqueta anterior si `/api/health` falla. Compose y Caddyfile se cambian en el repo, nunca en el servidor.
 - Autenticación (S1-02): `src/auth/` y la configuración global de `configure-app.ts` (abajo).
 - Socket.io (S1-04): `src/realtime/` con el adaptador, el Gateway y la sala `user:{id}` (abajo).
-- Pendiente: media (S2-01), respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
+- Media (S2-01): `src/media/` (`MediaModule`), `POST /api/media` y las funciones `belongsToUser`/`deleteByPublicId` de `CloudinaryService`, exportadas para que Dev 2 las use en publicaciones (S2-04) y avatar (S2-11).
+- Pendiente: respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
 
 ## Configuración global de la api
 

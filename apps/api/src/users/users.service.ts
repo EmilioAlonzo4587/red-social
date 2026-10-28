@@ -1,5 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { MeDto } from '../auth/dto/me.dto';
+import { CloudinaryService } from '../media/cloudinary.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProfileDto } from './dto/profile.dto';
 import { UpdateMeDto } from './dto/update-me.dto';
@@ -17,7 +23,12 @@ const ME_SELECT = {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(UsersService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
 
   // Una sola consulta: los contadores salen de _count (seguidores y seguidos no se guardan
   // como columna, D05) y "lo sigo" de buscar la fila del usuario con sesión en sus seguidores.
@@ -59,12 +70,50 @@ export class UsersService {
     };
   }
 
-  // undefined no cambia la columna y null la borra: Prisma ya lo interpreta así
-  updateMe(userId: string, dto: UpdateMeDto): Promise<MeDto> {
-    return this.prisma.user.update({
+  // undefined no cambia la columna y null la borra: Prisma ya lo interpreta así.
+  // Si cambia el avatar, el anterior se borra de Cloudinary (S2-01, RN04 para el nuevo).
+  async updateMe(userId: string, dto: UpdateMeDto): Promise<MeDto> {
+    if (
+      dto.avatarPublicId != null &&
+      !this.cloudinary.belongsToUser(dto.avatarPublicId, userId)
+    ) {
+      throw new BadRequestException({
+        message: 'avatarPublicId: no pertenece al usuario',
+        details: [{ field: 'avatarPublicId', rule: 'ownership' }],
+      });
+    }
+
+    const previous =
+      dto.avatarPublicId !== undefined
+        ? await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { avatarPublicId: true },
+          })
+        : null;
+
+    const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: { displayName: dto.displayName, bio: dto.bio },
+      data: {
+        displayName: dto.displayName,
+        bio: dto.bio,
+        avatarPublicId: dto.avatarPublicId,
+      },
       select: ME_SELECT,
     });
+
+    if (
+      previous?.avatarPublicId &&
+      previous.avatarPublicId !== dto.avatarPublicId
+    ) {
+      await this.cloudinary
+        .deleteByPublicId(previous.avatarPublicId)
+        .catch((error: unknown) => {
+          this.logger.error(
+            `No se pudo borrar el avatar anterior ${previous.avatarPublicId}: ${String(error)}`,
+          );
+        });
+    }
+
+    return updated;
   }
 }

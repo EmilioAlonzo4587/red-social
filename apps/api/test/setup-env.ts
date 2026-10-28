@@ -15,3 +15,6 @@ process.env.JWT_ACCESS_SECRET ??=
 process.env.JWT_ACCESS_TTL ??= '15m';
 process.env.REFRESH_TOKEN_TTL_DAYS ??= '7';
 process.env.CORS_ORIGIN ??= 'http://localhost:3001';
+process.env.CLOUDINARY_CLOUD_NAME ??= 'demo';
+process.env.CLOUDINARY_API_KEY ??= 'demo-key';
+process.env.CLOUDINARY_API_SECRET ??= 'demo-secret';
