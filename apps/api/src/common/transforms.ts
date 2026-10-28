@@ -4,3 +4,9 @@ import type { TransformFnParams } from 'class-transformer';
 // Si el valor no es texto lo deja igual, y @IsString responde el 400.
 export const trim = ({ value }: TransformFnParams): unknown =>
   typeof value === 'string' ? value.trim() : value;
+
+// Para campos opcionales que se pueden borrar: como trim, pero un texto vacío queda en null.
+export const trimToNull = (params: TransformFnParams): unknown => {
+  const value = trim(params);
+  return value === '' ? null : value;
+};
