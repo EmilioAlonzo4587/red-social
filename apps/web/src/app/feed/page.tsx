@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { PostDto, PostPageDto } from "@red/api-types";
+import type { MeDto, PostDto, PostPageDto } from "@red/api-types";
 import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
 import { apiFetchClient } from "@/lib/api-client";
@@ -45,6 +45,9 @@ export default function FeedPage() {
   const [tab, setTab] = useState<Tab>("explorar");
   const [reloadToken, setReloadToken] = useState(0);
   const [tabs, setTabs] = useState<Record<Tab, TabState>>(INITIAL_TABS);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(
+    undefined,
+  );
   const current = tabs[tab];
 
   // Qué pestaña ya se pidió para cada reloadToken: evita volver a pedirla solo por
@@ -96,6 +99,14 @@ export default function FeedPage() {
       cancelled = true;
     };
   }, [tab, reloadToken]);
+
+  // Para saber qué publicaciones son propias (botón de eliminar). Si falla, simplemente
+  // no se muestra ningún botón de eliminar: no es crítico para ver el feed.
+  useEffect(() => {
+    apiFetchClient<MeDto>("/api/auth/me")
+      .then((me) => setCurrentUserId(me.id))
+      .catch(() => {});
+  }, []);
 
   async function loadMore() {
     if (!current.nextCursor || current.status === "loading-more") return;
@@ -194,7 +205,11 @@ export default function FeedPage() {
         <>
           <div className="flex flex-col">
             {current.items.map((post) => (
-              <PostCard key={post.id} post={post} />
+              <PostCard
+                key={post.id}
+                post={post}
+                currentUserId={currentUserId}
+              />
             ))}
           </div>
 

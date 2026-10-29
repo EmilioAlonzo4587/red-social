@@ -62,7 +62,11 @@ Editar perfil y avatar (S2-11): `apps/web/src/app/perfil/editar/page.tsx` (serve
 
 Pruebas en `apps/web` (S2-08): antes no existían. Ahora Vitest + React Testing Library, `pnpm --filter web test`, ver la skill `frontend-web`.
 
-Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05), el cliente de Socket.io en la web y los likes (S2-07, en progreso). La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
+Likes (S2-07): `src/likes/` con `PUT /api/posts/:id/like` y `DELETE /api/posts/:id/like`, ambos idempotentes (RN05), responden `{ likeCount, likedByMe }` (`LikeStatusDto`) y 404 si la publicación no existe.
+
+Likes, seguir y eliminar en la web (S2-10): `PostCard` tiene like optimista (`PUT`/`DELETE /api/posts/:id/like`, corrige con la respuesta real y revierte si falla) y, si `currentUserId` coincide con el autor, un botón "Eliminar" con confirmación dentro de la propia tarjeta (no `confirm()` del navegador) que llama `DELETE /api/posts/:id` y hace desaparecer la publicación sin recargar la lista. `/u/[username]` pasa `currentUserId` desde `GET /api/auth/me` (server component); `/feed` lo pide una vez al montar porque es un client component. `ProfileStats` (nuevo, usado por `/u/[username]`) tiene el botón de seguir (`PUT`/`DELETE /api/users/:username/follow`, sin optimismo) y oculta Seguir/Mensaje en el propio perfil (RN06) mostrando "Editar perfil" en su lugar.
+
+Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05) y el cliente de Socket.io en la web. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
 

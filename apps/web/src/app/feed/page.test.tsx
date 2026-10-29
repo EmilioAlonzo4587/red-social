@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { PostDto, PostPageDto } from "@red/api-types";
+import type { MeDto, PostDto, PostPageDto } from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api-error";
 import FeedPage from "./page";
@@ -36,9 +36,23 @@ function page(items: PostDto[], nextCursor: string | null = null): PostPageDto {
   return { items, nextCursor };
 }
 
+const ME: MeDto = {
+  id: "u1",
+  username: "ana_lopez",
+  displayName: "Ana López",
+  avatarPublicId: null,
+  email: "ana@example.com",
+  bio: null,
+  createdAt: new Date().toISOString(),
+};
+
 describe("FeedPage", () => {
   beforeEach(() => {
     apiFetchClient.mockReset();
+    // FeedPage también pide /api/auth/me (para el botón de eliminar); los tests
+    // de abajo solo encolan valores para las llamadas de feed con mockResolvedValueOnce,
+    // así que esta queda como respuesta por defecto para la llamada sin encolar.
+    apiFetchClient.mockResolvedValue(ME);
     uploadMedia.mockReset();
   });
 

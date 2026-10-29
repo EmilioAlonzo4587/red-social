@@ -1,7 +1,11 @@
-import { render, screen } from "@testing-library/react";
-import type { PostDto } from "@red/api-types";
-import { describe, expect, it } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { LikeStatusDto, PostDto } from "@red/api-types";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PostCard } from "./post-card";
+
+const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
+vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
 const BASE_POST: PostDto = {
   id: "11111111-1111-1111-1111-111111111111",
@@ -20,6 +24,10 @@ const BASE_POST: PostDto = {
 };
 
 describe("PostCard", () => {
+  beforeEach(() => {
+    apiFetchClient.mockReset();
+  });
+
   it("muestra el autor, el contenido y los contadores", () => {
     render(<PostCard post={BASE_POST} />);
     expect(screen.getByText("Ana López")).toBeInTheDocument();
@@ -70,5 +78,140 @@ describe("PostCard", () => {
     // alt="" es a propósito (imagen decorativa sin descripción propia): no tiene
     // rol "img" accesible, así que se consulta directo en el DOM.
     expect(container.querySelectorAll("img")).toHaveLength(2);
+  });
+
+  it("dar like: sube el contador al toque y confirma con la respuesta de la api", async () => {
+    const user = userEvent.setup();
+    const response: LikeStatusDto = { likeCount: 4, likedByMe: true };
+    apiFetchClient.mockResolvedValueOnce(response);
+
+    render(<PostCard post={BASE_POST} />);
+    const likeButton = screen.getByRole("button", { name: "Dar like" });
+    await user.click(likeButton);
+
+    // Optimista: sube antes de que la api responda
+    expect(screen.getByText("❤ 4")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(apiFetchClient).toHaveBeenCalledWith(
+        `/api/posts/${BASE_POST.id}/like`,
+        { method: "PUT" },
+      );
+    });
+    expect(
+      screen.getByRole("button", { name: "Quitar like" }),
+    ).toBeInTheDocument();
+  });
+
+  it("quitar like: PUT si no tenía like, DELETE si ya lo tenía", async () => {
+    const user = userEvent.setup();
+    apiFetchClient.mockResolvedValueOnce({
+      likeCount: 2,
+      likedByMe: false,
+    } satisfies LikeStatusDto);
+
+    render(<PostCard post={{ ...BASE_POST, likedByMe: true, likeCount: 3 }} />);
+    await user.click(screen.getByRole("button", { name: "Quitar like" }));
+
+    expect(screen.getByText("❤ 2")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(apiFetchClient).toHaveBeenCalledWith(
+        `/api/posts/${BASE_POST.id}/like`,
+        { method: "DELETE" },
+      );
+    });
+  });
+
+  it("si la api falla, corrige el like y el contador a como estaban", async () => {
+    // user.click espera a que la promesa (incluido el revertido) termine, así que
+    // el estado optimista intermedio no se alcanza a observar aquí; lo que importa
+    // es que, al final, vuelve a quedar como antes del click.
+    const user = userEvent.setup();
+    apiFetchClient.mockRejectedValueOnce(new Error("caído"));
+
+    render(<PostCard post={BASE_POST} />);
+    await user.click(screen.getByRole("button", { name: "Dar like" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("❤ 3")).toBeInTheDocument(); // corregido
+    });
+    expect(
+      screen.getByRole("button", { name: "Dar like" }),
+    ).toBeInTheDocument();
+  });
+
+  it("no muestra el botón de eliminar si no sos el autor", () => {
+    render(<PostCard post={BASE_POST} currentUserId="otro-usuario" />);
+    expect(
+      screen.queryByRole("button", { name: "Eliminar" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("no muestra el botón de eliminar sin currentUserId", () => {
+    render(<PostCard post={BASE_POST} />);
+    expect(
+      screen.queryByRole("button", { name: "Eliminar" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("eliminar: pide confirmación antes de llamar a la api", async () => {
+    const user = userEvent.setup();
+    render(<PostCard post={BASE_POST} currentUserId={BASE_POST.author.id} />);
+
+    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+
+    expect(
+      screen.getByText("¿Eliminar esta publicación?"),
+    ).toBeInTheDocument();
+    expect(apiFetchClient).not.toHaveBeenCalled();
+  });
+
+  it("cancelar la confirmación no elimina nada", async () => {
+    const user = userEvent.setup();
+    render(<PostCard post={BASE_POST} currentUserId={BASE_POST.author.id} />);
+
+    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(
+      screen.queryByText("¿Eliminar esta publicación?"),
+    ).not.toBeInTheDocument();
+    expect(apiFetchClient).not.toHaveBeenCalled();
+  });
+
+  it("confirmar elimina: llama DELETE y la publicación desaparece", async () => {
+    const user = userEvent.setup();
+    apiFetchClient.mockResolvedValueOnce(undefined);
+
+    render(<PostCard post={BASE_POST} currentUserId={BASE_POST.author.id} />);
+    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+    await user.click(screen.getByRole("button", { name: "Sí, eliminar" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Primer atardecer del semestre"),
+      ).not.toBeInTheDocument();
+    });
+    expect(apiFetchClient).toHaveBeenCalledWith(
+      `/api/posts/${BASE_POST.id}`,
+      { method: "DELETE" },
+    );
+  });
+
+  it("si eliminar falla, muestra un error y deja la publicación", async () => {
+    const user = userEvent.setup();
+    apiFetchClient.mockRejectedValueOnce(new Error("caído"));
+
+    render(<PostCard post={BASE_POST} currentUserId={BASE_POST.author.id} />);
+    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+    await user.click(screen.getByRole("button", { name: "Sí, eliminar" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("No se pudo eliminar. Intenta de nuevo."),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText("Primer atardecer del semestre"),
+    ).toBeInTheDocument();
   });
 });
