@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
+import { CommentsModule } from './comments/comments.module';
 import { EnvModule } from './config/env.module';
 import { EventsModule } from './events/events.module';
 import { FeedModule } from './feed/feed.module';
@@ -25,6 +26,7 @@ import { UsersModule } from './users/users.module';
     PostsModule,
     FeedModule,
     LikesModule,
+    CommentsModule,
     RealtimeModule,
   ],
 })

@@ -19,3 +19,6 @@ export type CreatePostDto = components["schemas"]["CreatePostDto"];
 export type PostMediaInputDto = components["schemas"]["PostMediaInputDto"];
 export type PostPageDto = components["schemas"]["PostPageDto"];
 export type LikeStatusDto = components["schemas"]["LikeStatusDto"];
+export type CommentDto = components["schemas"]["CommentDto"];
+export type CommentPageDto = components["schemas"]["CommentPageDto"];
+export type CreateCommentDto = components["schemas"]["CreateCommentDto"];
