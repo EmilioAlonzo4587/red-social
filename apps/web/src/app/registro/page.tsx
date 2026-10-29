@@ -7,6 +7,7 @@ import type { RegisterDto } from "@red/api-types";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
 import { fieldErrorsFromDetails } from "@/lib/api-field-errors";
+import { PasswordInput } from "@/components/password-input";
 
 type FormErrors = {
   username?: string;
@@ -135,15 +136,13 @@ export default function RegistroPage() {
           <label htmlFor="password" className="text-sm font-medium">
             Contraseña
           </label>
-          <input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             maxLength={128}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            aria-invalid={Boolean(errors.password)}
-            className="rounded-md border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-red-500"
+            ariaInvalid={Boolean(errors.password)}
             placeholder="••••••••"
           />
           <p className={`text-xs ${errors.password ? "text-red-600" : "text-muted"}`}>
