@@ -59,7 +59,9 @@ export default async function ProfilePage({
             Aún no hay publicaciones.
           </p>
         ) : (
-          posts.map((post) => <PostCard key={post.id} post={post} />)
+          posts.map((post) => (
+            <PostCard key={post.id} post={post} currentUserId={me.id} />
+          ))
         )}
       </div>
     </main>

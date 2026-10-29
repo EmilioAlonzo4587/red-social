@@ -138,4 +138,80 @@ describe("PostCard", () => {
       screen.getByRole("button", { name: "Dar like" }),
     ).toBeInTheDocument();
   });
+
+  it("no muestra el botón de eliminar si no sos el autor", () => {
+    render(<PostCard post={BASE_POST} currentUserId="otro-usuario" />);
+    expect(
+      screen.queryByRole("button", { name: "Eliminar" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("no muestra el botón de eliminar sin currentUserId", () => {
+    render(<PostCard post={BASE_POST} />);
+    expect(
+      screen.queryByRole("button", { name: "Eliminar" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("eliminar: pide confirmación antes de llamar a la api", async () => {
+    const user = userEvent.setup();
+    render(<PostCard post={BASE_POST} currentUserId={BASE_POST.author.id} />);
+
+    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+
+    expect(
+      screen.getByText("¿Eliminar esta publicación?"),
+    ).toBeInTheDocument();
+    expect(apiFetchClient).not.toHaveBeenCalled();
+  });
+
+  it("cancelar la confirmación no elimina nada", async () => {
+    const user = userEvent.setup();
+    render(<PostCard post={BASE_POST} currentUserId={BASE_POST.author.id} />);
+
+    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(
+      screen.queryByText("¿Eliminar esta publicación?"),
+    ).not.toBeInTheDocument();
+    expect(apiFetchClient).not.toHaveBeenCalled();
+  });
+
+  it("confirmar elimina: llama DELETE y la publicación desaparece", async () => {
+    const user = userEvent.setup();
+    apiFetchClient.mockResolvedValueOnce(undefined);
+
+    render(<PostCard post={BASE_POST} currentUserId={BASE_POST.author.id} />);
+    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+    await user.click(screen.getByRole("button", { name: "Sí, eliminar" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Primer atardecer del semestre"),
+      ).not.toBeInTheDocument();
+    });
+    expect(apiFetchClient).toHaveBeenCalledWith(
+      `/api/posts/${BASE_POST.id}`,
+      { method: "DELETE" },
+    );
+  });
+
+  it("si eliminar falla, muestra un error y deja la publicación", async () => {
+    const user = userEvent.setup();
+    apiFetchClient.mockRejectedValueOnce(new Error("caído"));
+
+    render(<PostCard post={BASE_POST} currentUserId={BASE_POST.author.id} />);
+    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+    await user.click(screen.getByRole("button", { name: "Sí, eliminar" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("No se pudo eliminar. Intenta de nuevo."),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText("Primer atardecer del semestre"),
+    ).toBeInTheDocument();
+  });
 });
