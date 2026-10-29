@@ -145,7 +145,8 @@ describe("PostComposer", () => {
         method: "POST",
         body: JSON.stringify({
           content: "hola",
-          media: [SAMPLE_MEDIA],
+          // CreatePostDto no acepta mediaType, solo publicId/width/height
+          media: [{ publicId: "users/u1/foto1", width: 1200, height: 800 }],
         }),
       }),
     );

@@ -102,7 +102,13 @@ export function PostComposer({
       );
       try {
         const media = await uploadMedia(image.file);
-        uploaded.push(media);
+        // CreatePostDto solo acepta publicId, width y height (no mediaType):
+        // el ValidationPipe global rechaza cualquier campo de más.
+        uploaded.push({
+          publicId: media.publicId,
+          width: media.width,
+          height: media.height,
+        });
         setImages((prev) =>
           prev.map((img) =>
             img.id === image.id ? { ...img, status: "lista" } : img,
