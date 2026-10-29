@@ -137,3 +137,4 @@ El backend corre en **una sola instancia**. Para escalar a varias haría falta e
 | D07 | Caddy | Nginx con Certbot | HTTPS automático y menos configuración. |
 | D08 | Eventos de dominio entre módulos | Llamadas directas al Gateway | Desacopla el trabajo de Dev 2 y Dev 3. |
 | D09 | Sin contenido público | Perfiles públicos | Decisión del equipo; simplifica permisos y consultas. |
+| D10 | Notificaciones y chat como paneles verticales a la mitad de pantalla (lado derecho), cada uno independiente, en vez de páginas completas separadas | Páginas completas independientes para /notificaciones y el chat | Decisión del equipo (S3-07, S3-06): permite abrir uno sin perder el feed de fondo y deja reservada la otra mitad para el otro panel. |
