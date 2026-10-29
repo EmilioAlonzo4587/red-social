@@ -2,11 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { logout } from "@/lib/api-client";
 import { PUBLIC_PATHS } from "@/lib/public-paths";
 
 export function Navbar() {
   const pathname = usePathname();
   const isPublic = PUBLIC_PATHS.includes(pathname);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    await logout();
+  }
 
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-surface">
@@ -36,6 +45,16 @@ export function Navbar() {
                 2
               </span>
             </Link>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              aria-label="Cerrar sesión"
+              className="shrink-0 text-xl disabled:opacity-50"
+            >
+              🚪
+            </button>
           </>
         )}
       </nav>
