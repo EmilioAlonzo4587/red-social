@@ -9,10 +9,10 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de `apps/web`.
 
 ## Estado actual
 
-- Páginas en `src/app/`: `/` (portada), `/login`, `/registro`, `/feed`, `/p/[id]`, `/u/[username]`, `/perfil/editar`, `/notificaciones`, `/chat`. La mayoría todavía muestra datos de ejemplo (wireframes); las excepciones ya conectadas a la api real son login, registro, `/u/[username]` (S1-10) y el compositor de `/feed` (S2-08, `src/components/post-composer.tsx` + `src/lib/media.ts`), aunque la lista de publicaciones de `/feed` sigue siendo de ejemplo hasta S2-09.
-- Componentes en `src/components/`: `avatar`, `navbar`, `post-card`.
+- Páginas en `src/app/`: `/` (portada), `/login`, `/registro`, `/feed`, `/p/[id]`, `/u/[username]`, `/perfil/editar`, `/notificaciones`, `/chat`. Ya conectadas a la api real: login, registro (S1-09), `/u/[username]` con perfil y publicaciones (S1-10, S2-09), `/perfil/editar` (S2-11) y `/feed` con las pestañas Siguiendo/Explorar, scroll por cursor e imágenes de Cloudinary (S2-09, con el compositor de S2-08 arriba). `/p/[id]`, `/notificaciones` y `/chat` siguen siendo wireframes con datos de ejemplo.
+- Componentes en `src/components/`: `avatar`, `navbar`, `post-card`, `post-composer`, `edit-profile-form`.
 - `src/proxy.ts` redirige a `/` si la ruta no está en `PUBLIC_PATHS` (`src/lib/public-paths.ts`) y no hay cookie `access_token`. Sin sesión solo se ve la portada, login y registro (D09); no agregues rutas públicas sin que lo pida una issue.
-- Login y registro validan en el cliente pero todavía no llaman a la api: eso llega con el cliente de API (S1-09), que usa los endpoints de S1-02.
+- Login y registro llaman a la api desde S1-09 (`apiFetchClient`, endpoints de S1-02).
 - Producción (S1-01): la web corre en Docker con `output: "standalone"` (`next.config.ts`) y `node apps/web/server.js` en el puerto 3000 (`apps/web/Dockerfile`). No quites `output` ni `outputFileTracingRoot`. En local se usa `pnpm dev` (3001); `next start` no funciona con standalone.
 - Si la web empieza a importar un paquete del monorepo (por ejemplo `@red/api-types` en S1-09), agrega en `apps/web/Dockerfile` el `COPY` de su `package.json` antes del `pnpm install` y el de su carpeta después; si no, el build de la imagen falla.
 - `output: "standalone"` no incluye `apps/web/public`. Hoy esa carpeta no existe; quien la cree (logo, favicon, imágenes fijas) agrega en la etapa `runtime` de `apps/web/Dockerfile`, junto al `COPY` de `.next/static`: `COPY --from=build --chown=node:node /repo/apps/web/public ./apps/web/public`. Si falta, las imágenes funcionan en local y salen rotas (404) solo en producción.

@@ -52,11 +52,17 @@ Socket autenticado (S1-04): `src/realtime/` con un solo Gateway. El handshake va
 
 Imágenes en Cloudinary (S2-01): `src/media/` (`MediaModule`) con `POST /api/media` (jpeg, png o webp, hasta 5 MB) y `CloudinaryService`, que sube cada imagen a `users/{id}/` y expone `belongsToUser`/`deleteByPublicId` para que Dev 2 las use en publicaciones (S2-04) y avatar (S2-11). Variables `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` validadas al arrancar.
 
-Publicaciones (S2-04): `src/posts/` con `POST /api/posts`, `GET /api/posts/:id` y `DELETE /api/posts/:id` (borrado lógico, RN03 y RN04). Compositor de publicaciones (S2-08): `apps/web/src/components/post-composer.tsx` y `src/lib/media.ts`, montado arriba de las pestañas en `/feed`; sube cada imagen con `POST /api/media` y crea la publicación con `POST /api/posts`. El resto de `/feed` (la lista) sigue con datos de ejemplo hasta S2-09.
+Publicaciones (S2-04): `src/posts/` con `POST /api/posts`, `GET /api/posts/:id` y `DELETE /api/posts/:id` (borrado lógico, RN03 y RN04). Compositor de publicaciones (S2-08): `apps/web/src/components/post-composer.tsx` y `src/lib/media.ts`, montado arriba de las pestañas en `/feed`; sube cada imagen con `POST /api/media` y crea la publicación con `POST /api/posts`.
+
+Feed (S2-05): `src/feed/` con `GET /api/feed` (propias y de seguidos), `GET /api/feed/explore` (todas) y `GET /api/users/:username/posts`, los tres paginados por cursor (sin `OFFSET`) e indicando `likedByMe`.
+
+Feed en la web (S2-09): `/feed` ya pide `GET /api/feed`/`/api/feed/explore` de verdad, con "Cargar más" por cursor, estado vacío en Siguiendo y publicar recarga la lista. `PostCard` ahora recibe `PostDto` real y muestra las imágenes con `next/image` (`images.remotePatterns` en `next.config.ts` para `res.cloudinary.com`, formato automático con `cloudinaryImageUrl()` en `src/lib/media.ts`). `/u/[username]` también muestra sus publicaciones reales (`GET /api/users/:username/posts`, sin paginar ahí).
+
+Editar perfil y avatar (S2-11): `apps/web/src/app/perfil/editar/page.tsx` (server component, trae `GET /api/auth/me`) y `EditProfileForm`: nombre visible, biografía y cambio/borrado de avatar con `PATCH /api/users/me`.
 
 Pruebas en `apps/web` (S2-08): antes no existían. Ahora Vitest + React Testing Library, `pnpm --filter web test`, ver la skill `frontend-web`.
 
-Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05), el cliente de Socket.io en la web, el feed real (S2-05) y los likes (S2-07). La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
+Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05), el cliente de Socket.io en la web y los likes (S2-07, en progreso). La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
 
