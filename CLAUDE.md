@@ -72,6 +72,8 @@ Búsqueda de usuarios (S3-02): `GET /api/users/search?q=` en `UsersController`, 
 
 Botón de cerrar sesión (S3-13): `logout()` en `src/lib/api-client.ts` llama `POST /api/auth/logout` y siempre recarga a la portada (`window.location.href`), incluso si la petición falla, porque el endpoint borra las cookies y responde 204 siempre. El botón vive en `LogoutButton`, fijo en la esquina inferior izquierda (montado en `layout.tsx`, no en `Navbar`), visible solo con sesión activa.
 
+Mostrar/ocultar contraseña (S3-11): `PasswordInput` (`apps/web/src/components/password-input.tsx`) envuelve el input con un botón que alterna `type="password"`/`type="text"` (ícono de ojo, `aria-pressed`), usado en login y registro. No valida ni cambia el límite de 128 caracteres, solo la visibilidad.
+
 Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05) y el cliente de Socket.io en la web. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
