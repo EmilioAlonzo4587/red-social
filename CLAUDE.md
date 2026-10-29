@@ -66,6 +66,12 @@ Likes (S2-07): `src/likes/` con `PUT /api/posts/:id/like` y `DELETE /api/posts/:
 
 Likes, seguir y eliminar en la web (S2-10): `PostCard` tiene like optimista (`PUT`/`DELETE /api/posts/:id/like`, corrige con la respuesta real y revierte si falla) y, si `currentUserId` coincide con el autor, un botón "Eliminar" con confirmación dentro de la propia tarjeta (no `confirm()` del navegador) que llama `DELETE /api/posts/:id` y hace desaparecer la publicación sin recargar la lista. `/u/[username]` pasa `currentUserId` desde `GET /api/auth/me` (server component); `/feed` lo pide una vez al montar porque es un client component. `ProfileStats` (nuevo, usado por `/u/[username]`) tiene el botón de seguir (`PUT`/`DELETE /api/users/:username/follow`, sin optimismo) y oculta Seguir/Mensaje en el propio perfil (RN06) mostrando "Editar perfil" en su lugar.
 
+Comentarios (S3-01): `src/comments/` con `GET`/`POST /api/posts/:id/comments` (paginado por cursor, del más antiguo al más reciente, RN07) y `DELETE /api/comments/:id` (403 si es ajeno, RN04). Todavía sin consumir desde la web (le toca a S3-08).
+
+Búsqueda de usuarios (S3-02): `GET /api/users/search?q=` en `UsersController`, hasta 20 resultados, 400 si `q` tiene menos de 2 caracteres (RN14). Todavía sin consumir desde la web (le toca a S3-09).
+
+Botón de cerrar sesión (S3-13): `logout()` en `src/lib/api-client.ts` llama `POST /api/auth/logout` y siempre recarga a la portada (`window.location.href`), incluso si la petición falla, porque el endpoint borra las cookies y responde 204 siempre. El botón vive en `Navbar`, visible solo con sesión activa.
+
 Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05) y el cliente de Socket.io en la web. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
