@@ -56,3 +56,16 @@ export async function apiFetchClient<T>(
   const retry = await fetch(path, { ...init, credentials: "include" });
   return parse<T>(retry);
 }
+
+/**
+ * Cierra la sesión (S3-13): el endpoint borra las cookies y responde 204 siempre,
+ * así que la recarga a la portada ocurre aunque la petición falle.
+ */
+export async function logout(): Promise<void> {
+  try {
+    await apiFetchClient<void>("/api/auth/logout", { method: "POST" });
+  } finally {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = "/";
+  }
+}
