@@ -24,3 +24,12 @@ export function uploadMedia(file: File): Promise<MediaDto> {
     body: formData,
   });
 }
+
+/**
+ * URL de entrega de una imagen subida (S2-09). f_auto/q_auto dejan que Cloudinary
+ * elija el formato; next/image (remotePatterns en next.config.ts) ajusta el tamaño.
+ */
+export function cloudinaryImageUrl(publicId: string): string {
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  return `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/${publicId}`;
+}

@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import type { ProfileDto } from "@red/api-types";
+import type { PostPageDto, ProfileDto } from "@red/api-types";
 import { apiFetchServer } from "@/lib/api-server";
 import { ApiError } from "@/lib/api-error";
 import { Avatar } from "@/components/avatar";
-import { PostCard, type Post } from "@/components/post-card";
+import { PostCard } from "@/components/post-card";
 
 async function getProfile(username: string): Promise<ProfileDto> {
   try {
@@ -14,36 +14,17 @@ async function getProfile(username: string): Promise<ProfileDto> {
   }
 }
 
+async function getPosts(username: string): Promise<PostPageDto> {
+  return apiFetchServer<PostPageDto>(`/api/users/${username}/posts`);
+}
+
 export default async function ProfilePage({
   params,
 }: PageProps<"/u/[username]">) {
   const { username } = await params;
   const profile = await getProfile(username);
   const displayName = profile.displayName ?? profile.username;
-
-  // Placeholder: las publicaciones reales llegan con /users/:username/posts (S2-05)
-  const posts: Post[] = [
-    {
-      id: "p1",
-      authorName: displayName,
-      authorUsername: profile.username,
-      content: "Probando la nueva cuenta por aquí 👋",
-      mediaCount: 0,
-      likeCount: 9,
-      commentCount: 2,
-      createdAtLabel: "hace 3 días",
-    },
-    {
-      id: "p2",
-      authorName: displayName,
-      authorUsername: profile.username,
-      content: "",
-      mediaCount: 2,
-      likeCount: 15,
-      commentCount: 1,
-      createdAtLabel: "hace 1 semana",
-    },
-  ];
+  const { items: posts } = await getPosts(username);
 
   return (
     <main className="mx-auto max-w-xl px-4">
