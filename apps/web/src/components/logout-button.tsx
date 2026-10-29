@@ -25,8 +25,22 @@ export function LogoutButton() {
       type="button"
       onClick={handleLogout}
       disabled={loggingOut}
-      className="fixed bottom-4 left-4 z-20 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+      className="fixed bottom-4 left-4 z-20 flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
     >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        aria-hidden="true"
+        className="h-5 w-5"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M18 12H9m9 0l-3-3m3 3l-3 3"
+        />
+      </svg>
       {loggingOut ? "Cerrando sesión…" : "Cerrar sesión"}
     </button>
   );
