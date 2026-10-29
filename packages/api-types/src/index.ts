@@ -13,3 +13,7 @@ export type UpdateMeDto = components["schemas"]["UpdateMeDto"];
 export type UserSummaryDto = components["schemas"]["UserSummaryDto"];
 export type UserSummaryPageDto = components["schemas"]["UserSummaryPageDto"];
 export type FollowStatusDto = components["schemas"]["FollowStatusDto"];
+export type MediaDto = components["schemas"]["MediaDto"];
+export type PostDto = components["schemas"]["PostDto"];
+export type CreatePostDto = components["schemas"]["CreatePostDto"];
+export type PostMediaInputDto = components["schemas"]["PostMediaInputDto"];

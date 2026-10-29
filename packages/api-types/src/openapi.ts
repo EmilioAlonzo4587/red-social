@@ -132,6 +132,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MediaController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/{username}/follow": {
         parameters: {
             query?: never;
@@ -175,6 +191,38 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PostsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PostsController_findOne"];
+        put?: never;
+        post?: never;
+        delete: operations["PostsController_remove"];
         options?: never;
         head?: never;
         patch?: never;
@@ -246,6 +294,11 @@ export interface components {
             displayName?: string | null;
             /** @example Me gusta la fotografía */
             bio?: string | null;
+            /**
+             * @description publicId que devolvió POST /api/media; null quita la foto
+             * @example users/0a1b2c/qzv8xj9f2k
+             */
+            avatarPublicId?: string | null;
         };
         ProfileDto: {
             /** Format: uuid */
@@ -275,6 +328,19 @@ export interface components {
              */
             isFollowing: boolean;
         };
+        MediaDto: {
+            /** @example users/0a1b2c/qzv8xj9f2k */
+            publicId: string;
+            /**
+             * @example image
+             * @enum {string}
+             */
+            mediaType: "image";
+            /** @example 1200 */
+            width: number;
+            /** @example 800 */
+            height: number;
+        };
         FollowStatusDto: {
             /** @example true */
             isFollowing: boolean;
@@ -295,6 +361,40 @@ export interface components {
             items: components["schemas"]["UserSummaryDto"][];
             /** @description Se manda como ?cursor= para la siguiente página; null en la última */
             nextCursor: string | null;
+        };
+        PostMediaInputDto: {
+            /** @example users/0a1b2c/qzv8xj9f2k */
+            publicId: string;
+            /** @example 1200 */
+            width: number;
+            /** @example 800 */
+            height: number;
+        };
+        CreatePostDto: {
+            /** @example Primer atardecer del semestre */
+            content?: string | null;
+            /** @description En el orden en que se muestran */
+            media?: components["schemas"]["PostMediaInputDto"][];
+        };
+        PostDto: {
+            /** Format: uuid */
+            id: string;
+            author: components["schemas"]["UserSummaryDto"];
+            /** @example Primer atardecer del semestre */
+            content: string | null;
+            /** @description En el orden de subida, máximo 4 (RN03) */
+            media: components["schemas"]["MediaDto"][];
+            /** @example 24 */
+            likeCount: number;
+            /** @example 5 */
+            commentCount: number;
+            /**
+             * @description Si el usuario con sesión le dio like
+             * @example false
+             */
+            likedByMe: boolean;
+            /** Format: date-time */
+            createdAt: string;
         };
     };
     responses: never;
@@ -526,7 +626,7 @@ export interface operations {
                     "application/json": components["schemas"]["MeDto"];
                 };
             };
-            /** @description displayName pasa de 80, bio de 300 o un campo no permitido */
+            /** @description displayName pasa de 80, bio de 300, avatarPublicId no es del usuario, o un campo no permitido */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -573,6 +673,58 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    MediaController_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaDto"];
+                };
+            };
+            /** @description Falta el archivo o no es jpeg, png o webp */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description El archivo pasa de 5 MB */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -757,6 +909,148 @@ export interface operations {
                 };
             };
             /** @description El usuario no existe */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    PostsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePostDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostDto"];
+                };
+            };
+            /** @description Sin texto ni imágenes, content pasa de 2000, más de 4 imágenes o una imagen no es del usuario (RN03, RN04) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    PostsController_findOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostDto"];
+                };
+            };
+            /** @description id no es un UUID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description No existe o fue eliminada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    PostsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Eliminada */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description id no es un UUID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description La publicación es de otro usuario (RN04) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description No existe o ya fue eliminada */
             404: {
                 headers: {
                     [name: string]: unknown;
