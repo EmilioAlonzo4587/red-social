@@ -70,7 +70,7 @@ Comentarios (S3-01): `src/comments/` con `GET`/`POST /api/posts/:id/comments` (p
 
 Búsqueda de usuarios (S3-02): `GET /api/users/search?q=` en `UsersController`, hasta 20 resultados, 400 si `q` tiene menos de 2 caracteres (RN14). Todavía sin consumir desde la web (le toca a S3-09).
 
-Botón de cerrar sesión (S3-13): `logout()` en `src/lib/api-client.ts` llama `POST /api/auth/logout` y siempre recarga a la portada (`window.location.href`), incluso si la petición falla, porque el endpoint borra las cookies y responde 204 siempre. El botón vive en `Navbar`, visible solo con sesión activa.
+Botón de cerrar sesión (S3-13): `logout()` en `src/lib/api-client.ts` llama `POST /api/auth/logout` y siempre recarga a la portada (`window.location.href`), incluso si la petición falla, porque el endpoint borra las cookies y responde 204 siempre. El botón vive en `LogoutButton`, fijo en la esquina inferior izquierda (montado en `layout.tsx`, no en `Navbar`), visible solo con sesión activa.
 
 Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05) y el cliente de Socket.io en la web. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
