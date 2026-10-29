@@ -62,7 +62,9 @@ Editar perfil y avatar (S2-11): `apps/web/src/app/perfil/editar/page.tsx` (serve
 
 Pruebas en `apps/web` (S2-08): antes no existían. Ahora Vitest + React Testing Library, `pnpm --filter web test`, ver la skill `frontend-web`.
 
-Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05), el cliente de Socket.io en la web y los likes (S2-07, en progreso). La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
+Likes (S2-07): `src/likes/` con `PUT /api/posts/:id/like` y `DELETE /api/posts/:id/like`, ambos idempotentes (RN05), responden `{ likeCount, likedByMe }` (`LikeStatusDto`) y 404 si la publicación no existe.
+
+Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05) y el cliente de Socket.io en la web. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
 

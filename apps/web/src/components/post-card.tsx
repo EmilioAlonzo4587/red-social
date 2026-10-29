@@ -1,12 +1,43 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import type { PostDto } from "@red/api-types";
+import { useState } from "react";
+import type { LikeStatusDto, PostDto } from "@red/api-types";
 import { Avatar } from "@/components/avatar";
+import { apiFetchClient } from "@/lib/api-client";
 import { formatRelativeTime } from "@/lib/format";
 import { cloudinaryImageUrl } from "@/lib/media";
 
 export function PostCard({ post }: { post: PostDto }) {
   const authorName = post.author.displayName ?? post.author.username;
+  const [likedByMe, setLikedByMe] = useState(post.likedByMe);
+  const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [liking, setLiking] = useState(false);
+
+  async function toggleLike() {
+    if (liking) return;
+    const next = !likedByMe;
+    const previous = { likedByMe, likeCount };
+
+    // Optimista (S2-10): se ve al toque, se corrige si la api falla.
+    setLikedByMe(next);
+    setLikeCount((count) => count + (next ? 1 : -1));
+    setLiking(true);
+    try {
+      const result = await apiFetchClient<LikeStatusDto>(
+        `/api/posts/${post.id}/like`,
+        { method: next ? "PUT" : "DELETE" },
+      );
+      setLikedByMe(result.likedByMe);
+      setLikeCount(result.likeCount);
+    } catch {
+      setLikedByMe(previous.likedByMe);
+      setLikeCount(previous.likeCount);
+    } finally {
+      setLiking(false);
+    }
+  }
 
   return (
     <article className="flex flex-col gap-3 border-b border-border py-4">
@@ -52,9 +83,21 @@ export function PostCard({ post }: { post: PostDto }) {
         )}
       </Link>
 
-      <div className="flex gap-6 text-sm text-muted">
-        <span>❤ {post.likeCount}</span>
-        <span>💬 {post.commentCount}</span>
+      <div className="flex gap-6 text-sm">
+        <button
+          type="button"
+          onClick={toggleLike}
+          aria-pressed={likedByMe}
+          aria-label={likedByMe ? "Quitar like" : "Dar like"}
+          className={
+            likedByMe
+              ? "font-semibold text-primary"
+              : "text-muted hover:text-primary"
+          }
+        >
+          ❤ {likeCount}
+        </button>
+        <span className="text-muted">💬 {post.commentCount}</span>
       </div>
     </article>
   );
