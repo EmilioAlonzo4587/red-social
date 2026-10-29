@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
-import type { PostPageDto, ProfileDto } from "@red/api-types";
+import type { MeDto, PostPageDto, ProfileDto } from "@red/api-types";
 import { apiFetchServer } from "@/lib/api-server";
 import { ApiError } from "@/lib/api-error";
 import { Avatar } from "@/components/avatar";
 import { PostCard } from "@/components/post-card";
+import { ProfileStats } from "@/components/profile-stats";
 
 async function getProfile(username: string): Promise<ProfileDto> {
   try {
@@ -18,13 +19,18 @@ async function getPosts(username: string): Promise<PostPageDto> {
   return apiFetchServer<PostPageDto>(`/api/users/${username}/posts`);
 }
 
+async function getMe(): Promise<MeDto> {
+  return apiFetchServer<MeDto>("/api/auth/me");
+}
+
 export default async function ProfilePage({
   params,
 }: PageProps<"/u/[username]">) {
   const { username } = await params;
-  const profile = await getProfile(username);
+  const [profile, me] = await Promise.all([getProfile(username), getMe()]);
   const displayName = profile.displayName ?? profile.username;
   const { items: posts } = await getPosts(username);
+  const isOwnProfile = me.id === profile.id;
 
   return (
     <main className="mx-auto max-w-xl px-4">
@@ -38,35 +44,14 @@ export default async function ProfilePage({
 
       {profile.bio && <p className="pb-4 text-sm">{profile.bio}</p>}
 
-      <div className="flex gap-6 border-y border-border py-3 text-sm">
-        <span>
-          <strong>{profile.postCount}</strong>{" "}
-          <span className="text-muted">publicaciones</span>
-        </span>
-        <span>
-          <strong>{profile.followerCount}</strong>{" "}
-          <span className="text-muted">seguidores</span>
-        </span>
-        <span>
-          <strong>{profile.followingCount}</strong>{" "}
-          <span className="text-muted">seguidos</span>
-        </span>
-      </div>
-
-      <div className="flex gap-3 py-4">
-        <button
-          type="button"
-          className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
-        >
-          {profile.isFollowing ? "Siguiendo" : "Seguir"}
-        </button>
-        <button
-          type="button"
-          className="flex-1 rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface"
-        >
-          Mensaje
-        </button>
-      </div>
+      <ProfileStats
+        username={profile.username}
+        isOwnProfile={isOwnProfile}
+        postCount={profile.postCount}
+        followingCount={profile.followingCount}
+        initialFollowerCount={profile.followerCount}
+        initialIsFollowing={profile.isFollowing}
+      />
 
       <div className="flex flex-col">
         {posts.length === 0 ? (
