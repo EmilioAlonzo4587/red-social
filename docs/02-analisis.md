@@ -19,6 +19,7 @@
 | RF13 | Notificar al instante likes, comentarios, seguimientos y mensajes, y conservarlas para consultarlas después. | HU13 |
 | RF14 | Chatear 1 a 1 en tiempo real, con bandeja de conversaciones y mensajes no leídos. | HU14 |
 | RF15 | Exponer la documentación interactiva de la API en `/api/docs`. | — |
+| RF16 | Ver la lista de seguidores y de seguidos de un perfil. | HU15 |
 
 ## Requerimientos no funcionales
 
@@ -74,6 +75,7 @@
 | HU12 | Como usuario, quiero abrir una publicación, leer y escribir comentarios, borrar los míos y ver el contador de comentarios en vivo. | imprescindible |
 | HU13 | Como usuario, quiero recibir notificaciones al instante cuando me dan like, me comentan, me siguen o me escriben, y verlas después si estaba desconectado. | imprescindible |
 | HU14 | Como usuario, quiero chatear 1 a 1 con otra persona: ver mi bandeja con los mensajes no leídos y recibir los mensajes sin recargar. | imprescindible |
+| HU15 | Como usuario, quiero ver la lista de quién me sigue y a quién sigo desde cualquier perfil. | decisión del equipo |
 
 <!-- HISTORIAS:FIN -->
 

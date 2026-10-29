@@ -13,6 +13,7 @@
 | Sockets sin control | Sesión validada en el handshake con la misma regla que HTTP (`SessionTokenService`); el socket se cierra al vencer el JWT, así un logout o RN12 lo alcanza en 15 minutos como máximo; entrar a `conv:{id}` solo si participa | S1-04, S3-05 |
 | WebSocket abierto desde otro sitio | El navegador no aplica CORS al WebSocket. Lo frena `SameSite=Lax` (la cookie no viaja) y, además, el handshake rechaza un `Origin` distinto de `CORS_ORIGIN`. Sin `Origin` (cliente que no es navegador o petición del mismo origen) decide la cookie | S1-04 |
 | Entradas maliciosas | `ValidationPipe` global con `whitelist` y `forbidNonWhitelisted`; mismos límites en DTOs y en la base | Todas |
+| Datos de una cuenta visibles tras cambiar de sesión en el mismo navegador | Portada, login y registro redirigen a `/feed` si ya hay sesión en vez de mostrarse; páginas con datos de sesión con `Cache-Control: no-store` y recarga forzada si el navegador las restaura desde su *back-forward cache* (evento `pageshow` con `persisted`) | S3-12 |
 | Inyección SQL | Consultas por Prisma; el SQL manual usa parámetros, nunca concatenación | Todas |
 | Archivos maliciosos | Solo jpeg, png y webp de hasta 5 MB; Cloudinary verifica el formato real | S2-01 |
 | XSS | React escapa el contenido; prohibido `dangerouslySetInnerHTML` con datos de usuarios; cabeceras con `helmet` | S4-02 |
