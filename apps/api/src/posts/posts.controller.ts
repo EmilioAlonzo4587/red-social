@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -7,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
 import {
@@ -26,16 +24,8 @@ import type { SessionUser } from '../auth/session.guard';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { PostDto } from './dto/post.dto';
+import { postIdPipe } from './post-id.pipe';
 import { PostsService } from './posts.service';
-
-// Un :id que no es UUID responde 400 con el formato de error de docs/05-api.md
-const postIdPipe = new ParseUUIDPipe({
-  exceptionFactory: () =>
-    new BadRequestException({
-      message: 'id: debe ser un UUID',
-      details: [{ field: 'id', rule: 'isUuid' }],
-    }),
-});
 
 @ApiTags('posts')
 @ApiCookieAuth()
