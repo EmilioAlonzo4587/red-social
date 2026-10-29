@@ -340,6 +340,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationsController_unreadCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["NotificationsController_markRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -538,6 +586,49 @@ export interface components {
         CreateCommentDto: {
             /** @example Qué buena foto */
             content: string;
+        };
+        NotificationDto: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @example like
+             * @enum {string}
+             */
+            type: "like" | "comment" | "follow" | "message";
+            /** @description Quién la provocó */
+            actor: components["schemas"]["UserSummaryDto"];
+            /**
+             * Format: uuid
+             * @description En like y comment
+             */
+            postId: string | null;
+            /**
+             * Format: uuid
+             * @description En comment
+             */
+            commentId: string | null;
+            /** @example false */
+            read: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NotificationPageDto: {
+            items: components["schemas"]["NotificationDto"][];
+            /** @description Se manda como ?cursor= para la siguiente página; null en la última */
+            nextCursor: string | null;
+        };
+        UnreadCountDto: {
+            /** @example 3 */
+            count: number;
+        };
+        MarkReadDto: {
+            /** @description Notificaciones a marcar; las ajenas o inexistentes se ignoran */
+            ids?: string[];
+            /**
+             * @description Marca todas
+             * @enum {boolean}
+             */
+            all?: true;
         };
     };
     responses: never;
@@ -1618,6 +1709,113 @@ export interface operations {
             };
             /** @description No existe o ya fue eliminado */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    NotificationsController_list: {
+        parameters: {
+            query?: {
+                /** @description nextCursor de la página anterior, tal cual */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description De la más reciente a la más antigua; sin las de publicaciones o comentarios eliminados */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPageDto"];
+                };
+            };
+            /** @description cursor no válido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    NotificationsController_unreadCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sin leer, contando las mismas que muestra la lista */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCountDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    NotificationsController_markRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkReadDto"];
+            };
+        };
+        responses: {
+            /** @description Marcadas como leídas */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Falta ids o all, vienen los dos, all no es true o ids no es una lista de 1 a 100 UUID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

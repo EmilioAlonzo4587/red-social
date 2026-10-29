@@ -73,6 +73,7 @@ Reglas:
 - Repetir un `PUT` idempotente (like o seguir) no emite nada, porque no cambió nada (RN05, RN06).
 - Quien escucha decide si actúa: notificaciones ignora los eventos en que `actorId` es el mismo destinatario (RN08).
 - Si un listener lanza un error, se registra en el log y no le llega a quien emitió: un fallo al notificar no tumba la petición del usuario.
+- Los listeners asíncronos terminan después de que la petición respondió. La notificación de un like, por ejemplo, aparece unos milisegundos después del 200; las e2e la esperan en vez de suponer que ya está (`test/notifications.e2e-spec.ts`).
 - Un evento nuevo se agrega a `DomainEventMap` y a esta tabla en el mismo PR.
 
 ## Renderizado en el servidor con sesión

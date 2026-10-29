@@ -22,3 +22,7 @@ export type LikeStatusDto = components["schemas"]["LikeStatusDto"];
 export type CommentDto = components["schemas"]["CommentDto"];
 export type CommentPageDto = components["schemas"]["CommentPageDto"];
 export type CreateCommentDto = components["schemas"]["CreateCommentDto"];
+export type NotificationDto = components["schemas"]["NotificationDto"];
+export type NotificationPageDto = components["schemas"]["NotificationPageDto"];
+export type UnreadCountDto = components["schemas"]["UnreadCountDto"];
+export type MarkReadDto = components["schemas"]["MarkReadDto"];

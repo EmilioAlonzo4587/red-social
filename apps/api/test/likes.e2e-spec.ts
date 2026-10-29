@@ -8,6 +8,7 @@ import type { ErrorResponseDto } from './../src/common/dto/error-response.dto';
 import { configureApp } from './../src/configure-app';
 import { DomainEvents } from './../src/events/domain-events.service';
 import type { LikeStatusDto } from './../src/likes/dto/like-status.dto';
+import { NotificationsListener } from './../src/notifications/notifications.listener';
 import type { PostDto } from './../src/posts/dto/post.dto';
 import { PrismaService } from './../src/prisma/prisma.service';
 import { cookiesOf } from './utils/cookies';
@@ -60,9 +61,15 @@ describe('Likes (e2e)', () => {
     (await prisma.post.findUniqueOrThrow({ where: { id } })).likeCount;
 
   beforeAll(async () => {
+    // Sin el listener de notificaciones: escribiría y emitiría notification.created después de
+    // responder, y las cuentas de emit de este archivo dependerían de cuándo termina.
+    // Las notificaciones se prueban en notifications.e2e-spec.ts.
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(NotificationsListener)
+      .useValue({})
+      .compile();
     app = moduleRef.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.init();
