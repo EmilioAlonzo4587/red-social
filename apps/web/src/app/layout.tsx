@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { LogoutButton } from "@/components/logout-button";
 import { Navbar } from "@/components/navbar";
 import "./globals.css";
 
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <Navbar />
         {children}
+        <LogoutButton />
       </body>
     </html>
   );
