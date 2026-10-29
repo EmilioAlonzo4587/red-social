@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PostCard, type Post } from "@/components/post-card";
+import { PostComposer } from "@/components/post-composer";
 
 const EXPLORAR_POSTS: Post[] = [
   {
@@ -47,6 +48,8 @@ export default function FeedPage() {
 
   return (
     <main className="mx-auto max-w-xl px-4">
+      <PostComposer />
+
       <div className="sticky top-14 flex border-b border-border bg-background">
         <button
           type="button"
