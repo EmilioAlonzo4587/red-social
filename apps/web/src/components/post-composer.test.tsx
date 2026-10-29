@@ -3,14 +3,15 @@ import userEvent from "@testing-library/user-event";
 import type { MediaDto, PostDto } from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api-error";
-import {
-  MAX_CONTENT_LENGTH,
-  PostComposer,
-  validateImageFile,
-} from "./post-composer";
+import { MAX_CONTENT_LENGTH, PostComposer } from "./post-composer";
 
+// Mockea solo uploadMedia: validateImageFile se usa de verdad, el componente depende
+// de su comportamiento real (RN03) para bloquear Publicar con una imagen inválida.
 const { uploadMedia } = vi.hoisted(() => ({ uploadMedia: vi.fn() }));
-vi.mock("@/lib/media", () => ({ uploadMedia }));
+vi.mock("@/lib/media", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/media")>();
+  return { ...actual, uploadMedia };
+});
 
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
@@ -41,22 +42,6 @@ const SAMPLE_POST: PostDto = {
   likedByMe: false,
   createdAt: "2026-10-28T00:00:00.000Z",
 };
-
-describe("validateImageFile", () => {
-  it("acepta jpeg, png o webp de hasta 5 MB", () => {
-    expect(validateImageFile(jpeg("foto.jpg"))).toBeNull();
-  });
-
-  it("rechaza un tipo no permitido", () => {
-    const file = new File(["hola"], "notas.txt", { type: "text/plain" });
-    expect(validateImageFile(file)).toBe("Debe ser jpeg, png o webp.");
-  });
-
-  it("rechaza un archivo de más de 5 MB", () => {
-    const file = jpeg("grande.jpg", 5 * 1024 * 1024 + 1);
-    expect(validateImageFile(file)).toBe("Pasa de 5 MB.");
-  });
-});
 
 describe("PostComposer", () => {
   beforeEach(() => {

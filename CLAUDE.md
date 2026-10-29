@@ -52,7 +52,11 @@ Socket autenticado (S1-04): `src/realtime/` con un solo Gateway. El handshake va
 
 Imágenes en Cloudinary (S2-01): `src/media/` (`MediaModule`) con `POST /api/media` (jpeg, png o webp, hasta 5 MB) y `CloudinaryService`, que sube cada imagen a `users/{id}/` y expone `belongsToUser`/`deleteByPublicId` para que Dev 2 las use en publicaciones (S2-04) y avatar (S2-11). Variables `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` validadas al arrancar.
 
-Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05), y el cliente de Socket.io en la web. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
+Publicaciones (S2-04): `src/posts/` con `POST /api/posts`, `GET /api/posts/:id` y `DELETE /api/posts/:id` (borrado lógico, RN03 y RN04). Compositor de publicaciones (S2-08): `apps/web/src/components/post-composer.tsx` y `src/lib/media.ts`, montado arriba de las pestañas en `/feed`; sube cada imagen con `POST /api/media` y crea la publicación con `POST /api/posts`. El resto de `/feed` (la lista) sigue con datos de ejemplo hasta S2-09.
+
+Pruebas en `apps/web` (S2-08): antes no existían. Ahora Vitest + React Testing Library, `pnpm --filter web test`, ver la skill `frontend-web`.
+
+Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05), el cliente de Socket.io en la web, el feed real (S2-05) y los likes (S2-07). La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
 

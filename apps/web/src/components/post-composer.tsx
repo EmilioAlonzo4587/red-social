@@ -4,23 +4,11 @@ import { useRef, useState } from "react";
 import type { CreatePostDto, PostDto } from "@red/api-types";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
-import { uploadMedia } from "@/lib/media";
+import { uploadMedia, validateImageFile } from "@/lib/media";
 
 // RN03: texto hasta 2000, al menos texto o imagen, hasta 4 imágenes jpeg/png/webp de 5 MB.
 export const MAX_CONTENT_LENGTH = 2000;
 export const MAX_IMAGES = 4;
-export const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-
-export function validateImageFile(file: File): string | null {
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    return "Debe ser jpeg, png o webp.";
-  }
-  if (file.size > MAX_IMAGE_SIZE) {
-    return "Pasa de 5 MB.";
-  }
-  return null;
-}
 
 type ImageStatus = "pendiente" | "subiendo" | "lista" | "error";
 

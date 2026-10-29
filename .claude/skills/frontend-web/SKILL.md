@@ -9,7 +9,7 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de `apps/web`.
 
 ## Estado actual
 
-- Páginas en `src/app/`: `/` (portada), `/login`, `/registro`, `/feed`, `/p/[id]`, `/u/[username]`, `/perfil/editar`, `/notificaciones`, `/chat`. Hoy muestran datos de ejemplo: son los wireframes.
+- Páginas en `src/app/`: `/` (portada), `/login`, `/registro`, `/feed`, `/p/[id]`, `/u/[username]`, `/perfil/editar`, `/notificaciones`, `/chat`. La mayoría todavía muestra datos de ejemplo (wireframes); las excepciones ya conectadas a la api real son login, registro, `/u/[username]` (S1-10) y el compositor de `/feed` (S2-08, `src/components/post-composer.tsx` + `src/lib/media.ts`), aunque la lista de publicaciones de `/feed` sigue siendo de ejemplo hasta S2-09.
 - Componentes en `src/components/`: `avatar`, `navbar`, `post-card`.
 - `src/proxy.ts` redirige a `/` si la ruta no está en `PUBLIC_PATHS` (`src/lib/public-paths.ts`) y no hay cookie `access_token`. Sin sesión solo se ve la portada, login y registro (D09); no agregues rutas públicas sin que lo pida una issue.
 - Login y registro validan en el cliente pero todavía no llaman a la api: eso llega con el cliente de API (S1-09), que usa los endpoints de S1-02.
@@ -64,6 +64,13 @@ Sigue el patrón de `src/app/login/page.tsx` y `src/app/registro/page.tsx`:
 - Next solo lee los `.env*` de `apps/web`, no el `.env` de la raíz. En local cada uno crea `apps/web/.env.local` con `API_INTERNAL_URL`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` y `NEXT_PUBLIC_SOCKET_URL` (la sección Frontend de `.env.example`; la guía de inicio trae el comando). `apps/web/.gitignore` ya ignora `.env*`.
 - Las `NEXT_PUBLIC_*` se escriben dentro del JavaScript al hacer `next build`, no al arrancar. En producción llegan como argumentos de build de la imagen (ver la skill `plataforma`); cambiarlas en el `.env` del VPS no tiene efecto hasta reconstruir la imagen.
 - `API_INTERNAL_URL` se lee en el servidor al arrancar, así que esa sí puede venir del compose.
+
+## Pruebas
+
+- Vitest + React Testing Library (S2-08): `pnpm --filter web test` corre `*.test.tsx` junto al componente que prueban (ver `post-composer.tsx` / `post-composer.test.tsx`). Config en `vitest.config.mts` (alias `@/`, entorno jsdom) y `vitest.setup.ts` (matchers de `jest-dom`, limpieza automática entre pruebas con `cleanup()`, y el stub de `URL.createObjectURL`/`revokeObjectURL` que jsdom no trae).
+- Simula `@/lib/api-client` y `@/lib/media` con `vi.mock` en vez de llamar a la api de verdad; usa `vi.hoisted` para las funciones mockeadas que el `vi.mock` necesita referenciar.
+- Toda pantalla o componente nuevo que llame a la api necesita sus pruebas: caso feliz y los casos prohibidos que apliquen (tipo de archivo, tamaño, campo vacío, error del servidor), igual que se exige en `apps/api`.
+- `pnpm -r --if-present test` del CI ya corre esto solo: no hace falta tocar `ci.yml`.
 
 ## Tiempo real
 
