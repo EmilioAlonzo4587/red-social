@@ -5,6 +5,7 @@ import { EventsModule } from './events/events.module';
 import { FeedModule } from './feed/feed.module';
 import { FollowsModule } from './follows/follows.module';
 import { HealthModule } from './health/health.module';
+import { LikesModule } from './likes/likes.module';
 import { MediaModule } from './media/media.module';
 import { PostsModule } from './posts/posts.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -23,6 +24,7 @@ import { UsersModule } from './users/users.module';
     MediaModule,
     PostsModule,
     FeedModule,
+    LikesModule,
     RealtimeModule,
   ],
 })
