@@ -54,9 +54,11 @@ Imágenes en Cloudinary (S2-01): `src/media/` (`MediaModule`) con `POST /api/med
 
 Publicaciones (S2-04): `src/posts/` con `POST /api/posts`, `GET /api/posts/:id` y `DELETE /api/posts/:id` (borrado lógico, RN03 y RN04). Compositor de publicaciones (S2-08): `apps/web/src/components/post-composer.tsx` y `src/lib/media.ts`, montado arriba de las pestañas en `/feed`; sube cada imagen con `POST /api/media` y crea la publicación con `POST /api/posts`. El resto de `/feed` (la lista) sigue con datos de ejemplo hasta S2-09.
 
+Feeds (S2-05): `src/feed/` con `GET /api/feed` (propias y de seguidos), `GET /api/feed/explore` (todas) y `GET /api/users/:username/posts`, todas `Page<Post>` con cursor. Cada `Post` se arma con `postSelect`/`toPostDto` de `src/posts/post-select.ts`, el mismo de `GET /api/posts/:id`.
+
 Pruebas en `apps/web` (S2-08): antes no existían. Ahora Vitest + React Testing Library, `pnpm --filter web test`, ver la skill `frontend-web`.
 
-Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05), el cliente de Socket.io en la web, el feed real (S2-05) y los likes (S2-07). La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
+Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05), el cliente de Socket.io en la web y los likes (S2-07). La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
 

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { EnvModule } from './config/env.module';
 import { EventsModule } from './events/events.module';
+import { FeedModule } from './feed/feed.module';
 import { FollowsModule } from './follows/follows.module';
 import { HealthModule } from './health/health.module';
 import { MediaModule } from './media/media.module';
@@ -21,6 +22,7 @@ import { UsersModule } from './users/users.module';
     FollowsModule,
     MediaModule,
     PostsModule,
+    FeedModule,
     RealtimeModule,
   ],
 })

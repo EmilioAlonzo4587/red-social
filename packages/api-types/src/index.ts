@@ -17,3 +17,4 @@ export type MediaDto = components["schemas"]["MediaDto"];
 export type PostDto = components["schemas"]["PostDto"];
 export type CreatePostDto = components["schemas"]["CreatePostDto"];
 export type PostMediaInputDto = components["schemas"]["PostMediaInputDto"];
+export type PostPageDto = components["schemas"]["PostPageDto"];
