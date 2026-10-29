@@ -131,9 +131,9 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 
 | Método | Ruta | Body | Respuesta | Errores | Issue |
 |---|---|---|---|---|---|
-| POST | `/api/posts` 🔒 | `{ content?, media?: { publicId, width, height }[] }` | 201 `Post` | 400 si está vacía, si `content` pasa de 2000 caracteres, si hay más de 4 imágenes (RN03) o si una imagen no es del usuario | S2-04 |
-| GET | `/api/posts/:id` 🔒 | | `Post` | 404, también si fue eliminada | S2-04 |
-| DELETE | `/api/posts/:id` 🔒 | | 204 | 403 si es ajena (RN04), 404 | S2-04 |
+| POST | `/api/posts` 🔒 | `{ content?, media?: { publicId, width, height }[] }` | 201 `Post` | 400 si está vacía, si `content` pasa de 2000 caracteres, si hay más de 4 imágenes (RN03), si una imagen se repite o si una imagen no es del usuario | S2-04 |
+| GET | `/api/posts/:id` 🔒 | | `Post` | 400 si `id` no es un UUID; 404, también si fue eliminada | S2-04 |
+| DELETE | `/api/posts/:id` 🔒 | | 204 | 400 si `id` no es un UUID; 403 si es ajena (RN04); 404 | S2-04 |
 | GET | `/api/feed` 🔒 | `?cursor=` | `Page<Post>`: propias y de seguidos (RN10) | | S2-05 |
 | GET | `/api/feed/explore` 🔒 | `?cursor=` | `Page<Post>`: todas (RN10) | | S2-05 |
 | PUT | `/api/posts/:id/like` 🔒 | | `{ likeCount, likedByMe: true }` | 404 | S2-07 |
