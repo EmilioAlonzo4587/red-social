@@ -116,6 +116,22 @@ export interface paths {
         patch: operations["UsersController_updateMe"];
         trace?: never;
     };
+    "/api/users/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["UsersController_search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/{username}": {
         parameters: {
             query?: never;
@@ -364,6 +380,16 @@ export interface components {
              */
             avatarPublicId?: string | null;
         };
+        UserSummaryDto: {
+            /** Format: uuid */
+            id: string;
+            /** @example ana_lopez */
+            username: string;
+            /** @example Ana López */
+            displayName: string | null;
+            /** @example null */
+            avatarPublicId: string | null;
+        };
         ProfileDto: {
             /** Format: uuid */
             id: string;
@@ -410,16 +436,6 @@ export interface components {
             isFollowing: boolean;
             /** @example 31 */
             followerCount: number;
-        };
-        UserSummaryDto: {
-            /** Format: uuid */
-            id: string;
-            /** @example ana_lopez */
-            username: string;
-            /** @example Ana López */
-            displayName: string | null;
-            /** @example null */
-            avatarPublicId: string | null;
         };
         UserSummaryPageDto: {
             items: components["schemas"]["UserSummaryDto"][];
@@ -702,6 +718,45 @@ export interface operations {
                 };
             };
             /** @description displayName pasa de 80, bio de 300, avatarPublicId no es del usuario, o un campo no permitido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    UsersController_search: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Máximo 20 (RN14); primero los que empiezan con el texto */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSummaryDto"][];
+                };
+            };
+            /** @description q tiene menos de 2 caracteres (RN14) */
             400: {
                 headers: {
                     [name: string]: unknown;
