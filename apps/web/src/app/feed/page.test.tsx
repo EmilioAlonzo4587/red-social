@@ -200,4 +200,32 @@ describe("FeedPage", () => {
     );
     expect(explorarCalls.length).toBe(2);
   });
+
+  it("tarjeta de perfil (S3-19): muestra tus datos de GET /api/auth/me sin pedirlo aparte", async () => {
+    apiFetchClient.mockResolvedValueOnce(page([]));
+    render(<FeedPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("@ana_lopez")).toBeInTheDocument();
+    });
+    // Un solo llamado a /api/auth/me: el mismo que ya usaba para currentUserId.
+    const meCalls = apiFetchClient.mock.calls.filter(
+      ([path]) => path === "/api/auth/me",
+    );
+    expect(meCalls.length).toBe(1);
+  });
+
+  it("tarjeta de perfil: si falla GET /api/auth/me, no se muestra y el feed sigue funcionando", async () => {
+    apiFetchClient.mockImplementation((path: string) =>
+      path === "/api/auth/me"
+        ? Promise.reject(new Error("caído"))
+        : Promise.resolve(page([post("1")])),
+    );
+    render(<FeedPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Publicación 1")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("@ana_lopez")).not.toBeInTheDocument();
+  });
 });

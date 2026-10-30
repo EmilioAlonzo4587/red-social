@@ -14,3 +14,25 @@ body {
   color: var(--color-foreground);
   background: var(--color-background);
 }
+
+/* Tarjeta de perfil en /feed (S3-19): fade + deslizamiento breve al aparecer. */
+@keyframes home-profile-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.home-profile-card {
+  animation: home-profile-card-in 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-profile-card {
+    animation: none;
+  }
+}
