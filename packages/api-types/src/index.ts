@@ -63,12 +63,41 @@ export type MessageNewEvent = MessageDto;
 export type ConversationUpdatedEvent = ConversationDto;
 export type NotificationNewEvent = NotificationDto;
 
+export interface ConversationTypingEvent {
+  conversationId: string;
+  userId: string;
+}
+
+export interface ConversationReadEvent {
+  conversationId: string;
+  userId: string;
+  readAt: string;
+}
+
+export interface PresenceWatchPayload {
+  userIds: string[];
+}
+
+export interface PresenceWatchAck {
+  onlineUserIds: string[];
+}
+
+export interface UserPresenceEvent {
+  userId: string;
+  online: boolean;
+}
+
 export interface ClientToServerEvents {
   "post:watch": (data: PostWatchPayload) => void;
   "post:unwatch": (data: PostWatchPayload) => void;
   "conversation:join": (
     data: ConversationJoinPayload,
     ack?: (res: ConversationJoinAck) => void,
+  ) => void;
+  "conversation:typing": (data: ConversationJoinPayload) => void;
+  "presence:watch": (
+    data: PresenceWatchPayload,
+    ack?: (res: PresenceWatchAck) => void,
   ) => void;
 }
 
@@ -78,6 +107,9 @@ export interface ServerToClientEvents {
   "post:comments": (data: PostCommentsEvent) => void;
   "message:new": (data: MessageNewEvent) => void;
   "conversation:updated": (data: ConversationUpdatedEvent) => void;
+  "conversation:typing": (data: ConversationTypingEvent) => void;
+  "conversation:read": (data: ConversationReadEvent) => void;
+  "user:presence": (data: UserPresenceEvent) => void;
   "notification:new": (data: NotificationNewEvent) => void;
 }
 

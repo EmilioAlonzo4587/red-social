@@ -1,9 +1,15 @@
 import { io, type Socket } from "socket.io-client";
 import type {
   ClientToServerEvents,
+  ConversationJoinAck,
+  ConversationReadEvent,
+  ConversationTypingEvent,
+  ConversationUpdatedEvent,
+  MessageNewEvent,
   PostCommentsEvent,
   PostLikesEvent,
   ServerToClientEvents,
+  UserPresenceEvent,
 } from "@red/api-types";
 import { refreshSession } from "./api-client";
 
@@ -14,6 +20,22 @@ export type AppClientSocket = Socket<
 
 type LikeCountListener = (likeCount: number) => void;
 type CommentCountListener = (commentCount: number) => void;
+type MessageListener = (message: MessageNewEvent) => void;
+type ConversationJoinResultListener = (ack: ConversationJoinAck) => void;
+type TypingListener = (userId: string) => void;
+type RemoteReadListener = (readAt: string, userId: string) => void;
+type ConversationUpdatedListener = (
+  conversation: ConversationUpdatedEvent,
+) => void;
+type ConversationReadListener = (conversationId: string) => void;
+type PresenceListener = (onlineUserIds: ReadonlySet<string>) => void;
+
+export interface ConversationSubscriptionOptions {
+  onTyping?: TypingListener;
+  onRemoteRead?: RemoteReadListener;
+}
+
+const TYPING_THROTTLE_MS = 2000;
 
 // El servidor rechaza entero un post:watch/post:unwatch con más de 100 ids
 // (MAX_WATCH_POST_IDS de la api), así que se mandan en bloques de ese tamaño.
@@ -30,6 +52,26 @@ let refreshAttempted = false;
 
 const likeListenersByPost = new Map<string, Set<LikeCountListener>>();
 const commentListenersByPost = new Map<string, Set<CommentCountListener>>();
+const messageListenersByConversation = new Map<string, Set<MessageListener>>();
+const joinResultListenersByConversation = new Map<
+  string,
+  Set<ConversationJoinResultListener>
+>();
+const typingListenersByConversation = new Map<string, Set<TypingListener>>();
+const remoteReadListenersByConversation = new Map<
+  string,
+  Set<RemoteReadListener>
+>();
+const lastRemoteReadByConversation = new Map<
+  string,
+  { userId: string; readAt: string }
+>();
+const lastTypingEmitByConversation = new Map<string, number>();
+const conversationUpdatedListeners = new Set<ConversationUpdatedListener>();
+const conversationReadListeners = new Set<ConversationReadListener>();
+const presenceListeners = new Set<PresenceListener>();
+const watchedPresenceUsers = new Set<string>();
+const onlineUsers = new Set<string>();
 const pendingWatch = new Set<string>();
 const pendingUnwatch = new Set<string>();
 
@@ -62,6 +104,43 @@ function emitInChunks(
   }
 }
 
+function emitConversationJoin(
+  target: AppClientSocket,
+  conversationId: string,
+): void {
+  target.emit("conversation:join", { conversationId }, (ack) => {
+    const set = joinResultListenersByConversation.get(conversationId);
+    if (!set) return;
+    for (const listener of set) {
+      listener(ack);
+    }
+  });
+}
+
+function notifyPresenceListeners(): void {
+  const snapshot = new Set(onlineUsers);
+  for (const listener of presenceListeners) {
+    listener(snapshot);
+  }
+}
+
+function emitPresenceWatch(target: AppClientSocket, userIds: string[]): void {
+  for (let i = 0; i < userIds.length; i += MAX_IDS_PER_EVENT) {
+    const chunk = userIds.slice(i, i + MAX_IDS_PER_EVENT);
+    target.emit("presence:watch", { userIds: chunk }, (ack) => {
+      const activeSet = new Set(ack.onlineUserIds);
+      for (const id of chunk) {
+        if (activeSet.has(id)) {
+          onlineUsers.add(id);
+        } else {
+          onlineUsers.delete(id);
+        }
+      }
+      notifyPresenceListeners();
+    });
+  }
+}
+
 function getSocket(): AppClientSocket {
   if (socket) return socket;
 
@@ -88,6 +167,55 @@ function getSocket(): AppClientSocket {
     }
   });
 
+  instance.on("message:new", (message: MessageNewEvent) => {
+    const set = messageListenersByConversation.get(message.conversationId);
+    if (!set) return;
+    for (const listener of set) {
+      listener(message);
+    }
+  });
+
+  instance.on(
+    "conversation:updated",
+    (conversation: ConversationUpdatedEvent) => {
+      for (const listener of conversationUpdatedListeners) {
+        listener(conversation);
+      }
+    },
+  );
+
+  instance.on(
+    "conversation:typing",
+    ({ conversationId, userId }: ConversationTypingEvent) => {
+      const set = typingListenersByConversation.get(conversationId);
+      if (!set) return;
+      for (const listener of set) {
+        listener(userId);
+      }
+    },
+  );
+
+  instance.on(
+    "conversation:read",
+    ({ conversationId, userId, readAt }: ConversationReadEvent) => {
+      lastRemoteReadByConversation.set(conversationId, { userId, readAt });
+      const set = remoteReadListenersByConversation.get(conversationId);
+      if (!set) return;
+      for (const listener of set) {
+        listener(readAt, userId);
+      }
+    },
+  );
+
+  instance.on("user:presence", ({ userId, online }: UserPresenceEvent) => {
+    if (online) {
+      onlineUsers.add(userId);
+    } else {
+      onlineUsers.delete(userId);
+    }
+    notifyPresenceListeners();
+  });
+
   instance.on("connect", () => {
     refreshAttempted = false;
     if (!needsResubscribe) return;
@@ -102,6 +230,12 @@ function getSocket(): AppClientSocket {
       pendingWatch.delete(id);
     }
     emitInChunks(instance, "post:watch", activeIds);
+    for (const conversationId of messageListenersByConversation.keys()) {
+      emitConversationJoin(instance, conversationId);
+    }
+    if (watchedPresenceUsers.size > 0) {
+      emitPresenceWatch(instance, [...watchedPresenceUsers]);
+    }
   });
 
   instance.on("disconnect", (reason) => {
@@ -201,11 +335,180 @@ export function subscribePostComments(
 }
 
 /**
+ * Une el socket a la sala conv:{id} con conversation:join y escucha message:new
+ * de esa conversación (S3-05, S3-06). Al reconectar vuelve a mandar conversation:join.
+ */
+export function subscribeConversationMessages(
+  conversationId: string,
+  onMessage: MessageListener,
+  onJoinResult?: ConversationJoinResultListener,
+  options?: ConversationSubscriptionOptions,
+): () => void {
+  const activeSocket = getSocket();
+  const alreadyJoined = messageListenersByConversation.has(conversationId);
+
+  let messageSet = messageListenersByConversation.get(conversationId);
+  if (!messageSet) {
+    messageSet = new Set();
+    messageListenersByConversation.set(conversationId, messageSet);
+  }
+  messageSet.add(onMessage);
+
+  if (onJoinResult) {
+    let joinSet = joinResultListenersByConversation.get(conversationId);
+    if (!joinSet) {
+      joinSet = new Set();
+      joinResultListenersByConversation.set(conversationId, joinSet);
+    }
+    joinSet.add(onJoinResult);
+  }
+
+  if (options?.onTyping) {
+    let typingSet = typingListenersByConversation.get(conversationId);
+    if (!typingSet) {
+      typingSet = new Set();
+      typingListenersByConversation.set(conversationId, typingSet);
+    }
+    typingSet.add(options.onTyping);
+  }
+
+  if (options?.onRemoteRead) {
+    let readSet = remoteReadListenersByConversation.get(conversationId);
+    if (!readSet) {
+      readSet = new Set();
+      remoteReadListenersByConversation.set(conversationId, readSet);
+    }
+    readSet.add(options.onRemoteRead);
+    const cached = lastRemoteReadByConversation.get(conversationId);
+    if (cached) {
+      options.onRemoteRead(cached.readAt, cached.userId);
+    }
+  }
+
+  if (!alreadyJoined) {
+    emitConversationJoin(activeSocket, conversationId);
+  }
+
+  return () => {
+    const currentMessages = messageListenersByConversation.get(conversationId);
+    if (currentMessages) {
+      currentMessages.delete(onMessage);
+      if (currentMessages.size === 0) {
+        messageListenersByConversation.delete(conversationId);
+      }
+    }
+    if (onJoinResult) {
+      const currentJoins =
+        joinResultListenersByConversation.get(conversationId);
+      if (currentJoins) {
+        currentJoins.delete(onJoinResult);
+        if (currentJoins.size === 0) {
+          joinResultListenersByConversation.delete(conversationId);
+        }
+      }
+    }
+    if (options?.onTyping) {
+      const currentTypings = typingListenersByConversation.get(conversationId);
+      if (currentTypings) {
+        currentTypings.delete(options.onTyping);
+        if (currentTypings.size === 0) {
+          typingListenersByConversation.delete(conversationId);
+        }
+      }
+    }
+    if (options?.onRemoteRead) {
+      const currentReads =
+        remoteReadListenersByConversation.get(conversationId);
+      if (currentReads) {
+        currentReads.delete(options.onRemoteRead);
+        if (currentReads.size === 0) {
+          remoteReadListenersByConversation.delete(conversationId);
+        }
+      }
+    }
+  };
+}
+
+/**
+ * Emite conversation:typing como máximo una vez cada 2 segundos por conversación.
+ */
+export function emitConversationTyping(conversationId: string): void {
+  if (!socket) return;
+  const now = Date.now();
+  const last = lastTypingEmitByConversation.get(conversationId) ?? 0;
+  if (now - last < TYPING_THROTTLE_MS) return;
+  lastTypingEmitByConversation.set(conversationId, now);
+  socket.emit("conversation:typing", { conversationId });
+}
+
+/**
+ * Escucha conversation:updated en la sala personal user:{id} (S3-05, S3-06).
+ */
+export function subscribeConversationUpdated(
+  onConversationUpdated: ConversationUpdatedListener,
+): () => void {
+  getSocket();
+  conversationUpdatedListeners.add(onConversationUpdated);
+  return () => {
+    conversationUpdatedListeners.delete(onConversationUpdated);
+  };
+}
+
+/**
+ * Avisa en el cliente cuando una conversación se marca como leída en /chat,
+ * para que el contador del menú lateral (Sidebar) descuente sus no leídos al instante.
+ */
+export function subscribeConversationRead(
+  onConversationRead: ConversationReadListener,
+): () => void {
+  conversationReadListeners.add(onConversationRead);
+  return () => {
+    conversationReadListeners.delete(onConversationRead);
+  };
+}
+
+export function notifyConversationRead(conversationId: string): void {
+  for (const listener of conversationReadListeners) {
+    listener(conversationId);
+  }
+}
+
+/**
+ * Suscribe el socket al estado activo/inactivo (user:presence) de una lista de usuarios.
+ */
+export function watchUsersPresence(
+  userIds: string[],
+  onPresenceChange: PresenceListener,
+): () => void {
+  const activeSocket = getSocket();
+  presenceListeners.add(onPresenceChange);
+  onPresenceChange(new Set(onlineUsers));
+
+  const newIds = [...new Set(userIds)].filter(
+    (id) => !watchedPresenceUsers.has(id),
+  );
+  for (const id of newIds) {
+    watchedPresenceUsers.add(id);
+  }
+  if (newIds.length > 0) {
+    emitPresenceWatch(activeSocket, newIds);
+  }
+
+  return () => {
+    presenceListeners.delete(onPresenceChange);
+  };
+}
+
+/**
  * Cierra el socket antes de POST /api/auth/logout (docs/05-api.md).
  */
 export function disconnectSocket(): void {
   pendingWatch.clear();
   pendingUnwatch.clear();
+  lastRemoteReadByConversation.clear();
+  lastTypingEmitByConversation.clear();
+  watchedPresenceUsers.clear();
+  onlineUsers.clear();
   needsResubscribe = false;
   refreshAttempted = false;
   if (!socket) return;

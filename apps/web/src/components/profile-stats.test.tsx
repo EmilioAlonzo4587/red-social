@@ -7,6 +7,9 @@ import { ProfileStats } from "./profile-stats";
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 const { FollowListModal } = vi.hoisted(() => ({
   FollowListModal: vi.fn(
     ({ kind, onClose }: { kind: string; onClose: () => void }) => (
@@ -33,6 +36,7 @@ describe("ProfileStats", () => {
   beforeEach(() => {
     apiFetchClient.mockReset();
     FollowListModal.mockClear();
+    push.mockClear();
   });
 
   it("tocar 'seguidores' abre la lista de seguidores", async () => {
@@ -150,5 +154,14 @@ describe("ProfileStats", () => {
       expect(screen.getByRole("button", { name: "Seguir" })).toBeEnabled();
     });
     expect(screen.getByText("10")).toBeInTheDocument();
+  });
+
+  it("tocar 'Mensaje' navega a /chat?username= sin pedir nada a la api (S3-06)", async () => {
+    const user = userEvent.setup();
+    render(<ProfileStats {...BASE_PROPS} />);
+    await user.click(screen.getByRole("button", { name: "Mensaje" }));
+
+    expect(push).toHaveBeenCalledWith("/chat?username=ana_lopez");
+    expect(apiFetchClient).not.toHaveBeenCalled();
   });
 });

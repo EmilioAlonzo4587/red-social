@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import type { MeDto } from "@red/api-types";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import type { ConversationDto, MeDto } from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./sidebar";
 
@@ -10,6 +10,25 @@ vi.mock("next/navigation", () => ({
 
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
+
+const { onUpdated, onRead } = vi.hoisted(() => ({
+  onUpdated: { current: null as ((c: ConversationDto) => void) | null },
+  onRead: { current: null as ((id: string) => void) | null },
+}));
+vi.mock("@/lib/socket", () => ({
+  subscribeConversationUpdated: vi.fn((cb: (c: ConversationDto) => void) => {
+    onUpdated.current = cb;
+    return () => {
+      onUpdated.current = null;
+    };
+  }),
+  subscribeConversationRead: vi.fn((cb: (id: string) => void) => {
+    onRead.current = cb;
+    return () => {
+      onRead.current = null;
+    };
+  }),
+}));
 
 const ME: MeDto = {
   id: "u1",
@@ -92,5 +111,57 @@ describe("Sidebar", () => {
       screen.getByRole("link", { name: "Notificaciones" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Mensajes" })).toBeInTheDocument();
+  });
+
+  it("muestra la suma de no leídos de la bandeja y la actualiza con conversation:updated y al leer (S3-06)", async () => {
+    const conv1: ConversationDto = {
+      id: "c1",
+      otherUser: {
+        id: "u2",
+        username: "beto",
+        displayName: "Beto",
+        avatarPublicId: null,
+      },
+      lastMessage: null,
+      unread: 2,
+    };
+    const conv2: ConversationDto = {
+      id: "c2",
+      otherUser: {
+        id: "u3",
+        username: "carla",
+        displayName: "Carla",
+        avatarPublicId: null,
+      },
+      lastMessage: null,
+      unread: 1,
+    };
+    apiFetchClient
+      .mockResolvedValueOnce(ME)
+      .mockResolvedValueOnce([conv1, conv2]);
+
+    render(<Sidebar />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("3 sin leer")).toHaveTextContent("3");
+    });
+
+    // Llega un mensaje más en c1 por socket (unread pasa de 2 a 3 -> total 4)
+    act(() => {
+      onUpdated.current?.({ ...conv1, unread: 3 });
+    });
+    expect(screen.getByLabelText("4 sin leer")).toHaveTextContent("4");
+
+    // Se lee c1 en /chat (unread de c1 pasa a 0 -> total 1)
+    act(() => {
+      onRead.current?.("c1");
+    });
+    expect(screen.getByLabelText("1 sin leer")).toHaveTextContent("1");
+
+    // Se lee c2 -> total 0, desaparece la insignia
+    act(() => {
+      onRead.current?.("c2");
+    });
+    expect(screen.queryByLabelText(/sin leer/)).not.toBeInTheDocument();
   });
 });

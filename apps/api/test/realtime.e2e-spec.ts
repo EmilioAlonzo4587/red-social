@@ -10,6 +10,7 @@ import { configureApp } from './../src/configure-app';
 import { PrismaService } from './../src/prisma/prisma.service';
 import {
   type ConversationJoinAck,
+  type PresenceWatchAck,
   conversationRoom,
   postRoom,
   userRoom,
@@ -484,6 +485,130 @@ describe('Socket.io autenticado (e2e)', () => {
         .expect(201);
       await new Promise((r) => setTimeout(r, 50));
       expect(carlaReceived).toBe(false);
+    });
+
+    function sendMessage(
+      token: string,
+      conversationId: string,
+      content: string,
+    ) {
+      return request(app.getHttpServer())
+        .post(`/api/conversations/${conversationId}/messages`)
+        .set('Cookie', `access_token=${token}`)
+        .send({ content })
+        .expect(201);
+    }
+
+    // Espera un poco y confirma que el evento nunca llegó a ese socket
+    async function expectNothing(socket: Socket, event: string) {
+      let received = false;
+      const mark = () => {
+        received = true;
+      };
+      socket.on(event, mark);
+      await new Promise((r) => setTimeout(r, 100));
+      socket.off(event, mark);
+      expect(received).toBe(false);
+    }
+
+    it('conversation:typing llega solo al otro participante y se ignora de quien no está en la sala (S3-06)', async () => {
+      const ana = await registerUser('ana');
+      const beto = await registerUser('beto');
+      const carla = await registerUser('carla');
+      const conversationId = await openConversation(ana.access, 'beto');
+
+      const anaSocket = connect(withCookie(ana.access));
+      const betoSocket = connect(withCookie(beto.access));
+      const carlaSocket = connect(withCookie(carla.access));
+      await Promise.all(
+        [anaSocket, betoSocket, carlaSocket].map((socket) =>
+          waitFor(socket, ['session:ready']),
+        ),
+      );
+      await joinConversation(anaSocket, { conversationId });
+      await joinConversation(betoSocket, { conversationId });
+
+      // Carla no participa: su aviso no llega a nadie
+      carlaSocket.emit('conversation:typing', { conversationId });
+      await expectNothing(betoSocket, 'conversation:typing');
+
+      const onBeto = waitFor(betoSocket, ['conversation:typing']);
+      const anaEcho = expectNothing(anaSocket, 'conversation:typing');
+      anaSocket.emit('conversation:typing', { conversationId });
+      expect(await onBeto).toEqual({
+        event: 'conversation:typing',
+        data: { conversationId, userId: ana.id },
+      });
+      await anaEcho;
+    });
+
+    it('marcar como leída emite conversation:read a la sala y se repite al unirse (S3-06)', async () => {
+      const ana = await registerUser('ana');
+      const beto = await registerUser('beto');
+      const conversationId = await openConversation(ana.access, 'beto');
+      await sendMessage(ana.access, conversationId, 'Hola');
+
+      const anaSocket = connect(withCookie(ana.access));
+      await waitFor(anaSocket, ['session:ready']);
+      await joinConversation(anaSocket, { conversationId });
+
+      const onRead = waitFor(anaSocket, ['conversation:read']);
+      await request(app.getHttpServer())
+        .post(`/api/conversations/${conversationId}/read`)
+        .set('Cookie', `access_token=${beto.access}`)
+        .expect(204);
+      const live = await onRead;
+      expect(live).toEqual({
+        event: 'conversation:read',
+        data: {
+          conversationId,
+          userId: beto.id,
+          readAt: expect.any(String) as unknown,
+        },
+      });
+
+      // Una pestaña nueva de Ana recibe el "Visto" de Beto al unirse
+      const anaTab = connect(withCookie(ana.access));
+      await waitFor(anaTab, ['session:ready']);
+      const onJoinRead = waitFor(anaTab, ['conversation:read']);
+      await joinConversation(anaTab, { conversationId });
+      expect(await onJoinRead).toEqual(live);
+    });
+
+    it('presence:watch solo revela contactos del chat y avisa cuando se desconectan (S3-06)', async () => {
+      const ana = await registerUser('ana');
+      const beto = await registerUser('beto');
+      const carla = await registerUser('carla');
+      await openConversation(ana.access, 'beto');
+
+      const anaSocket = connect(withCookie(ana.access));
+      const betoSocket = connect(withCookie(beto.access));
+      const carlaSocket = connect(withCookie(carla.access));
+      await Promise.all(
+        [anaSocket, betoSocket, carlaSocket].map((socket) =>
+          waitFor(socket, ['session:ready']),
+        ),
+      );
+
+      // Carla está conectada, pero no tiene conversación con Ana: no aparece
+      const ack = await new Promise<PresenceWatchAck>((resolve) => {
+        anaSocket.emit(
+          'presence:watch',
+          { userIds: [beto.id, carla.id] },
+          resolve,
+        );
+      });
+      expect(ack).toEqual({ onlineUserIds: [beto.id] });
+
+      const onPresence = waitFor(anaSocket, ['user:presence']);
+      const carlaGone = expectNothing(anaSocket, 'user:presence');
+      carlaSocket.disconnect();
+      await carlaGone;
+      betoSocket.disconnect();
+      expect(await onPresence).toEqual({
+        event: 'user:presence',
+        data: { userId: beto.id, online: false },
+      });
     });
   });
 

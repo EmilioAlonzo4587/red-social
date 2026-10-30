@@ -27,6 +27,7 @@ describe('ConversationsService', () => {
       createMany: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
     message: { create: jest.fn() },
   };
@@ -176,6 +177,58 @@ describe('ConversationsService', () => {
         createdAt,
       });
       expect(conversation.unread).toBe(1);
+    });
+  });
+
+  describe('filterContacts (S3-06)', () => {
+    it('deja solo a quienes tienen conversación con el usuario, en cualquier lado de la pareja', async () => {
+      prisma.conversation.findMany.mockResolvedValueOnce([
+        { userAId: ANA, userBId: BETO },
+      ]);
+      await expect(service.filterContacts(BETO, [ANA, CARLA])).resolves.toEqual(
+        [ANA],
+      );
+
+      prisma.conversation.findMany.mockResolvedValueOnce([
+        { userAId: ANA, userBId: CARLA },
+      ]);
+      await expect(service.filterContacts(ANA, [CARLA])).resolves.toEqual([
+        CARLA,
+      ]);
+    });
+
+    it('sin ids no consulta la base', async () => {
+      await expect(service.filterContacts(ANA, [])).resolves.toEqual([]);
+      expect(prisma.conversation.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('markRead (S3-06)', () => {
+    it('emite conversation.read con la fecha que guardó la base', async () => {
+      const readAt = new Date('2026-10-30T12:00:00Z');
+      prisma.conversation.findUnique.mockResolvedValueOnce({
+        userAId: ANA,
+        userBId: BETO,
+      });
+      prisma.$queryRaw.mockResolvedValueOnce([{ readAt }]);
+
+      await service.markRead('c1', BETO);
+      expect(events.emit).toHaveBeenCalledWith('conversation.read', {
+        conversationId: 'c1',
+        userId: BETO,
+        readAt,
+      });
+    });
+
+    it('sin mensajes no actualiza nada ni emite', async () => {
+      prisma.conversation.findUnique.mockResolvedValueOnce({
+        userAId: ANA,
+        userBId: BETO,
+      });
+      prisma.$queryRaw.mockResolvedValueOnce([]);
+
+      await service.markRead('c1', BETO);
+      expect(events.emit).not.toHaveBeenCalled();
     });
   });
 

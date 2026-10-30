@@ -65,6 +65,7 @@ Los tipos están en `apps/api/src/events/domain-events.ts`. Un servicio emite co
 | `comment.changed` | Comentarios (S3-01) | `{ postId, postAuthorId, actorId, commentId, change, commentCount }` | Gateway: `post:comments` a `post:{postId}`. Notificaciones: crea la de comentario si `change` es `added` |
 | `follow.created` | Seguimiento (S2-06), solo si se creó la fila | `{ followerId, followingId }` | Notificaciones |
 | `message.created` | Chat (S3-04) | `{ message: Message, recipientId }` | Gateway: `message:new` a `conv:{conversationId}` y `conversation:updated` a los dos participantes. Notificaciones |
+| `conversation.read` | Chat (S3-06) | `{ conversationId, userId, readAt }` | Gateway: `conversation:read` a `conv:{conversationId}` |
 | `notification.created` | Notificaciones (S3-03) | `{ recipientId, notification: Notification }` | Gateway: `notification:new` a `user:{recipientId}` |
 
 Reglas:
@@ -101,7 +102,8 @@ sequenceDiagram
 |---|---|---|
 | `user:{id}` | Cada usuario al conectarse, con todas sus pestañas (S1-04) | `notification:new`, `conversation:updated` |
 | `post:{id}` | Clientes con esa publicación en pantalla | `post:likes`, `post:comments` |
-| `conv:{id}` | Participantes de la conversación, verificados al unirse | `message:new` |
+| `conv:{id}` | Participantes de la conversación, verificados al unirse | `message:new`, `conversation:typing`, `conversation:read` |
+| `presence:{id}` | Quien tiene una conversación con ese usuario y envió `presence:watch` (S3-06) | `user:presence` |
 
 El Gateway valida la cookie en el handshake con el mismo `SessionTokenService` que el guard HTTP y cierra el socket cuando vence el JWT, así un logout o el cierre de sesiones de RN12 llega al socket en 15 minutos como máximo. `session:ready` se envía solo al socket que se conecta, no a la sala.
 

@@ -22,6 +22,30 @@ export interface ConversationJoinPayload {
 export type ConversationJoinAck =
   { ok: true } | { ok: false; error: 'forbidden' };
 
+export interface ConversationTypingEvent {
+  conversationId: string;
+  userId: string;
+}
+
+export interface ConversationReadSocketEvent {
+  conversationId: string;
+  userId: string;
+  readAt: string;
+}
+
+export interface PresenceWatchPayload {
+  userIds: string[];
+}
+
+export interface PresenceWatchAck {
+  onlineUserIds: string[];
+}
+
+export interface UserPresenceEvent {
+  userId: string;
+  online: boolean;
+}
+
 export interface MessageNewEvent {
   id: string;
   conversationId: string;
@@ -55,6 +79,11 @@ export interface ClientToServerEvents {
     data: ConversationJoinPayload,
     ack?: (res: ConversationJoinAck) => void,
   ) => void;
+  'conversation:typing': (data: ConversationJoinPayload) => void;
+  'presence:watch': (
+    data: PresenceWatchPayload,
+    ack?: (res: PresenceWatchAck) => void,
+  ) => void;
 }
 
 // Servidor → cliente
@@ -64,6 +93,9 @@ export interface ServerToClientEvents {
   'post:comments': (data: PostCommentsEvent) => void;
   'message:new': (data: MessageNewEvent) => void;
   'conversation:updated': (data: ConversationUpdatedEvent) => void;
+  'conversation:typing': (data: ConversationTypingEvent) => void;
+  'conversation:read': (data: ConversationReadSocketEvent) => void;
+  'user:presence': (data: UserPresenceEvent) => void;
   'notification:new': (data: NotificationNewEvent) => void;
 }
 
@@ -78,3 +110,4 @@ export const userRoom = (userId: string) => `user:${userId}`;
 export const postRoom = (postId: string) => `post:${postId}`;
 export const conversationRoom = (conversationId: string) =>
   `conv:${conversationId}`;
+export const presenceRoom = (userId: string) => `presence:${userId}`;

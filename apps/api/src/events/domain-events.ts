@@ -56,6 +56,13 @@ export interface MessageCreatedEvent {
   recipientId: string;
 }
 
+// El Gateway envía conversation:read a conv:{conversationId} cuando un participante lee el chat
+export interface ConversationReadEvent {
+  conversationId: string;
+  userId: string;
+  readAt: Date;
+}
+
 // Igual que Notification de docs/05-api.md
 export interface NotificationData {
   id: string;
@@ -79,6 +86,7 @@ export interface DomainEventMap {
   'comment.changed': CommentChangedEvent;
   'follow.created': FollowCreatedEvent;
   'message.created': MessageCreatedEvent;
+  'conversation.read': ConversationReadEvent;
   'notification.created': NotificationCreatedEvent;
 }
 

@@ -4,10 +4,16 @@ import {
   PostWatchDto,
   parseWsDto,
 } from './dto/post-watch.dto';
-import { conversationRoom, postRoom, userRoom } from './realtime.events';
+import {
+  conversationRoom,
+  postRoom,
+  presenceRoom,
+  userRoom,
+} from './realtime.events';
 import {
   MAX_JOINED_CONVERSATIONS_PER_SOCKET,
   MAX_WATCHED_POSTS_PER_SOCKET,
+  MAX_WATCHED_PRESENCE_PER_SOCKET,
   RealtimeGateway,
   msUntilExpiry,
 } from './realtime.gateway';
@@ -86,6 +92,8 @@ describe('RealtimeGateway (likes en vivo)', () => {
     const conversations = {
       isParticipant: jest.fn(),
       findOneForUser: jest.fn(),
+      getOtherLastReadAt: jest.fn(),
+      filterContacts: jest.fn(),
     };
     const gateway = new RealtimeGateway(
       {} as never,
@@ -394,6 +402,142 @@ describe('RealtimeGateway (likes en vivo)', () => {
         read: false,
         createdAt: '2026-10-30T15:05:00.000Z',
       });
+    });
+
+    it('conversation:typing reenvía al otro participante solo si el socket está en conv:{id} y conversation.read emite conversation:read (S3-06)', () => {
+      const { gateway, to, emit } = createGateway();
+      const socketEmit = jest.fn();
+      const socketTo = jest.fn().mockReturnValue({ emit: socketEmit });
+
+      // Si no está en la sala conv:{id}, ignora conversation:typing
+      gateway.handleConversationTyping(
+        {
+          to: socketTo,
+          rooms: new Set(),
+          data: { userId: 'u1', expiresAt: 0 },
+        } as never,
+        { conversationId: VALID_ID_1 },
+      );
+      expect(socketTo).not.toHaveBeenCalled();
+
+      // Si ya está en la sala conv:{id}, reenvía conversation:typing al resto de la sala
+      gateway.handleConversationTyping(
+        {
+          to: socketTo,
+          rooms: new Set([conversationRoom(VALID_ID_1)]),
+          data: { userId: 'u1', expiresAt: 0 },
+        } as never,
+        { conversationId: VALID_ID_1 },
+      );
+      expect(socketTo).toHaveBeenCalledWith(conversationRoom(VALID_ID_1));
+      expect(socketEmit).toHaveBeenCalledWith('conversation:typing', {
+        conversationId: VALID_ID_1,
+        userId: 'u1',
+      });
+
+      const readAt = new Date('2026-10-30T15:10:00.000Z');
+      gateway.handleConversationRead({
+        conversationId: VALID_ID_1,
+        userId: 'u2',
+        readAt,
+      });
+      expect(to).toHaveBeenCalledWith(conversationRoom(VALID_ID_1));
+      expect(emit).toHaveBeenCalledWith('conversation:read', {
+        conversationId: VALID_ID_1,
+        userId: 'u2',
+        readAt: '2026-10-30T15:10:00.000Z',
+      });
+    });
+
+    it('presence:watch une a presence:{id}, devuelve usuarios conectados y avisa user:presence al conectar/desconectar (S3-06)', async () => {
+      const { gateway, to, emit, conversations } = createGateway();
+      conversations.filterContacts.mockImplementation(
+        (_userId: string, ids: string[]) => Promise.resolve(ids),
+      );
+      const adapterRooms = new Map<string, Set<string>>([
+        [userRoom(VALID_ID_1), new Set(['s-activo'])],
+      ]);
+      gateway.server = {
+        to,
+        sockets: { adapter: { rooms: adapterRooms } },
+      } as never;
+
+      const join = jest.fn().mockResolvedValue(undefined);
+      const ack = await gateway.handlePresenceWatch(
+        {
+          join,
+          rooms: new Set(),
+          data: { userId: 'u9', expiresAt: 0 },
+        } as never,
+        { userIds: [VALID_ID_1, VALID_ID_2] },
+      );
+
+      expect(join).toHaveBeenCalledWith([
+        presenceRoom(VALID_ID_1),
+        presenceRoom(VALID_ID_2),
+      ]);
+      expect(ack).toEqual({ onlineUserIds: [VALID_ID_1] });
+
+      // Al desconectarse la última pestaña de VALID_ID_2, emite user:presence con online: false
+      gateway.handleDisconnect({
+        data: { userId: VALID_ID_2, expiresAt: 0 },
+      } as never);
+      expect(to).toHaveBeenCalledWith(presenceRoom(VALID_ID_2));
+      expect(emit).toHaveBeenCalledWith('user:presence', {
+        userId: VALID_ID_2,
+        online: false,
+      });
+    });
+
+    it('presence:watch ignora a quien no es contacto del chat y no revela su estado (S3-06)', async () => {
+      const { gateway, to, conversations } = createGateway();
+      conversations.filterContacts.mockResolvedValueOnce([]);
+      gateway.server = {
+        to,
+        sockets: {
+          adapter: {
+            rooms: new Map([[userRoom(VALID_ID_1), new Set(['s-activo'])]]),
+          },
+        },
+      } as never;
+      const join = jest.fn();
+
+      const ack = await gateway.handlePresenceWatch(
+        {
+          join,
+          rooms: new Set(),
+          data: { userId: 'u9', expiresAt: 0 },
+        } as never,
+        { userIds: [VALID_ID_1] },
+      );
+
+      expect(conversations.filterContacts).toHaveBeenCalledWith('u9', [
+        VALID_ID_1,
+      ]);
+      expect(join).not.toHaveBeenCalled();
+      expect(ack).toEqual({ onlineUserIds: [] });
+    });
+
+    it('presence:watch no pasa de MAX_WATCHED_PRESENCE_PER_SOCKET salas', async () => {
+      const { gateway, to, conversations } = createGateway();
+      conversations.filterContacts.mockResolvedValueOnce([VALID_ID_1]);
+      gateway.server = {
+        to,
+        sockets: { adapter: { rooms: new Map() } },
+      } as never;
+      const rooms = new Set(
+        Array.from({ length: MAX_WATCHED_PRESENCE_PER_SOCKET }, (_, i) =>
+          presenceRoom(`p-${i}`),
+        ),
+      );
+      const join = jest.fn();
+
+      await gateway.handlePresenceWatch(
+        { join, rooms, data: { userId: 'u9', expiresAt: 0 } } as never,
+        { userIds: [VALID_ID_1] },
+      );
+
+      expect(join).not.toHaveBeenCalled();
     });
   });
 });

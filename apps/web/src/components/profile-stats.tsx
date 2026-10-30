@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { FollowStatusDto } from "@red/api-types";
 import { apiFetchClient } from "@/lib/api-client";
@@ -21,12 +22,18 @@ export function ProfileStats({
   initialFollowerCount: number;
   initialIsFollowing: boolean;
 }) {
+  const router = useRouter();
   const [followerCount, setFollowerCount] = useState(initialFollowerCount);
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [submitting, setSubmitting] = useState(false);
   const [openList, setOpenList] = useState<"followers" | "following" | null>(
     null,
   );
+
+  // /chat abre (o crea) la conversación con ?username=: no hace falta pedirla aquí
+  function openChat() {
+    router.push(`/chat?username=${encodeURIComponent(username)}`);
+  }
 
   async function toggleFollow() {
     if (submitting) return;
@@ -95,6 +102,7 @@ export function ProfileStats({
             </button>
             <button
               type="button"
+              onClick={openChat}
               className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface"
             >
               Mensaje
