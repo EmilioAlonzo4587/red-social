@@ -20,4 +20,9 @@ describe("Avatar", () => {
     expect(screen.queryByText("AL")).not.toBeInTheDocument();
     expect(container.querySelectorAll("img")).toHaveLength(1);
   });
+
+  it("size xl usa 80px (S4-09: tamaño grande para el encabezado de perfil)", () => {
+    const { container } = render(<Avatar name="Ana López" size="xl" />);
+    expect(container.firstChild).toHaveClass("h-20", "w-20");
+  });
 });

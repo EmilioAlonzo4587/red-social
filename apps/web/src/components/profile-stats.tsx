@@ -75,7 +75,7 @@ export function ProfileStats({
         {isOwnProfile ? (
           <Link
             href="/perfil/editar"
-            className="flex-1 rounded-md border border-border px-4 py-2 text-center text-sm font-medium hover:bg-surface"
+            className="flex-1 rounded-lg border border-border px-4 py-2 text-center text-sm font-medium hover:bg-surface"
           >
             Editar perfil
           </Link>
@@ -87,15 +87,15 @@ export function ProfileStats({
               disabled={submitting}
               className={
                 isFollowing
-                  ? "flex-1 rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:opacity-50"
-                  : "flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
+                  ? "flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:opacity-50"
+                  : "flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
               }
             >
               {isFollowing ? "Siguiendo" : "Seguir"}
             </button>
             <button
               type="button"
-              className="flex-1 rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface"
+              className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface"
             >
               Mensaje
             </button>

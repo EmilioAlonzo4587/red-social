@@ -126,7 +126,7 @@ export function EditProfileForm({ me }: { me: MeDto }) {
       className="mt-6 flex flex-col gap-6"
     >
       {errors.general && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
           {errors.general}
         </p>
       )}
@@ -142,7 +142,7 @@ export function EditProfileForm({ me }: { me: MeDto }) {
           <Avatar
             name={displayName || me.username}
             avatarPublicId={hasCurrentAvatar ? me.avatarPublicId : null}
-            size="lg"
+            size="xl"
           />
         )}
 
@@ -185,7 +185,7 @@ export function EditProfileForm({ me }: { me: MeDto }) {
           value={displayName}
           onChange={(event) => setDisplayName(event.target.value)}
           aria-invalid={Boolean(errors.displayName)}
-          className="rounded-md border border-border px-3 py-2 outline-primary"
+          className="rounded-lg border border-border px-3 py-2 outline-primary"
         />
         <div className="flex justify-between text-xs">
           <span className="text-red-600">{errors.displayName}</span>
@@ -207,7 +207,7 @@ export function EditProfileForm({ me }: { me: MeDto }) {
           value={bio}
           onChange={(event) => setBio(event.target.value)}
           aria-invalid={Boolean(errors.bio)}
-          className="resize-none rounded-md border border-border px-3 py-2 outline-primary"
+          className="resize-none rounded-lg border border-border px-3 py-2 outline-primary"
         />
         <div className="flex justify-between text-xs">
           <span className="text-red-600">{errors.bio}</span>
@@ -220,14 +220,14 @@ export function EditProfileForm({ me }: { me: MeDto }) {
       <div className="flex gap-3">
         <Link
           href={`/u/${me.username}`}
-          className="flex-1 rounded-md border border-border px-4 py-2 text-center font-medium hover:bg-surface"
+          className="flex-1 rounded-lg border border-border px-4 py-2 text-center font-medium hover:bg-surface"
         >
           Cancelar
         </Link>
         <button
           type="submit"
           disabled={submitting}
-          className="flex-1 rounded-md bg-primary px-4 py-2 font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex-1 rounded-lg bg-primary px-4 py-2 font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? "Guardando…" : "Guardar cambios"}
         </button>

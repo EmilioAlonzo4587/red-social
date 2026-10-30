@@ -88,7 +88,7 @@ export default function RegistroPage() {
       <h1 className="text-2xl font-bold">Crear cuenta</h1>
 
       {errors.general && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
           {errors.general}
         </p>
       )}
@@ -106,7 +106,7 @@ export default function RegistroPage() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             aria-invalid={Boolean(errors.username)}
-            className="rounded-md border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-red-500"
+            className="rounded-lg border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-red-500"
             placeholder="ana_garcia"
           />
           <p className={`text-xs ${errors.username ? "text-red-600" : "text-muted"}`}>
@@ -126,7 +126,7 @@ export default function RegistroPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             aria-invalid={Boolean(errors.email)}
-            className="rounded-md border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-red-500"
+            className="rounded-lg border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-red-500"
             placeholder="ana@correo.com"
           />
           {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
@@ -153,7 +153,7 @@ export default function RegistroPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+          className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
         >
           {submitting ? "Creando cuenta..." : "Crear cuenta"}
         </button>

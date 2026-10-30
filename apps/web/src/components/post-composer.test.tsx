@@ -54,13 +54,13 @@ describe("PostComposer", () => {
     expect(screen.getByRole("button", { name: "Publicar" })).toBeDisabled();
   });
 
-  it("muestra el contador de caracteres restantes al escribir", async () => {
+  it("muestra el contador de caracteres al escribir", async () => {
     const user = userEvent.setup();
     render(<PostComposer />);
-    const textarea = screen.getByPlaceholderText("¿Qué está pasando?");
+    const textarea = screen.getByPlaceholderText("¿Qué estás pensando?");
     await user.type(textarea, "hola");
     expect(
-      screen.getByText(`${MAX_CONTENT_LENGTH - 4} caracteres restantes`),
+      screen.getByText(`4 / ${MAX_CONTENT_LENGTH}`),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Publicar" })).toBeEnabled();
   });
@@ -111,7 +111,7 @@ describe("PostComposer", () => {
     const onPosted = vi.fn();
 
     render(<PostComposer onPosted={onPosted} />);
-    const textarea = screen.getByPlaceholderText("¿Qué está pasando?");
+    const textarea = screen.getByPlaceholderText("¿Qué estás pensando?");
     await user.type(textarea, "hola");
     const input = screen.getByLabelText("Agregar imágenes", {
       selector: "input",
@@ -172,7 +172,7 @@ describe("PostComposer", () => {
     );
 
     render(<PostComposer />);
-    await user.type(screen.getByPlaceholderText("¿Qué está pasando?"), "hola");
+    await user.type(screen.getByPlaceholderText("¿Qué estás pensando?"), "hola");
     await user.click(screen.getByRole("button", { name: "Publicar" }));
 
     await waitFor(() => {

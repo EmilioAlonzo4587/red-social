@@ -2,40 +2,39 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import type { MeDto } from "@red/api-types";
-import { NavProfile } from "@/components/nav-profile";
 import { UserSearch } from "@/components/user-search";
-import { apiFetchClient } from "@/lib/api-client";
 import { PUBLIC_PATHS } from "@/lib/public-paths";
 
 export function Navbar() {
   const pathname = usePathname();
   const isPublic = PUBLIC_PATHS.includes(pathname);
-  const [me, setMe] = useState<MeDto | null>(null);
-  const [meLoading, setMeLoading] = useState(true);
 
-  // S3-19: para la tarjeta "estás en tu cuenta" de la esquina superior derecha.
-  useEffect(() => {
-    if (isPublic) return;
-    apiFetchClient<MeDto>("/api/auth/me")
-      .then((result) => setMe(result))
-      .catch(() => {})
-      .finally(() => setMeLoading(false));
-  }, [isPublic]);
-
+  // S4-09, como el mockup: marca a la izquierda y buscador a la derecha. La cuenta
+  // activa ya no va aquí (era NavProfile, S3-19): está en la tarjeta "Tu perfil" de /feed.
   return (
-    <header className="sticky top-0 z-10 border-b border-border bg-surface">
-      <nav className="flex h-16 items-center gap-4 px-4">
+    <header className="sticky top-0 z-10 border-b border-border bg-background">
+      <nav className="flex h-16 items-center gap-4 px-5">
         <Link
           href={isPublic ? "/" : "/feed"}
-          className="shrink-0 text-xl font-bold text-primary"
+          className="flex shrink-0 items-center gap-2 text-xl font-bold text-primary"
         >
+          <svg
+            width="26"
+            height="26"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className="shrink-0"
+          >
+            <rect width="24" height="24" rx="6" className="fill-primary" />
+            <path
+              d="M6 8.5A2.5 2.5 0 0 1 8.5 6h7A2.5 2.5 0 0 1 18 8.5v4a2.5 2.5 0 0 1-2.5 2.5H11l-3 3v-3h0.5A2.5 2.5 0 0 1 6 12.5z"
+              fill="#fff"
+            />
+          </svg>
           ChatInit
         </Link>
 
         {!isPublic && <UserSearch />}
-        {!isPublic && <NavProfile me={me} loading={meLoading} />}
       </nav>
     </header>
   );

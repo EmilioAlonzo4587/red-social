@@ -41,7 +41,6 @@ export function PostComposer({
   const [success, setSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const remaining = MAX_CONTENT_LENGTH - content.length;
   const canAddMore = images.length < MAX_IMAGES;
   const hasImageError = images.some((image) => image.error !== null);
   const canSubmit =
@@ -150,10 +149,10 @@ export function PostComposer({
     <form
       noValidate
       onSubmit={handleSubmit}
-      className="flex flex-col gap-3 border-b border-border py-4"
+      className="flex flex-col gap-2.5 rounded-xl border border-border p-3 focus-within:border-primary"
     >
       <label htmlFor="post-content" className="sr-only">
-        ¿Qué está pasando?
+        ¿Qué estás pensando?
       </label>
       <textarea
         id="post-content"
@@ -163,14 +162,10 @@ export function PostComposer({
           setSuccess(false);
         }}
         maxLength={MAX_CONTENT_LENGTH}
-        placeholder="¿Qué está pasando?"
+        placeholder="¿Qué estás pensando?"
         rows={3}
-        className="w-full resize-none rounded-md border border-border bg-background p-3 text-sm outline-primary"
+        className="min-h-11 w-full resize-none bg-background text-base leading-relaxed outline-none placeholder:text-muted"
       />
-
-      <div className="flex items-center justify-between text-xs text-muted">
-        <span>{remaining} caracteres restantes</span>
-      </div>
 
       {images.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
@@ -181,7 +176,7 @@ export function PostComposer({
               <img
                 src={image.previewUrl}
                 alt={`Vista previa de ${image.file.name}`}
-                className="aspect-video w-full rounded-md border border-border object-cover"
+                className="aspect-video w-full rounded-xl border border-border object-cover"
               />
               <button
                 type="button"
@@ -207,19 +202,22 @@ export function PostComposer({
       )}
 
       {generalError && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
           {generalError}
         </p>
       )}
 
       {success && (
-        <p className="rounded-md bg-surface px-3 py-2 text-sm text-primary">
+        <p className="rounded-xl bg-surface px-3 py-2 text-sm text-primary">
           Publicación creada.
         </p>
       )}
 
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-muted tabular-nums">
+            {content.length} / {MAX_CONTENT_LENGTH}
+          </span>
           <label
             htmlFor="post-images"
             className={`cursor-pointer text-sm font-medium text-primary ${
@@ -246,7 +244,7 @@ export function PostComposer({
         <button
           type="submit"
           disabled={!canSubmit}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? "Publicando…" : "Publicar"}
         </button>

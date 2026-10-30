@@ -9,7 +9,7 @@ export default function ProfileNotFound() {
       </p>
       <Link
         href="/feed"
-        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
       >
         Volver al feed
       </Link>

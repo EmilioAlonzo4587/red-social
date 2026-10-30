@@ -84,7 +84,7 @@ export function UserSearch() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-sm"
+      className="relative ml-auto w-full max-w-[360px]"
       onKeyDown={(event) => {
         if (event.key === "Escape") setOpen(false);
       }}
@@ -97,11 +97,11 @@ export function UserSearch() {
         maxLength={MAX_LENGTH}
         placeholder="Buscar personas..."
         aria-label="Buscar personas"
-        className="w-full rounded-md border border-border bg-background px-4 py-2 text-base outline-primary"
+        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-primary placeholder:text-muted"
       />
 
       {showPanel && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-96 overflow-y-auto rounded-md border border-border bg-background shadow-lg">
+        <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-96 overflow-y-auto rounded-xl border border-border bg-background shadow-lg">
           {status === "loading" && (
             <p className="px-4 py-3 text-sm text-muted">Buscando…</p>
           )}

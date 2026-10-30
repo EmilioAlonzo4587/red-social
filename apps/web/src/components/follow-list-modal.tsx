@@ -98,7 +98,7 @@ export function FollowListModal({
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="flex max-h-[80vh] w-full max-w-sm flex-col rounded-lg bg-background shadow-lg"
+        className="flex max-h-[80vh] w-full max-w-sm flex-col rounded-xl bg-background shadow-lg"
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 className="font-semibold">{TITLES[kind]}</h2>
@@ -159,7 +159,7 @@ export function FollowListModal({
                 type="button"
                 onClick={loadMore}
                 disabled={status === "loading-more"}
-                className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:opacity-50"
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:opacity-50"
               >
                 {status === "loading-more" ? "Cargando…" : "Cargar más"}
               </button>

@@ -191,11 +191,11 @@ export default function ChatPage() {
                 onChange={(e) => setDraft(e.target.value)}
                 maxLength={MESSAGE_MAX}
                 placeholder="Escribe un mensaje..."
-                className="flex-1 rounded-md border border-border px-3 py-2 text-sm outline-primary"
+                className="flex-1 rounded-lg border border-border px-3 py-2 text-sm outline-primary"
               />
               <button
                 type="submit"
-                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
               >
                 Enviar
               </button>
