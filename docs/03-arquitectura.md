@@ -65,6 +65,7 @@ Los tipos están en `apps/api/src/events/domain-events.ts`. Un servicio emite co
 | `comment.changed` | Comentarios (S3-01) | `{ postId, postAuthorId, actorId, commentId, change, commentCount }` | Gateway: `post:comments` a `post:{postId}`. Notificaciones: crea la de comentario si `change` es `added` |
 | `follow.created` | Seguimiento (S2-06), solo si se creó la fila | `{ followerId, followingId }` | Notificaciones |
 | `message.created` | Chat (S3-04) | `{ message: Message, recipientId }` | Gateway: `message:new` a `conv:{conversationId}` y `conversation:updated` a los dos participantes. Notificaciones |
+| `conversation.read` | Chat (S3-06) | `{ conversationId, userId, readAt }` | Gateway: `conversation:read` a `conv:{conversationId}` |
 | `notification.created` | Notificaciones (S3-03) | `{ recipientId, notification: Notification }` | Gateway: `notification:new` a `user:{recipientId}` |
 
 Reglas:

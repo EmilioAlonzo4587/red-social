@@ -206,11 +206,16 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
 | Cliente → servidor | `post:watch` | `{ postIds: string[] }` | Entra a las salas de las publicaciones en pantalla |
 | Cliente → servidor | `post:unwatch` | `{ postIds: string[] }` | Sale de esas salas |
 | Cliente → servidor | `conversation:join` | `{ conversationId }` | Entra a la sala si participa. Responde por acknowledgement: `{ ok: true }` o `{ ok: false, error: "forbidden" }` si no participa o no existe (RN09) |
+| Cliente → servidor | `conversation:typing` | `{ conversationId }` | Avisa al otro participante en `conv:{id}` que el usuario está escribiendo |
+| Cliente → servidor | `presence:watch` | `{ userIds: string[] }` | Entra a las salas `presence:{userId}` y devuelve por acknowledgement `{ onlineUserIds: string[] }` |
 | Servidor → cliente | `session:ready` | `{ userId }` | Llega a ese socket al conectarse: la sesión es válida y el socket ya está en `user:{id}` |
 | Servidor → cliente | `post:likes` | `{ postId, likeCount }` | Actualiza el contador de likes |
 | Servidor → cliente | `post:comments` | `{ postId, commentCount }` | Actualiza el contador de comentarios |
 | Servidor → cliente | `message:new` | `Message` | Agrega el mensaje a la conversación abierta |
 | Servidor → cliente | `conversation:updated` | `Conversation`, vista por quien la recibe | Actualiza la fila de la bandeja (o la agrega si es nueva), la reordena y ajusta el contador del menú |
+| Servidor → cliente | `conversation:typing` | `{ conversationId, userId }` | Muestra el indicador de escribiendo en la conversación abierta |
+| Servidor → cliente | `conversation:read` | `{ conversationId, userId, readAt }` | Marca como "Visto" los mensajes propios hasta `readAt` |
+| Servidor → cliente | `user:presence` | `{ userId, online }` | Actualiza el estado conectado/desconectado del usuario en vivo |
 | Servidor → cliente | `notification:new` | `Notification` | Suma uno a la campana y la agrega a la lista |
 
 **Publicaciones en vivo (S2-03).**
