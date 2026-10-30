@@ -211,7 +211,7 @@ export class ConversationsService {
       RETURNING CASE WHEN c.user_a_id = ${userId}::uuid
         THEN c.user_a_last_read_at ELSE c.user_b_last_read_at END AS "readAt"
     `;
-    const readAt = rows?.[0]?.readAt;
+    const readAt = rows[0]?.readAt;
     if (readAt) {
       this.events.emit('conversation.read', {
         conversationId,
@@ -247,6 +247,25 @@ export class ConversationsService {
         : null;
     }
     return null;
+  }
+
+  // S3-06: de userIds, solo las personas con las que userId tiene una conversación. La presencia
+  // (en línea) no se comparte con desconocidos.
+  async filterContacts(userId: string, userIds: string[]): Promise<string[]> {
+    if (userIds.length === 0) return [];
+    const rows = await this.prisma.conversation.findMany({
+      where: {
+        OR: [
+          { userAId: userId, userBId: { in: userIds } },
+          { userBId: userId, userAId: { in: userIds } },
+        ],
+      },
+      select: { userAId: true, userBId: true },
+    });
+    const contacts = new Set(
+      rows.map((row) => (row.userAId === userId ? row.userBId : row.userAId)),
+    );
+    return userIds.filter((id) => contacts.has(id));
   }
 
   // S3-05: el Gateway comprueba si el usuario del socket participa en la conversación (RN09)

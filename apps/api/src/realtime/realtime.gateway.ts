@@ -69,6 +69,10 @@ export const MAX_WATCHED_POSTS_PER_SOCKET = 500;
 // conversación a la vez, no lo nota. 50, igual que la bandeja (INBOX_LIMIT).
 export const MAX_JOINED_CONVERSATIONS_PER_SOCKET = 50;
 
+// Tope de salas presence:{id} por socket. Solo se mira la presencia de contactos del chat, y la
+// bandeja muestra 50 conversaciones (INBOX_LIMIT).
+export const MAX_WATCHED_PRESENCE_PER_SOCKET = 50;
+
 // Cuánto falta para que venza el JWT, en milisegundos, dentro del rango que acepta setTimeout
 export function msUntilExpiry(expiresAt: number, now = Date.now()): number {
   return Math.min(Math.max(expiresAt - now, 0), MAX_TIMEOUT_MS);
@@ -148,14 +152,18 @@ export class RealtimeGateway
     const dto = parseWsDto(PresenceWatchDto, payload);
     if (!dto) return { onlineUserIds: [] };
 
-    const uniqueIds = [...new Set(dto.userIds)];
+    // Solo personas con las que tiene una conversación; las demás ids se ignoran
+    const uniqueIds = await this.conversations.filterContacts(
+      socket.data.userId,
+      [...new Set(dto.userIds)],
+    );
     const rooms = uniqueIds
       .map(presenceRoom)
       .filter((room) => !socket.rooms.has(room));
     const watching = [...socket.rooms].filter((room) =>
       room.startsWith('presence:'),
     ).length;
-    const free = MAX_WATCHED_POSTS_PER_SOCKET - watching;
+    const free = MAX_WATCHED_PRESENCE_PER_SOCKET - watching;
     if (free > 0 && rooms.length > 0) {
       await socket.join(rooms.slice(0, free));
     }
@@ -247,7 +255,7 @@ export class RealtimeGateway
     }
     await socket.join(room);
 
-    const otherRead = await this.conversations.getOtherLastReadAt?.(
+    const otherRead = await this.conversations.getOtherLastReadAt(
       dto.conversationId,
       socket.data.userId,
     );
