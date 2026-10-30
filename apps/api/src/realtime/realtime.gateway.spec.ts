@@ -192,7 +192,7 @@ describe('RealtimeGateway (likes en vivo)', () => {
       commentCount: 3,
     });
   });
-    
+
   describe('mensajes y notificaciones en vivo (S3-05)', () => {
     it('conversation:join une a conv:{id} y responde { ok: true } si participa', async () => {
       const { gateway, conversations } = createGateway();
