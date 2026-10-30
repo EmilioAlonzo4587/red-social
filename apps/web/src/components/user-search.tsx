@@ -97,7 +97,7 @@ export function UserSearch() {
         maxLength={MAX_LENGTH}
         placeholder="Buscar personas..."
         aria-label="Buscar personas"
-        className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-primary"
+        className="w-full rounded-md border border-border bg-background px-4 py-2 text-base outline-primary"
       />
 
       {showPanel && (

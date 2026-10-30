@@ -95,7 +95,7 @@ export default function ChatPage() {
   }
 
   return (
-    <main className="flex h-[calc(100vh-56px)]">
+    <main className="flex h-[calc(100vh-64px)]">
       <aside
         className={`w-full shrink-0 overflow-y-auto border-r border-border md:flex md:w-80 ${
           selectedId ? "hidden" : "flex flex-col"

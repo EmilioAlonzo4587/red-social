@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { MeDto, PostDto, PostPageDto } from "@red/api-types";
-import { HomeProfileCard } from "@/components/home-profile-card";
 import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
 import { apiFetchClient } from "@/lib/api-client";
@@ -46,9 +45,9 @@ export default function FeedPage() {
   const [tab, setTab] = useState<Tab>("explorar");
   const [reloadToken, setReloadToken] = useState(0);
   const [tabs, setTabs] = useState<Record<Tab, TabState>>(INITIAL_TABS);
-  const [me, setMe] = useState<MeDto | null>(null);
-  const [meLoading, setMeLoading] = useState(true);
-  const currentUserId = me?.id;
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(
+    undefined,
+  );
   const current = tabs[tab];
 
   // Qué pestaña ya se pidió para cada reloadToken: evita volver a pedirla solo por
@@ -110,14 +109,12 @@ export default function FeedPage() {
     };
   }, [tab, reloadToken]);
 
-  // Para saber qué publicaciones son propias (botón de eliminar) y para la tarjeta de
-  // perfil de la columna derecha (S3-19). Si falla, no se muestra ningún botón de
-  // eliminar ni la tarjeta: no es crítico para ver el feed.
+  // Para saber qué publicaciones son propias (botón de eliminar). Si falla, simplemente
+  // no se muestra ningún botón de eliminar: no es crítico para ver el feed.
   useEffect(() => {
     apiFetchClient<MeDto>("/api/auth/me")
-      .then((result) => setMe(result))
-      .catch(() => {})
-      .finally(() => setMeLoading(false));
+      .then((me) => setCurrentUserId(me.id))
+      .catch(() => {});
   }, []);
 
   async function loadMore() {
@@ -150,113 +147,103 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl gap-8 px-4">
-      <main className="min-w-0 max-w-xl flex-1">
-        <PostComposer
-          onPosted={() => {
-            // Vuelve a pedir el feed desde el principio: hay una publicación nueva.
-            setReloadToken((n) => n + 1);
-          }}
-        />
+    <main className="mx-auto max-w-xl px-4">
+      <PostComposer
+        onPosted={() => {
+          // Vuelve a pedir el feed desde el principio: hay una publicación nueva.
+          setReloadToken((n) => n + 1);
+        }}
+      />
 
-        <div className="sticky top-14 flex border-b border-border bg-background">
-          <button
-            type="button"
-            onClick={() => setTab("siguiendo")}
-            className={`flex-1 border-b-2 py-3 text-sm font-semibold ${
-              tab === "siguiendo"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted"
-            }`}
-          >
-            Siguiendo
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("explorar")}
-            className={`flex-1 border-b-2 py-3 text-sm font-semibold ${
-              tab === "explorar"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted"
-            }`}
-          >
-            Explorar
-          </button>
-        </div>
+      <div className="sticky top-16 flex border-b border-border bg-background">
+        <button
+          type="button"
+          onClick={() => setTab("siguiendo")}
+          className={`flex-1 border-b-2 py-3 text-sm font-semibold ${
+            tab === "siguiendo"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted"
+          }`}
+        >
+          Siguiendo
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("explorar")}
+          className={`flex-1 border-b-2 py-3 text-sm font-semibold ${
+            tab === "explorar"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted"
+          }`}
+        >
+          Explorar
+        </button>
+      </div>
 
-        {current.status === "loading" && (
-          <p className="py-10 text-center text-muted">Cargando…</p>
-        )}
+      {current.status === "loading" && (
+        <p className="py-10 text-center text-muted">Cargando…</p>
+      )}
 
-        {current.status === "error" && current.items.length === 0 && (
-          <p className="py-10 text-center text-red-600">{current.error}</p>
-        )}
+      {current.status === "error" && current.items.length === 0 && (
+        <p className="py-10 text-center text-red-600">{current.error}</p>
+      )}
 
-        {current.status === "ready" &&
-          current.items.length === 0 &&
-          (tab === "siguiendo" ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-muted">
-                Aún no sigues a nadie. Explora publicaciones o busca personas
-                desde la barra superior para empezar a seguirlas.
-              </p>
+      {current.status === "ready" &&
+        current.items.length === 0 &&
+        (tab === "siguiendo" ? (
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <p className="text-muted">
+              Aún no sigues a nadie. Explora publicaciones o busca personas
+              desde la barra superior para empezar a seguirlas.
+            </p>
+            <button
+              type="button"
+              onClick={() => setTab("explorar")}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+            >
+              Ir a Explorar
+            </button>
+          </div>
+        ) : (
+          <p className="py-10 text-center text-muted">
+            Aún no hay publicaciones.
+          </p>
+        ))}
+
+      {current.items.length > 0 && (
+        <>
+          <div className="flex flex-col">
+            {current.items.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                currentUserId={currentUserId}
+              />
+            ))}
+          </div>
+
+          {current.nextCursor && (
+            <div className="flex justify-center py-6">
               <button
                 type="button"
-                onClick={() => setTab("explorar")}
-                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+                onClick={loadMore}
+                disabled={current.status === "loading-more"}
+                className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:opacity-50"
               >
-                Ir a Explorar
+                {current.status === "loading-more"
+                  ? "Cargando…"
+                  : "Cargar más"}
               </button>
             </div>
-          ) : (
-            <p className="py-10 text-center text-muted">
-              Aún no hay publicaciones.
+          )}
+
+          {current.status === "error" && (
+            <p className="pb-6 text-center text-sm text-red-600">
+              {current.error}
             </p>
-          ))}
-
-        {current.items.length > 0 && (
-          <>
-            <div className="flex flex-col">
-              {current.items.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  currentUserId={currentUserId}
-                />
-              ))}
-            </div>
-
-            {current.nextCursor && (
-              <div className="flex justify-center py-6">
-                <button
-                  type="button"
-                  onClick={loadMore}
-                  disabled={current.status === "loading-more"}
-                  className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:opacity-50"
-                >
-                  {current.status === "loading-more"
-                    ? "Cargando…"
-                    : "Cargar más"}
-                </button>
-              </div>
-            )}
-
-            {current.status === "error" && (
-              <p className="pb-6 text-center text-sm text-red-600">
-                {current.error}
-              </p>
-            )}
-          </>
-        )}
-      </main>
-
-      {/* S3-19: columna derecha solo en pantallas anchas, nunca fixed (D10: si se abren los
-          paneles de notificaciones/chat, S3-07/S3-06, deben quedar siempre por encima). */}
-      <aside className="hidden w-72 shrink-0 lg:block">
-        <div className="sticky top-20">
-          <HomeProfileCard me={me} loading={meLoading} />
-        </div>
-      </aside>
-    </div>
+          )}
+        </>
+      )}
+    </main>
   );
 }

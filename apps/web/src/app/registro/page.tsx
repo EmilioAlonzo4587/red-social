@@ -84,7 +84,7 @@ export default function RegistroPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-56px)] max-w-sm flex-col justify-center gap-6 px-4">
+    <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-sm flex-col justify-center gap-6 px-4">
       <h1 className="text-2xl font-bold">Crear cuenta</h1>
 
       {errors.general && (
