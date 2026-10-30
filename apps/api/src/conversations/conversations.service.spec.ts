@@ -178,4 +178,30 @@ describe('ConversationsService', () => {
       expect(conversation.unread).toBe(1);
     });
   });
+
+  describe('isParticipant y findOneForUser (S3-05)', () => {
+    it('isParticipant devuelve true para ambos participantes y false para un tercero o inexistente', async () => {
+      prisma.conversation.findUnique.mockResolvedValue({
+        userAId: ANA,
+        userBId: BETO,
+      });
+      await expect(service.isParticipant('c1', ANA)).resolves.toBe(true);
+      await expect(service.isParticipant('c1', BETO)).resolves.toBe(true);
+      await expect(service.isParticipant('c1', CARLA)).resolves.toBe(false);
+
+      prisma.conversation.findUnique.mockResolvedValueOnce(null);
+      await expect(service.isParticipant('c1', ANA)).resolves.toBe(false);
+    });
+
+    it('findOneForUser devuelve la conversación vista por ese usuario o null si no existe', async () => {
+      prisma.$queryRaw.mockResolvedValueOnce([row]);
+      await expect(service.findOneForUser('c1', ANA)).resolves.toMatchObject({
+        id: 'c1',
+        otherUser: { id: BETO, username: 'beto' },
+      });
+
+      prisma.$queryRaw.mockResolvedValueOnce([]);
+      await expect(service.findOneForUser('c1', ANA)).resolves.toBeNull();
+    });
+  });
 });

@@ -220,3 +220,9 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
 - Al reconectar, el socket ya no está en ninguna sala `post:{id}`: el cliente vuelve a mandar `post:watch` con las publicaciones que sigue mostrando.
 - `post:likes` sale cuando el contador cambia de verdad (`like.changed`): repetir un `PUT` idempotente no emite nada (RN05).
 - `post:comments` sale al crear o borrar un comentario (`comment.changed`), a la misma sala `post:{id}` (S3-18).
+
+**Chat en vivo (S3-05).**
+
+- `conversation:join` con un payload inválido (sin `conversationId`, un id que no es UUID o campos de más) también responde `{ ok: false, error: "forbidden" }`. Repetir el `join` de una sala en la que ya está responde `{ ok: true }` sin volver a consultar.
+- Un socket está como máximo en 50 salas `conv:{id}`. Al unirse a una más, sale de la más antigua y responde `{ ok: true }`; la web abre una conversación a la vez, así que no lo nota.
+- Al reconectar, el socket ya no está en ninguna sala `conv:{id}`: el cliente vuelve a mandar `conversation:join` con la conversación abierta. `conversation:updated` y `notification:new` llegan por `user:{id}`, que no requiere `join`.

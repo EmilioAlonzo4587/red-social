@@ -12,16 +12,28 @@ import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 import { ACCESS_COOKIE } from '../auth/cookies';
 import { SessionTokenService } from '../auth/session-token.service';
 import { ENV, type Env } from '../config/env';
+import { ConversationsService } from '../conversations/conversations.service';
+import type { ConversationDto } from '../conversations/dto/conversation.dto';
 import type {
   CommentChangedEvent,
   LikeChangedEvent,
+  MessageCreatedEvent,
+  MessageData,
+  NotificationCreatedEvent,
+  NotificationData,
 } from '../events/domain-events';
 import { OnDomainEvent } from '../events/on-domain-event.decorator';
+import { ConversationJoinDto } from './dto/conversation-join.dto';
 import { PostWatchDto, parseWsDto } from './dto/post-watch.dto';
 import {
   type ClientToServerEvents,
+  type ConversationUpdatedEvent,
+  type ConversationJoinAck,
+  type MessageNewEvent,
+  type NotificationNewEvent,
   type ServerToClientEvents,
   type SocketData,
+  conversationRoom,
   postRoom,
   userRoom,
 } from './realtime.events';
@@ -47,6 +59,11 @@ const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 // 25 páginas de feed cargadas a la vez.
 export const MAX_WATCHED_POSTS_PER_SOCKET = 500;
 
+// Tope de salas conv:{id} por socket. Cada conversation:join consulta la base; al pasar el tope
+// sale de la más antigua, así el ack sigue siendo { ok: true } y la web, que abre una
+// conversación a la vez, no lo nota. 50, igual que la bandeja (INBOX_LIMIT).
+export const MAX_JOINED_CONVERSATIONS_PER_SOCKET = 50;
+
 // Cuánto falta para que venza el JWT, en milisegundos, dentro del rango que acepta setTimeout
 export function msUntilExpiry(expiresAt: number, now = Date.now()): number {
   return Math.min(Math.max(expiresAt - now, 0), MAX_TIMEOUT_MS);
@@ -63,6 +80,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   constructor(
     private readonly tokens: SessionTokenService,
     @Inject(ENV) private readonly env: Env,
+    private readonly conversations: ConversationsService,
   ) {}
 
   // Corre una vez, cuando el servidor de Socket.io ya existe. El middleware se ejecuta en cada
@@ -148,6 +166,68 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
       commentCount: event.commentCount,
     });
   }
+  // S3-05: entra a la sala de la conversación solo si participa; responde por acknowledgement (RN09)
+  @SubscribeMessage('conversation:join')
+  async handleConversationJoin(
+    @ConnectedSocket() socket: AppSocket,
+    @MessageBody() payload: unknown,
+  ): Promise<ConversationJoinAck> {
+    const dto = parseWsDto(ConversationJoinDto, payload);
+    if (!dto) return { ok: false, error: 'forbidden' };
+
+    // Ya está en la sala: la participación se verificó al entrar y no cambia
+    const room = conversationRoom(dto.conversationId);
+    if (socket.rooms.has(room)) return { ok: true };
+
+    const allowed = await this.conversations.isParticipant(
+      dto.conversationId,
+      socket.data.userId,
+    );
+    if (!allowed) return { ok: false, error: 'forbidden' };
+
+    // socket.rooms conserva el orden de entrada: la primera conv: es la más antigua
+    const joined = [...socket.rooms].filter((r) => r.startsWith('conv:'));
+    if (joined.length >= MAX_JOINED_CONVERSATIONS_PER_SOCKET) {
+      await socket.leave(joined[0]);
+    }
+    await socket.join(room);
+    return { ok: true };
+  }
+
+  // S3-05: envía el mensaje nuevo a la conversación abierta y actualiza la bandeja de ambos
+  @OnDomainEvent('message.created')
+  async handleMessageCreated({
+    message,
+    recipientId,
+  }: MessageCreatedEvent): Promise<void> {
+    this.server
+      .to(conversationRoom(message.conversationId))
+      .emit('message:new', toMessageEvent(message));
+
+    const participants = [message.senderId, recipientId];
+    const views = await Promise.all(
+      participants.map((userId) =>
+        this.conversations.findOneForUser(message.conversationId, userId),
+      ),
+    );
+    for (const [index, view] of views.entries()) {
+      if (!view) continue;
+      this.server
+        .to(userRoom(participants[index]))
+        .emit('conversation:updated', toConversationEvent(view));
+    }
+  }
+
+  // S3-05: envía la notificación en vivo a la sala personal del destinatario
+  @OnDomainEvent('notification.created')
+  handleNotificationCreated({
+    recipientId,
+    notification,
+  }: NotificationCreatedEvent): void {
+    this.server
+      .to(userRoom(recipientId))
+      .emit('notification:new', toNotificationEvent(notification));
+  }
 
   // Devuelve el error con el que se rechaza la conexión, o undefined para aceptarla.
   // Nunca registra la cookie ni el token.
@@ -170,4 +250,41 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
     socket.data.expiresAt = claims.expiresAt;
     return undefined;
   }
+}
+
+function toMessageEvent(message: MessageData): MessageNewEvent {
+  return {
+    id: message.id,
+    conversationId: message.conversationId,
+    senderId: message.senderId,
+    content: message.content,
+    createdAt: message.createdAt.toISOString(),
+  };
+}
+
+function toConversationEvent(
+  conversation: ConversationDto,
+): ConversationUpdatedEvent {
+  return {
+    id: conversation.id,
+    otherUser: conversation.otherUser,
+    lastMessage: conversation.lastMessage
+      ? toMessageEvent(conversation.lastMessage)
+      : null,
+    unread: conversation.unread,
+  };
+}
+
+function toNotificationEvent(
+  notification: NotificationData,
+): NotificationNewEvent {
+  return {
+    id: notification.id,
+    type: notification.type,
+    actor: notification.actor,
+    postId: notification.postId,
+    commentId: notification.commentId,
+    read: notification.read,
+    createdAt: notification.createdAt.toISOString(),
+  };
 }

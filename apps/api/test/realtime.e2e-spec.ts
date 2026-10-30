@@ -8,7 +8,12 @@ import { AppModule } from './../src/app.module';
 import type { MeDto } from './../src/auth/dto/me.dto';
 import { configureApp } from './../src/configure-app';
 import { PrismaService } from './../src/prisma/prisma.service';
-import { postRoom, userRoom } from './../src/realtime/realtime.events';
+import {
+  type ConversationJoinAck,
+  conversationRoom,
+  postRoom,
+  userRoom,
+} from './../src/realtime/realtime.events';
 import { RealtimeGateway } from './../src/realtime/realtime.gateway';
 import { cookiesOf } from './utils/cookies';
 import { resetDatabase } from './utils/database';
@@ -324,6 +329,161 @@ describe('Socket.io autenticado (e2e)', () => {
         .in(postRoom('no-es-uuid'))
         .fetchSockets();
       expect(inInvalidRoom).toHaveLength(0);
+    });
+  });
+
+  describe('mensajes y notificaciones en vivo (S3-05)', () => {
+    async function openConversation(token: string, username: string) {
+      const res = await request(app.getHttpServer())
+        .post('/api/conversations')
+        .set('Cookie', `access_token=${token}`)
+        .send({ username })
+        .expect(201);
+      return (res.body as { id: string }).id;
+    }
+
+    function joinConversation(
+      socket: Socket,
+      payload: unknown,
+    ): Promise<ConversationJoinAck> {
+      return new Promise((resolve) => {
+        socket.emit('conversation:join', payload, resolve);
+      });
+    }
+
+    it('conversation:join une a quien participa y enviar mensaje emite message:new, conversation:updated y notification:new', async () => {
+      const ana = await registerUser('ana');
+      const beto = await registerUser('beto');
+      const conversationId = await openConversation(ana.access, 'beto');
+
+      const anaSocket = connect(withCookie(ana.access));
+      const betoSocket = connect(withCookie(beto.access));
+      await waitFor(anaSocket, ['session:ready']);
+      await waitFor(betoSocket, ['session:ready']);
+
+      expect(await joinConversation(anaSocket, { conversationId })).toEqual({
+        ok: true,
+      });
+      expect(await joinConversation(betoSocket, { conversationId })).toEqual({
+        ok: true,
+      });
+
+      const onMessages = Promise.all([
+        waitFor(anaSocket, ['message:new']),
+        waitFor(betoSocket, ['message:new']),
+      ]);
+      const onConversations = Promise.all([
+        waitFor(anaSocket, ['conversation:updated']),
+        waitFor(betoSocket, ['conversation:updated']),
+      ]);
+      const onBetoNotification = waitFor(betoSocket, ['notification:new']);
+
+      const sent = await request(app.getHttpServer())
+        .post(`/api/conversations/${conversationId}/messages`)
+        .set('Cookie', `access_token=${ana.access}`)
+        .send({ content: 'Hola en vivo' })
+        .expect(201);
+
+      const expectedMessage = sent.body as {
+        id: string;
+        conversationId: string;
+        senderId: string;
+        content: string;
+        createdAt: string;
+      };
+      expect(await onMessages).toEqual([
+        { event: 'message:new', data: expectedMessage },
+        { event: 'message:new', data: expectedMessage },
+      ]);
+
+      const [anaConv, betoConv] = await onConversations;
+      // Vista por Ana (remitente): otherUser es Beto y unread es 0
+      expect(anaConv).toEqual({
+        event: 'conversation:updated',
+        data: {
+          id: conversationId,
+          otherUser: {
+            id: beto.id,
+            username: 'beto',
+            displayName: null,
+            avatarPublicId: null,
+          },
+          lastMessage: expectedMessage,
+          unread: 0,
+        },
+      });
+      // Vista por Beto (destinatario): otherUser es Ana y unread es 1
+      expect(betoConv).toEqual({
+        event: 'conversation:updated',
+        data: {
+          id: conversationId,
+          otherUser: {
+            id: ana.id,
+            username: 'ana',
+            displayName: null,
+            avatarPublicId: null,
+          },
+          lastMessage: expectedMessage,
+          unread: 1,
+        },
+      });
+
+      // Beto también recibe notification:new en su sala personal user:{id}
+      expect(await onBetoNotification).toEqual({
+        event: 'notification:new',
+        data: expect.objectContaining({
+          type: 'message',
+          actor: {
+            id: ana.id,
+            username: 'ana',
+            displayName: null,
+            avatarPublicId: null,
+          },
+          postId: null,
+          commentId: null,
+          read: false,
+        }) as unknown,
+      });
+    });
+
+    it('conversation:join rechaza con "forbidden" a quien no participa, una conversación inexistente o un UUID inválido (RN09)', async () => {
+      const ana = await registerUser('ana');
+      await registerUser('beto');
+      const carla = await registerUser('carla');
+      const conversationId = await openConversation(ana.access, 'beto');
+
+      const carlaSocket = connect(withCookie(carla.access));
+      await waitFor(carlaSocket, ['session:ready']);
+
+      const missingId = '019a319c-4910-7000-8000-000000000999';
+      for (const payload of [
+        { conversationId },
+        { conversationId: missingId },
+        { conversationId: 'no-es-uuid' },
+        {},
+      ]) {
+        expect(await joinConversation(carlaSocket, payload)).toEqual({
+          ok: false,
+          error: 'forbidden',
+        });
+      }
+
+      const server = app.get(RealtimeGateway).server;
+      expect(
+        await server.in(conversationRoom(conversationId)).fetchSockets(),
+      ).toHaveLength(0);
+
+      let carlaReceived = false;
+      carlaSocket.once('message:new', () => {
+        carlaReceived = true;
+      });
+      await request(app.getHttpServer())
+        .post(`/api/conversations/${conversationId}/messages`)
+        .set('Cookie', `access_token=${ana.access}`)
+        .send({ content: 'Mensaje privado' })
+        .expect(201);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(carlaReceived).toBe(false);
     });
   });
 
