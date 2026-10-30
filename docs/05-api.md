@@ -173,7 +173,11 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 | POST | `/api/conversations/:id/messages` 🔒 | `{ content }` | 201 `Message` | 400 (RN09), 403, 404 |
 | POST | `/api/conversations/:id/read` 🔒 | | 204 | 403, 404 |
 
+- `POST /conversations` no distingue mayúsculas en `username`. La pareja se guarda ordenada (`user_a_id < user_b_id`), así que abrirla desde cualquiera de los dos devuelve la misma conversación, también si llegan dos peticiones al mismo tiempo. Consigo mismo responde 400 con `details: [{ field: "username", rule: "notSelf" }]`. Una conversación recién abierta trae `lastMessage: null` y `unread: 0`.
+- Las rutas con `:id` responden 400 si `id` no es un UUID, 404 si la conversación no existe y 403 si existe pero no participo (RN09).
 - La bandeja solo muestra conversaciones con al menos un mensaje.
+- `unread` cuenta los mensajes del otro posteriores a mi "leído hasta". Enviar un mensaje también marca como leído lo anterior para quien escribe. `POST /conversations/:id/read` marca hasta el último mensaje que existe en ese momento; uno que llegue después vuelve a contar.
+- Enviar un mensaje emite `message.created`: crea la notificación de `message` (S3-03) y, desde S3-05, se distribuye por Socket.io.
 - El contador del menú es la suma de `unread` de la bandeja; después lo mantiene `conversation:updated`.
 - Los mensajes llegan del más reciente al más antiguo para cargar el historial al subir; la web los invierte para mostrarlos.
 
