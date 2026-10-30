@@ -67,7 +67,8 @@ export default function RegistroPage() {
           password,
         } satisfies RegisterDto),
       });
-      router.push("/feed");
+      // replace, no push: que "atrás" no regrese al formulario de registro (S3-12).
+      router.replace("/feed");
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.statusCode === 400 || error.statusCode === 409) {

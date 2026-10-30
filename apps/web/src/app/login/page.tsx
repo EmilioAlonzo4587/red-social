@@ -53,7 +53,8 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier, password } satisfies LoginDto),
       });
-      router.push("/feed");
+      // replace, no push: que "atrás" no regrese al formulario de login (S3-12).
+      router.replace("/feed");
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.statusCode === 400) {
