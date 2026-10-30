@@ -211,6 +211,34 @@ export class ConversationsService {
     `;
   }
 
+  // S3-05: el Gateway comprueba si el usuario del socket participa en la conversación (RN09)
+  async isParticipant(
+    conversationId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { userAId: true, userBId: true },
+    });
+    return Boolean(
+      conversation &&
+      (conversation.userAId === userId || conversation.userBId === userId),
+    );
+  }
+
+  // S3-05: una fila de la bandeja vista por userId, para emitir conversation:updated
+  async findOneForUser(
+    conversationId: string,
+    userId: string,
+  ): Promise<ConversationDto | null> {
+    const [conversation] = await this.findForUser(
+      userId,
+      Prisma.sql`AND c.id = ${conversationId}::uuid`,
+      1,
+    );
+    return conversation ?? null;
+  }
+
   // RN09: 404 si la conversación no existe y 403 si existe pero no participo
   private async findParticipants(
     client: Prisma.TransactionClient,
