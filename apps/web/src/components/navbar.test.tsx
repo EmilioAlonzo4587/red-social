@@ -16,16 +16,14 @@ describe("Navbar", () => {
     pathname.value = "/feed";
   });
 
-  it("en una ruta pública, la marca lleva a la portada y no hay buscador", () => {
-    pathname.value = "/login";
-    render(<Navbar />);
-    expect(screen.getByRole("link", { name: "ChatInit" })).toHaveAttribute(
-      "href",
-      "/",
-    );
-    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-  });
+  it.each(["/", "/login", "/registro"])(
+    "en %s no se muestra (S4-08: la marca va en el panel de BrandLayout)",
+    (route) => {
+      pathname.value = route;
+      const { container } = render(<Navbar />);
+      expect(container).toBeEmptyDOMElement();
+    },
+  );
 
   it("con sesión, la marca lleva al feed y no pide /api/auth/me (S4-09: ya no muestra la cuenta)", () => {
     render(<Navbar />);

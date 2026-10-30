@@ -19,3 +19,165 @@ body {
   background: var(--color-background);
   font-family: var(--font-sans);
 }
+
+/* Panel de marca de portada, login y registro (S4-08): todo en movimiento lento y
+   continuo, y quieto si el usuario pidió reducir el movimiento. */
+@keyframes brand-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes brand-card-idle-a {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes brand-card-idle-b {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@keyframes brand-bubble-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(-2deg);
+  }
+}
+
+@keyframes brand-blob-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(26px, -20px) scale(1.08);
+  }
+}
+
+@keyframes brand-blob-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-22px, 24px) scale(1.1);
+  }
+}
+
+@keyframes brand-blob-c {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(16px, 16px) scale(0.94);
+  }
+}
+
+@keyframes brand-blob-d {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-18px, -22px) scale(1.05);
+  }
+}
+
+@keyframes brand-blob-e {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(20px, 14px) scale(0.92);
+  }
+}
+
+/* El bucle avanza exactamente una celda de la grilla (26px): no se nota el corte. */
+@keyframes brand-dots-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 26px 26px;
+  }
+}
+
+.brand-dots {
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.16) 1.5px,
+    transparent 1.5px
+  );
+  background-size: 26px 26px;
+  animation: brand-dots-drift 7s linear infinite;
+}
+
+.brand-card-a {
+  animation:
+    brand-card-in 420ms ease-out both,
+    brand-card-idle-a 6.5s ease-in-out 420ms infinite;
+}
+
+.brand-card-b {
+  animation:
+    brand-card-in 420ms ease-out 140ms both,
+    brand-card-idle-b 7.5s ease-in-out 560ms infinite;
+}
+
+.brand-bubble {
+  animation: brand-bubble-float 5.5s ease-in-out infinite;
+}
+
+.brand-blob-a {
+  animation: brand-blob-a 10s ease-in-out infinite;
+}
+
+.brand-blob-b {
+  animation: brand-blob-b 13s ease-in-out infinite;
+}
+
+.brand-blob-c {
+  animation: brand-blob-c 9s ease-in-out infinite;
+}
+
+.brand-blob-d {
+  animation: brand-blob-d 12s ease-in-out infinite;
+}
+
+.brand-blob-e {
+  animation: brand-blob-e 11s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-dots,
+  .brand-card-a,
+  .brand-card-b,
+  .brand-bubble,
+  .brand-blob-a,
+  .brand-blob-b,
+  .brand-blob-c,
+  .brand-blob-d,
+  .brand-blob-e {
+    animation: none;
+  }
+}
