@@ -39,6 +39,11 @@ type AppSocket = Socket<
 // setTimeout acepta como máximo 2^31 - 1 ms (unos 24 días); con más, se dispara enseguida
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
+// Tope de salas post:{id} por socket. Cada post:watch trae hasta 100 ids, pero sin este tope
+// un cliente podría unirse a salas sin límite mandando muchos eventos. 500 alcanza para
+// 25 páginas de feed cargadas a la vez.
+export const MAX_WATCHED_POSTS_PER_SOCKET = 500;
+
 // Cuánto falta para que venza el JWT, en milisegundos, dentro del rango que acepta setTimeout
 export function msUntilExpiry(expiresAt: number, now = Date.now()): number {
   return Math.min(Math.max(expiresAt - now, 0), MAX_TIMEOUT_MS);
@@ -92,7 +97,22 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   ): Promise<void> {
     const dto = parseWsDto(PostWatchDto, payload);
     if (!dto) return;
-    await socket.join(dto.postIds.map(postRoom));
+
+    // Solo las salas nuevas cuentan para el tope; repetir un id no ocupa otro lugar
+    const rooms = [...new Set(dto.postIds.map(postRoom))].filter(
+      (room) => !socket.rooms.has(room),
+    );
+    const watching = [...socket.rooms].filter((room) =>
+      room.startsWith('post:'),
+    ).length;
+    const free = MAX_WATCHED_POSTS_PER_SOCKET - watching;
+    if (rooms.length > free) {
+      this.logger.warn(
+        `Socket ${socket.id} llegó al tope de ${MAX_WATCHED_POSTS_PER_SOCKET} publicaciones en vivo`,
+      );
+    }
+    if (free <= 0) return;
+    await socket.join(rooms.slice(0, free));
   }
 
   // S2-03: el cliente sale de las salas de publicaciones que ya no están en pantalla

@@ -4,7 +4,11 @@ import {
   parseWsDto,
 } from './dto/post-watch.dto';
 import { postRoom } from './realtime.events';
-import { RealtimeGateway, msUntilExpiry } from './realtime.gateway';
+import {
+  MAX_WATCHED_POSTS_PER_SOCKET,
+  RealtimeGateway,
+  msUntilExpiry,
+} from './realtime.gateway';
 
 const VALID_ID_1 = '019a319c-4910-7000-8000-000000000001';
 const VALID_ID_2 = '019a319c-4910-7000-8000-000000000002';
@@ -70,7 +74,7 @@ describe('RealtimeGateway (likes en vivo)', () => {
   it('post:watch mete el socket en las salas post:{id}', async () => {
     const { gateway } = createGateway();
     const join = jest.fn().mockResolvedValue(undefined);
-    await gateway.handlePostWatch({ join } as never, {
+    await gateway.handlePostWatch({ join, rooms: new Set() } as never, {
       postIds: [VALID_ID_1, VALID_ID_2],
     });
     expect(join).toHaveBeenCalledWith([
@@ -82,8 +86,40 @@ describe('RealtimeGateway (likes en vivo)', () => {
   it('post:watch ignora un payload inválido sin unir a ninguna sala', async () => {
     const { gateway } = createGateway();
     const join = jest.fn();
-    await gateway.handlePostWatch({ join } as never, {
+    await gateway.handlePostWatch({ join, rooms: new Set() } as never, {
       postIds: ['no-es-uuid'],
+    });
+    expect(join).not.toHaveBeenCalled();
+  });
+
+  it('post:watch no repite salas en las que el socket ya está', async () => {
+    const { gateway } = createGateway();
+    const join = jest.fn().mockResolvedValue(undefined);
+    const rooms = new Set(['socket-id', postRoom(VALID_ID_1)]);
+    await gateway.handlePostWatch({ join, rooms } as never, {
+      postIds: [VALID_ID_1, VALID_ID_2, VALID_ID_2],
+    });
+    expect(join).toHaveBeenCalledWith([postRoom(VALID_ID_2)]);
+  });
+
+  it('post:watch no pasa del tope de salas por socket', async () => {
+    const { gateway } = createGateway();
+    const join = jest.fn().mockResolvedValue(undefined);
+    // Ya mira el tope menos una: solo entra a una sala más
+    const rooms = new Set<string>(['socket-id', 'user:u1']);
+    for (let i = 0; i < MAX_WATCHED_POSTS_PER_SOCKET - 1; i++) {
+      rooms.add(postRoom(`ya-${i}`));
+    }
+    await gateway.handlePostWatch({ join, rooms, id: 's1' } as never, {
+      postIds: [VALID_ID_1, VALID_ID_2],
+    });
+    expect(join).toHaveBeenCalledWith([postRoom(VALID_ID_1)]);
+
+    // Lleno: no entra a ninguna
+    join.mockClear();
+    rooms.add(postRoom(VALID_ID_1));
+    await gateway.handlePostWatch({ join, rooms, id: 's1' } as never, {
+      postIds: [VALID_ID_2],
     });
     expect(join).not.toHaveBeenCalled();
   });

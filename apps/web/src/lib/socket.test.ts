@@ -132,11 +132,30 @@ describe("socket (S2-03)", () => {
       expect(connect).toHaveBeenCalledTimes(1);
     });
 
+    // Conectó con la sesión renovada; más tarde el servidor lo cierra al vencer el JWT
+    trigger("connect");
     trigger("disconnect", "io server disconnect");
     await vi.waitFor(() => {
       expect(refreshSession).toHaveBeenCalledTimes(2);
       expect(connect).toHaveBeenCalledTimes(2);
     });
+
+    unsub();
+  });
+
+  it("si el handshake vuelve a fallar tras renovar la sesión, no repite el refresh", async () => {
+    refreshSession.mockResolvedValue(true);
+    const unsub = subscribePostLikes("p1", vi.fn());
+
+    trigger("connect_error", new Error("unauthorized"));
+    await vi.waitFor(() => expect(connect).toHaveBeenCalledTimes(1));
+
+    // Sin un connect de por medio: el refresh no sirvió, se detiene
+    trigger("connect_error", new Error("unauthorized"));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+    expect(connect).toHaveBeenCalledTimes(1);
 
     unsub();
   });

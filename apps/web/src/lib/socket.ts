@@ -20,13 +20,19 @@ const MAX_IDS_PER_EVENT = 100;
 let socket: AppClientSocket | null = null;
 let needsResubscribe = false;
 let flushScheduled = false;
+// Un solo refresh por desconexión: si tras renovar la sesión el handshake vuelve a fallar
+// (por ejemplo, la cookie no viaja), no se insiste. Sin esto, connect_error → refresh →
+// connect se repetiría sin fin, rotando el token de renovación en cada vuelta.
+// Vuelve a false cuando el socket conecta.
+let refreshAttempted = false;
 
 const listenersByPost = new Map<string, Set<LikeCountListener>>();
 const pendingWatch = new Set<string>();
 const pendingUnwatch = new Set<string>();
 
 async function reconnectAfterRefresh(target: AppClientSocket): Promise<void> {
-  if (socket !== target) return;
+  if (socket !== target || refreshAttempted) return;
+  refreshAttempted = true;
   const refreshed = await refreshSession();
   if (socket !== target) return;
   if (!refreshed) {
@@ -66,6 +72,7 @@ function getSocket(): AppClientSocket {
   });
 
   instance.on("connect", () => {
+    refreshAttempted = false;
     if (!needsResubscribe) return;
     needsResubscribe = false;
     const activeIds = [...listenersByPost.keys()];
@@ -158,6 +165,7 @@ export function disconnectSocket(): void {
   pendingWatch.clear();
   pendingUnwatch.clear();
   needsResubscribe = false;
+  refreshAttempted = false;
   if (!socket) return;
   const current = socket;
   socket = null;
