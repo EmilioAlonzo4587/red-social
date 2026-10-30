@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { UserSearch } from "@/components/user-search";
 import { PUBLIC_PATHS } from "@/lib/public-paths";
 
 export function Navbar() {
@@ -18,13 +19,7 @@ export function Navbar() {
           ChatInit
         </Link>
 
-        {!isPublic && (
-          <input
-            type="search"
-            placeholder="Buscar personas..."
-            className="w-full max-w-sm rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-primary"
-          />
-        )}
+        {!isPublic && <UserSearch />}
       </nav>
     </header>
   );
