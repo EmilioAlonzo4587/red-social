@@ -51,14 +51,33 @@ export interface PostCommentsEvent {
   commentCount: number;
 }
 
+export interface ConversationJoinPayload {
+  conversationId: string;
+}
+
+export type ConversationJoinAck =
+  | { ok: true }
+  | { ok: false; error: "forbidden" };
+
+export type MessageNewEvent = MessageDto;
+export type ConversationUpdatedEvent = ConversationDto;
+export type NotificationNewEvent = NotificationDto;
+
 export interface ClientToServerEvents {
   "post:watch": (data: PostWatchPayload) => void;
   "post:unwatch": (data: PostWatchPayload) => void;
+  "conversation:join": (
+    data: ConversationJoinPayload,
+    ack?: (res: ConversationJoinAck) => void,
+  ) => void;
 }
 
 export interface ServerToClientEvents {
   "session:ready": (data: SessionReadyEvent) => void;
   "post:likes": (data: PostLikesEvent) => void;
   "post:comments": (data: PostCommentsEvent) => void;
+  "message:new": (data: MessageNewEvent) => void;
+  "conversation:updated": (data: ConversationUpdatedEvent) => void;
+  "notification:new": (data: NotificationNewEvent) => void;
 }
 
