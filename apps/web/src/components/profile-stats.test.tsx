@@ -7,6 +7,19 @@ import { ProfileStats } from "./profile-stats";
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
+const { FollowListModal } = vi.hoisted(() => ({
+  FollowListModal: vi.fn(
+    ({ kind, onClose }: { kind: string; onClose: () => void }) => (
+      <div role="dialog" aria-label={kind}>
+        <button type="button" onClick={onClose}>
+          Cerrar
+        </button>
+      </div>
+    ),
+  ),
+}));
+vi.mock("@/components/follow-list-modal", () => ({ FollowListModal }));
+
 const BASE_PROPS = {
   username: "ana_lopez",
   isOwnProfile: false,
@@ -19,6 +32,39 @@ const BASE_PROPS = {
 describe("ProfileStats", () => {
   beforeEach(() => {
     apiFetchClient.mockReset();
+    FollowListModal.mockClear();
+  });
+
+  it("tocar 'seguidores' abre la lista de seguidores", async () => {
+    const user = userEvent.setup();
+    render(<ProfileStats {...BASE_PROPS} />);
+
+    await user.click(screen.getByRole("button", { name: /seguidores/ }));
+
+    expect(
+      screen.getByRole("dialog", { name: "followers" }),
+    ).toBeInTheDocument();
+  });
+
+  it("tocar 'seguidos' abre la lista de seguidos", async () => {
+    const user = userEvent.setup();
+    render(<ProfileStats {...BASE_PROPS} />);
+
+    await user.click(screen.getByRole("button", { name: /seguidos/ }));
+
+    expect(
+      screen.getByRole("dialog", { name: "following" }),
+    ).toBeInTheDocument();
+  });
+
+  it("cerrar la lista la quita de la pantalla", async () => {
+    const user = userEvent.setup();
+    render(<ProfileStats {...BASE_PROPS} />);
+
+    await user.click(screen.getByRole("button", { name: /seguidores/ }));
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("muestra los contadores iniciales", () => {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { FollowStatusDto } from "@red/api-types";
 import { apiFetchClient } from "@/lib/api-client";
+import { FollowListModal } from "@/components/follow-list-modal";
 
 export function ProfileStats({
   username,
@@ -23,6 +24,9 @@ export function ProfileStats({
   const [followerCount, setFollowerCount] = useState(initialFollowerCount);
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [submitting, setSubmitting] = useState(false);
+  const [openList, setOpenList] = useState<"followers" | "following" | null>(
+    null,
+  );
 
   async function toggleFollow() {
     if (submitting) return;
@@ -48,15 +52,24 @@ export function ProfileStats({
           <strong>{postCount}</strong>{" "}
           <span className="text-muted">publicaciones</span>
         </span>
-        <span>
+        <button type="button" onClick={() => setOpenList("followers")}>
           <strong>{followerCount}</strong>{" "}
-          <span className="text-muted">seguidores</span>
-        </span>
-        <span>
+          <span className="text-muted hover:underline">seguidores</span>
+        </button>
+        <button type="button" onClick={() => setOpenList("following")}>
           <strong>{followingCount}</strong>{" "}
-          <span className="text-muted">seguidos</span>
-        </span>
+          <span className="text-muted hover:underline">seguidos</span>
+        </button>
       </div>
+
+      {openList && (
+        <FollowListModal
+          key={openList}
+          username={username}
+          kind={openList}
+          onClose={() => setOpenList(null)}
+        />
+      )}
 
       <div className="flex gap-3 py-4">
         {isOwnProfile ? (
