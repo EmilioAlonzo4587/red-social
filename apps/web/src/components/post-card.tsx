@@ -13,9 +13,14 @@ import { subscribePostComments, subscribePostLikes } from "@/lib/socket";
 export function PostCard({
   post,
   currentUserId,
+  linkToDetail = true,
+  onDeleted,
 }: {
   post: PostDto;
   currentUserId?: string;
+  /** false en /p/[id] (S3-08): ya estás ahí, no tiene sentido enlazar a sí misma. */
+  linkToDetail?: boolean;
+  onDeleted?: () => void;
 }) {
   const authorName = post.author.displayName ?? post.author.username;
   const [likedByMe, setLikedByMe] = useState(post.likedByMe);
@@ -49,6 +54,7 @@ export function PostCard({
         method: "DELETE",
       });
       setDeleted(true);
+      onDeleted?.();
     } catch {
       setDeleteError("No se pudo eliminar. Intenta de nuevo.");
       setDeleteStage("confirming");
@@ -80,6 +86,33 @@ export function PostCard({
   }
 
   if (deleted) return null;
+
+  const postBody = (
+    <>
+      {post.content && <p className="whitespace-pre-line">{post.content}</p>}
+
+      {post.media.length > 0 && (
+        <div
+          className={`mt-1 grid gap-1 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+        >
+          {post.media.map((media) => (
+            <div
+              key={media.publicId}
+              className="relative aspect-video overflow-hidden rounded-md bg-surface"
+            >
+              <Image
+                src={cloudinaryImageUrl(media.publicId)}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 100vw, 576px"
+                className="object-cover"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
 
   return (
     <article className="flex flex-col gap-3 border-b border-border py-4">
@@ -137,32 +170,11 @@ export function PostCard({
       )}
       {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
 
-      <Link href={`/p/${post.id}`}>
-        {post.content && (
-          <p className="whitespace-pre-line">{post.content}</p>
-        )}
-
-        {post.media.length > 0 && (
-          <div
-            className={`mt-1 grid gap-1 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
-          >
-            {post.media.map((media) => (
-              <div
-                key={media.publicId}
-                className="relative aspect-video overflow-hidden rounded-md bg-surface"
-              >
-                <Image
-                  src={cloudinaryImageUrl(media.publicId)}
-                  alt=""
-                  fill
-                  sizes="(max-width: 640px) 100vw, 576px"
-                  className="object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </Link>
+      {linkToDetail ? (
+        <Link href={`/p/${post.id}`}>{postBody}</Link>
+      ) : (
+        postBody
+      )}
 
       <div className="flex gap-6 text-sm">
         <button
