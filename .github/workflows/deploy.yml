@@ -1,6 +1,6 @@
 # Despliegue a producción (issue S1-01). Corre en cada push a main y a mano desde la pestaña Actions.
 # Secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY. Variables (no secretas): NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.
-# El VPS tiene ~/app/.env; compose, Caddyfile y deploy.sh se copian desde infra/ en cada despliegue.
+# El VPS tiene ~/app/.env; compose, Caddyfile, deploy.sh y backup-db.sh se copian desde infra/ en cada despliegue.
 name: Deploy
 on:
   push:
@@ -64,7 +64,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: infra/docker-compose.yml,infra/Caddyfile,infra/deploy.sh
+          source: infra/docker-compose.yml,infra/Caddyfile,infra/deploy.sh,infra/backup-db.sh
           target: app/infra-nuevo
           strip_components: 1
           rm: true

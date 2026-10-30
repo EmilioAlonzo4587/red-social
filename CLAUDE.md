@@ -14,9 +14,9 @@ La fuente de verdad es `docs/`. Antes de cambiar algo, lee la sección que aplic
 apps/api            NestJS 11 + Jest. Prisma en apps/api/prisma/
 apps/web            Next.js 16 (App Router) + React 19 + Tailwind 4
 packages/api-types  @red/api-types: tipos compartidos entre api y web
-infra/              docker-compose (dev y prod), Caddyfile, deploy.sh (lo ejecuta deploy.yml en el VPS)
+infra/              docker-compose (dev y prod), Caddyfile, deploy.sh (lo ejecuta deploy.yml en el VPS), backup-db.sh
 docs/               documentación; se compila a PDF con tools/docs-pdf
-scripts/            crear_issues.mjs, backup-db.sh
+scripts/            crear_issues.mjs
 ```
 
 En producción Caddy envía `/api/*` y `/socket.io/*` a la api y todo lo demás a la web, en un solo dominio (D02).
@@ -38,7 +38,7 @@ pnpm --filter api test:e2e
 pnpm -r --if-present build
 ```
 
-## Estado actual (29 oct 2026)
+## Estado actual (30 oct 2026)
 
 Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), VPS con HTTPS (S0-03), web inicializada (S0-07), wireframes como páginas con datos de ejemplo, portada, login y registro (S1-08), Prisma 6.19.3 con la migración inicial (S0-04), contrato de API v0 (S0-05) y esqueleto desplegado en producción (S1-01): Dockerfiles de api y web, `deploy.yml` activo con `infra/deploy.sh` y rollback de imágenes, prefijo global `/api`, `PrismaModule` global, `GET /api/health` y Swagger en `/api/docs`.
 
@@ -51,6 +51,8 @@ Seed de datos de demostración (S1-06): `apps/api/prisma/seed.ts` crea 20 usuari
 Socket autenticado (S1-04): `src/realtime/` con un solo Gateway. El handshake valida la cookie con `SessionTokenService` (la misma regla que el guard HTTP) y el `Origin` contra `CORS_ORIGIN`, que ahora es obligatoria; cada socket entra a `user:{id}`, recibe `session:ready` y se cierra cuando vence su JWT. `apps/api/scripts/probar-socket.mjs` lo prueba en producción.
 
 Imágenes en Cloudinary (S2-01): `src/media/` (`MediaModule`) con `POST /api/media` (jpeg, png o webp, hasta 5 MB) y `CloudinaryService`, que sube cada imagen a `users/{id}/` y expone `belongsToUser`/`deleteByPublicId` para que Dev 2 las use en publicaciones (S2-04) y avatar (S2-11). Variables `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` validadas al arrancar.
+
+Respaldo diario (S2-02): `infra/backup-db.sh` llega a `~/app` del VPS con cada despliegue (`deploy.yml` lo copia y `deploy.sh` lo instala con `install -m 755`) y cron lo corre a las 03:00 UTC. Hace `pg_dump -Fc` dentro del contenedor `db`, lo valida leyéndolo entero con `pg_restore -f /dev/null` antes de darlo por bueno, lo sube cifrado con rclone (remoto `crypt` sobre Google Drive) al remoto de `BACKUP_REMOTE` y conserva 7 en el VPS y 7 fuera. `BACKUP_REMOTE` reemplaza a `BACKUP_UPLOAD_CMD` (ya no hay `eval` ni `source .env`) y solo la lee el script: no va en `env.ts`. rclone se instala en el VPS, no es dependencia del repo. La restauración probada es S4-03.
 
 Publicaciones (S2-04): `src/posts/` con `POST /api/posts`, `GET /api/posts/:id` y `DELETE /api/posts/:id` (borrado lógico, RN03 y RN04). Compositor de publicaciones (S2-08): `apps/web/src/components/post-composer.tsx` y `src/lib/media.ts`, montado arriba de las pestañas en `/feed`; sube cada imagen con `POST /api/media` y crea la publicación con `POST /api/posts`.
 

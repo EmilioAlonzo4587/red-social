@@ -15,7 +15,7 @@ No hay entorno de staging: el CI con base de datos real y la revisión obligator
 - **Requisitos mínimos**: 2 GB de RAM, swap de 2 GB, Ubuntu LTS, Docker y el plugin de Compose. El servidor usa Ubuntu 24.04 con 2 GB de swap.
 - **Acceso**: SSH solo con llave, se trabaja con el usuario `deploy` (con sudo) y no con root, acceso como root y por contraseña deshabilitados, firewall (`ufw`) con los puertos 22, 80 y 443 (TCP, y UDP para HTTP/3). Cada integrante que necesite entrar recibe su propio usuario y su propia llave.
 - **Dominio**: `chatinit.duckdns.org`, un subdominio gratuito de DuckDNS apuntando a la IP fija del VPS. Caddy obtiene y renueva el certificado HTTPS de Let's Encrypt automáticamente. Para cambiar de dominio basta con apuntar el nuevo a la misma IP y actualizar `DOMAIN` en el `.env` del servidor.
-- **Archivos en el servidor**: `~/app` contiene `docker-compose.yml`, `Caddyfile` y el `.env` de producción (permisos 600), que nunca se sube al repositorio.
+- **Archivos en el servidor**: `~/app` contiene `docker-compose.yml`, `Caddyfile`, `backup-db.sh` y el `.env` de producción (permisos 600), que nunca se sube al repositorio.
 
 ## Contenedores
 
@@ -47,8 +47,8 @@ flowchart LR
 `deploy.yml` corre en cada push a `main`, salvo si solo cambian `docs/`, archivos `.md` o `.claude/`, y también a mano desde la pestaña Actions (`workflow_dispatch`):
 
 1. Construye las imágenes `web` y `api` y las publica en GHCR con la etiqueta del commit y `latest`. Los paquetes de GHCR son públicos, así que el VPS las descarga sin credenciales.
-2. Copia `infra/docker-compose.yml`, `infra/Caddyfile` e `infra/deploy.sh` a `~/app/infra-nuevo` en el VPS. El repositorio es la fuente de verdad: esos archivos no se editan en el servidor.
-3. Ejecuta `deploy.sh <sha>`, que copia compose y Caddyfile a `~/app` (y recarga Caddy si cambió), descarga las imágenes, aplica `prisma migrate deploy` con la CLI que trae la imagen de la api, reinicia los servicios y consulta `/api/health` durante un minuto. Si responde, guarda la etiqueta nueva en `IMAGE_TAG` del `.env`; si no, vuelve a la anterior.
+2. Copia `infra/docker-compose.yml`, `infra/Caddyfile`, `infra/deploy.sh` e `infra/backup-db.sh` a `~/app/infra-nuevo` en el VPS. El repositorio es la fuente de verdad: esos archivos no se editan en el servidor.
+3. Ejecuta `deploy.sh <sha>`, que copia compose, Caddyfile y `backup-db.sh` a `~/app` (y recarga Caddy si cambió), descarga las imágenes, aplica `prisma migrate deploy` con la CLI que trae la imagen de la api, reinicia los servicios y consulta `/api/health` durante un minuto. Si responde, guarda la etiqueta nueva en `IMAGE_TAG` del `.env`; si no, vuelve a la anterior.
 
 El rollback cambia las imágenes pero **no deshace migraciones**: cada migración tiene que funcionar también con la versión anterior de la api (por ejemplo, agregar una columna con valor por defecto en lugar de renombrarla).
 
@@ -73,13 +73,38 @@ Tampoco restaura `docker-compose.yml` ni `Caddyfile`: `deploy.sh` ya los copió 
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | api | Subida y borrado de imágenes |
 | `API_INTERNAL_URL` | web | URL de la API para el renderizado en servidor |
 | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | web (build) | URL pública y nombre de la cuenta de Cloudinary; se fijan al construir la imagen |
+| `BACKUP_REMOTE` | backup-db.sh (solo VPS) | Remoto de rclone, cifrado con crypt, donde se copian los respaldos. Vacío: el respaldo se queda en el VPS y el log lo avisa |
 | `NEXT_PUBLIC_SOCKET_URL` | web (solo local) | URL de Socket.io. Solo en local (`http://localhost:3000`); en producción queda vacía y el cliente usa el mismo dominio |
 
 La lista completa con valores de ejemplo está en `.env.example`.
 
 ## Respaldos
 
-`scripts/backup-db.sh`, copiado a `~/app` en el VPS, ejecuta `pg_dump` todos los días a las 03:00 UTC por cron, conserva los últimos 7 respaldos y los copia fuera del VPS con el comando de `BACKUP_UPLOAD_CMD`. En la semana 4 se restaura el último respaldo en una base limpia para comprobar que sirve (issue S4-03).
+`infra/backup-db.sh` (S2-02) llega a `~/app` con cada despliegue, igual que el compose: se cambia en el repo, nunca en el servidor. Cron lo ejecuta todos los días a las 03:00 UTC (21:00 en Guatemala):
+
+```
+0 3 * * * $HOME/app/backup-db.sh >> $HOME/backups/backup.log 2>&1
+```
+
+En cada ejecución:
+
+1. Corre `pg_dump -Fc` dentro del contenedor `db`, con la versión de PostgreSQL del servidor y sus propias variables: la contraseña no pasa por el script. El formato custom ya viene comprimido y es el que lee `pg_restore`. `pg_dump` lee una foto consistente de la base sin bloquear a la api.
+2. Escribe primero en un archivo `.parcial` y lo lee completo con `pg_restore -f /dev/null`. Solo si se puede leer entero pasa a llamarse `chatinit-AAAAMMDD-HHMMSS.dump` (fecha UTC). Un respaldo cortado nunca entra en la rotación.
+3. Si `BACKUP_REMOTE` tiene valor, lo sube con rclone y borra del remoto los que pasen de 7. Si la subida falla, el script termina con error y no borra nada.
+4. Deja los 7 más recientes en `~/backups` (permisos 600) y borra los demás.
+
+Cualquier error detiene el script sin rotar nada y queda en `~/backups/backup.log`. Un candado (`flock`) impide dos ejecuciones al mismo tiempo.
+
+**Destino fuera del VPS**: una carpeta de Google Drive de una cuenta del proyecto, con un remoto `crypt` de rclone encima. rclone cifra el contenido y los nombres antes de subirlos, así que en Drive solo se ven archivos ilegibles. La contraseña y la sal del `crypt` se guardan en el gestor de contraseñas del equipo: sin ellas no se puede restaurar ningún respaldo. El cifrado protege contra una filtración de la cuenta de Drive, no contra alguien que entre al VPS, porque la configuración de rclone vive allí (`~/.config/rclone/rclone.conf`, permisos 600).
+
+rclone se instala en el VPS, no en el repositorio. Para traer un respaldo a otra máquina hace falta el mismo remoto `crypt` configurado con esa contraseña y `rclone copy respaldos-cifrados:chatinit/<archivo> .`. En la semana 4 se restaura el último respaldo en una base limpia para comprobar que sirve (issue S4-03).
+
+**Probar un cambio al script en local**, con la base de desarrollo encendida y rclone instalado. El remoto `:local:` de rclone es una carpeta normal y no necesita configuración:
+
+```bash
+APP_DIR=$PWD/infra COMPOSE_FILE=docker-compose.dev.yml BACKUP_DIR=/tmp/resp \
+  BACKUP_REMOTE=:local:/tmp/resp-remoto bash infra/backup-db.sh
+```
 
 ## Observabilidad
 
