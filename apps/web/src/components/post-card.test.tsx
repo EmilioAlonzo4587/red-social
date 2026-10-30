@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { LikeStatusDto, PostDto } from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,6 +6,15 @@ import { PostCard } from "./post-card";
 
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
+
+const { subscribePostLikes, unsubscribe } = vi.hoisted(() => {
+  const unsubscribe = vi.fn();
+  const subscribePostLikes = vi.fn<
+    (postId: string, onLikeCount: (count: number) => void) => () => void
+  >(() => unsubscribe);
+  return { subscribePostLikes, unsubscribe };
+});
+vi.mock("@/lib/socket", () => ({ subscribePostLikes }));
 
 const BASE_POST: PostDto = {
   id: "11111111-1111-1111-1111-111111111111",
@@ -26,6 +35,8 @@ const BASE_POST: PostDto = {
 describe("PostCard", () => {
   beforeEach(() => {
     apiFetchClient.mockReset();
+    subscribePostLikes.mockClear();
+    unsubscribe.mockClear();
   });
 
   it("muestra el autor, el contenido y los contadores", () => {
@@ -232,5 +243,30 @@ describe("PostCard", () => {
     expect(
       screen.getByText("Primer atardecer del semestre"),
     ).toBeInTheDocument();
+  });
+
+  it("se suscribe a likes en vivo al montar, actualiza el contador y se desuscribe al desmontar", () => {
+    let onLikeCount: ((count: number) => void) | undefined;
+    subscribePostLikes.mockImplementationOnce(
+      (_postId: string, listener: (count: number) => void) => {
+        onLikeCount = listener;
+        return unsubscribe;
+      },
+    );
+
+    const { unmount } = render(<PostCard post={BASE_POST} />);
+    expect(subscribePostLikes).toHaveBeenCalledWith(
+      BASE_POST.id,
+      expect.any(Function),
+    );
+    expect(screen.getByText("❤ 3")).toBeInTheDocument();
+
+    act(() => {
+      onLikeCount?.(12);
+    });
+    expect(screen.getByText("❤ 12")).toBeInTheDocument();
+
+    unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 });

@@ -338,6 +338,9 @@ importers:
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
+      socket.io-client:
+        specifier: ^4.8.4
+        version: 4.8.4(supports-color@8.1.1)
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.3.3

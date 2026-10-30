@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { LikeStatusDto, PostDto } from "@red/api-types";
 import { Avatar } from "@/components/avatar";
 import { apiFetchClient } from "@/lib/api-client";
 import { formatRelativeTime } from "@/lib/format";
 import { cloudinaryImageUrl } from "@/lib/media";
+import { subscribePostLikes } from "@/lib/socket";
 
 export function PostCard({
   post,
@@ -27,6 +28,12 @@ export function PostCard({
   const [deleted, setDeleted] = useState(false);
 
   const isOwner = currentUserId !== undefined && post.author.id === currentUserId;
+
+  // S2-03: se suscribe a post:{id} mientras la tarjeta está en pantalla y hace unwatch al desmontar
+  useEffect(() => {
+    if (deleted) return;
+    return subscribePostLikes(post.id, setLikeCount);
+  }, [post.id, deleted]);
 
   async function confirmDelete() {
     setDeleteStage("deleting");

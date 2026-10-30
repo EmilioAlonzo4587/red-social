@@ -8,7 +8,7 @@ import { AppModule } from './../src/app.module';
 import type { MeDto } from './../src/auth/dto/me.dto';
 import { configureApp } from './../src/configure-app';
 import { PrismaService } from './../src/prisma/prisma.service';
-import { userRoom } from './../src/realtime/realtime.events';
+import { postRoom, userRoom } from './../src/realtime/realtime.events';
 import { RealtimeGateway } from './../src/realtime/realtime.gateway';
 import { cookiesOf } from './utils/cookies';
 import { resetDatabase } from './utils/database';
@@ -200,6 +200,130 @@ describe('Socket.io autenticado (e2e)', () => {
         .server.to(userRoom(ana.id))
         .emit('session:ready', { userId: ana.id });
       expect(await received).toHaveLength(2);
+    });
+  });
+
+  describe('likes en vivo (S2-03)', () => {
+    async function createPost(authorId: string): Promise<string> {
+      const post = await app.get(PrismaService).post.create({
+        data: { authorId, content: 'Hola en vivo' },
+      });
+      return post.id;
+    }
+
+    async function waitUntilInRoom(
+      room: string,
+      expectedSocketIds: string[],
+    ): Promise<void> {
+      const server = app.get(RealtimeGateway).server;
+      for (let i = 0; i < 40; i++) {
+        const inRoom = await server.in(room).fetchSockets();
+        const ids = inRoom.map((s) => s.id).sort();
+        if (
+          ids.length === expectedSocketIds.length &&
+          ids.every((id, idx) => id === [...expectedSocketIds].sort()[idx])
+        ) {
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 15));
+      }
+      throw new Error(`La sala ${room} no alcanzó los sockets esperados`);
+    }
+
+    it('dos navegadores suscritos con post:watch reciben post:likes al dar y quitar like', async () => {
+      const ana = await registerUser('ana');
+      const beto = await registerUser('beto');
+      const postId = await createPost(ana.id);
+
+      const nav1 = connect(withCookie(ana.access));
+      const nav2 = connect(withCookie(beto.access));
+      await waitFor(nav1, ['session:ready']);
+      await waitFor(nav2, ['session:ready']);
+
+      nav1.emit('post:watch', { postIds: [postId] });
+      nav2.emit('post:watch', { postIds: [postId] });
+      await waitUntilInRoom(postRoom(postId), [nav1.id!, nav2.id!]);
+
+      const onLike = Promise.all([
+        waitFor(nav1, ['post:likes']),
+        waitFor(nav2, ['post:likes']),
+      ]);
+
+      await request(app.getHttpServer())
+        .put(`/api/posts/${postId}/like`)
+        .set('Cookie', `access_token=${beto.access}`)
+        .expect(200);
+
+      expect(await onLike).toEqual([
+        { event: 'post:likes', data: { postId, likeCount: 1 } },
+        { event: 'post:likes', data: { postId, likeCount: 1 } },
+      ]);
+
+      const onUnlike = Promise.all([
+        waitFor(nav1, ['post:likes']),
+        waitFor(nav2, ['post:likes']),
+      ]);
+
+      await request(app.getHttpServer())
+        .delete(`/api/posts/${postId}/like`)
+        .set('Cookie', `access_token=${beto.access}`)
+        .expect(200);
+
+      expect(await onUnlike).toEqual([
+        { event: 'post:likes', data: { postId, likeCount: 0 } },
+        { event: 'post:likes', data: { postId, likeCount: 0 } },
+      ]);
+    });
+
+    it('post:unwatch saca al socket de la sala y ya no recibe post:likes', async () => {
+      const ana = await registerUser('ana');
+      const beto = await registerUser('beto');
+      const postId = await createPost(ana.id);
+
+      const anaSocket = connect(withCookie(ana.access));
+      const betoSocket = connect(withCookie(beto.access));
+      await waitFor(anaSocket, ['session:ready']);
+      await waitFor(betoSocket, ['session:ready']);
+
+      anaSocket.emit('post:watch', { postIds: [postId] });
+      betoSocket.emit('post:watch', { postIds: [postId] });
+      await waitUntilInRoom(postRoom(postId), [anaSocket.id!, betoSocket.id!]);
+
+      // Ana deja de mirar la publicación; solo Beto sigue en la sala
+      anaSocket.emit('post:unwatch', { postIds: [postId] });
+      await waitUntilInRoom(postRoom(postId), [betoSocket.id!]);
+
+      let anaReceived = false;
+      anaSocket.once('post:likes', () => {
+        anaReceived = true;
+      });
+      const betoReceived = waitFor(betoSocket, ['post:likes']);
+
+      await request(app.getHttpServer())
+        .put(`/api/posts/${postId}/like`)
+        .set('Cookie', `access_token=${beto.access}`)
+        .expect(200);
+
+      expect(await betoReceived).toEqual({
+        event: 'post:likes',
+        data: { postId, likeCount: 1 },
+      });
+      expect(anaReceived).toBe(false);
+    });
+
+    it('ignora post:watch con datos inválidos (no UUID)', async () => {
+      const ana = await registerUser('ana');
+      const socket = connect(withCookie(ana.access));
+      await waitFor(socket, ['session:ready']);
+
+      socket.emit('post:watch', { postIds: ['no-es-uuid'] });
+      await new Promise((r) => setTimeout(r, 50));
+
+      const server = app.get(RealtimeGateway).server;
+      const inInvalidRoom = await server
+        .in(postRoom('no-es-uuid'))
+        .fetchSockets();
+      expect(inInvalidRoom).toHaveLength(0);
     });
   });
 

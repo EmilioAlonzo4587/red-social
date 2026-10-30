@@ -14,6 +14,10 @@ vi.mock("@/lib/media", async (importOriginal) => {
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
+vi.mock("@/lib/socket", () => ({
+  subscribePostLikes: vi.fn(() => () => {}),
+}));
+
 function post(id: string): PostDto {
   return {
     id,
