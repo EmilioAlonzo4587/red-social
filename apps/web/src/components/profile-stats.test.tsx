@@ -156,30 +156,12 @@ describe("ProfileStats", () => {
     expect(screen.getByText("10")).toBeInTheDocument();
   });
 
-  it("tocar 'Mensaje' abre la conversación con POST /api/conversations y navega a /chat?username= (S3-06)", async () => {
+  it("tocar 'Mensaje' navega a /chat?username= sin pedir nada a la api (S3-06)", async () => {
     const user = userEvent.setup();
-    apiFetchClient.mockResolvedValueOnce({
-      id: "c1",
-      otherUser: {
-        id: "u1",
-        username: "ana_lopez",
-        displayName: "Ana López",
-        avatarPublicId: null,
-      },
-      lastMessage: null,
-      unread: 0,
-    });
-
     render(<ProfileStats {...BASE_PROPS} />);
     await user.click(screen.getByRole("button", { name: "Mensaje" }));
 
-    await waitFor(() => {
-      expect(apiFetchClient).toHaveBeenCalledWith("/api/conversations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: "ana_lopez" }),
-      });
-      expect(push).toHaveBeenCalledWith("/chat?username=ana_lopez");
-    });
+    expect(push).toHaveBeenCalledWith("/chat?username=ana_lopez");
+    expect(apiFetchClient).not.toHaveBeenCalled();
   });
 });
