@@ -158,7 +158,10 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 | GET | `/api/notifications/unread-count` 🔒 | | `{ count }` | |
 | POST | `/api/notifications/read` 🔒 | `{ ids: string[] }` o `{ all: true }` | 204 | 400 |
 
+- Se crean solas al dar like, comentar, seguir o escribir (RN08), nunca por una acción sobre uno mismo. Quitar el like o borrar el comentario no borra la notificación ya creada.
 - Se crea una notificación de `message` solo si no hay otra sin leer del mismo remitente, para no llenar la campana con cada mensaje de una conversación.
+- La lista y `unread-count` no incluyen las de una publicación o un comentario eliminados: su enlace llevaría a un 404.
+- `POST /api/notifications/read` lleva exactamente uno de los dos campos: `ids` (de 1 a 100 UUID) o `all: true`. Sin ninguno, con los dos (`details: [{ field: "all", rule: "notWith" }]`) o con otro valor responde 400. Las ids ajenas o inexistentes se ignoran sin error, y una ya leída conserva su fecha de lectura.
 
 ### Chat (S3-04)
 

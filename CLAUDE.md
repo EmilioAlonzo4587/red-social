@@ -38,7 +38,7 @@ pnpm --filter api test:e2e
 pnpm -r --if-present build
 ```
 
-## Estado actual (28 oct 2026)
+## Estado actual (29 oct 2026)
 
 Hecho: monorepo (S0-01), CI con el check `verificar` y main protegida (S0-02), VPS con HTTPS (S0-03), web inicializada (S0-07), wireframes como páginas con datos de ejemplo, portada, login y registro (S1-08), Prisma 6.19.3 con la migración inicial (S0-04), contrato de API v0 (S0-05) y esqueleto desplegado en producción (S1-01): Dockerfiles de api y web, `deploy.yml` activo con `infra/deploy.sh` y rollback de imágenes, prefijo global `/api`, `PrismaModule` global, `GET /api/health` y Swagger en `/api/docs`.
 
@@ -69,6 +69,8 @@ Likes, seguir y eliminar en la web (S2-10): `PostCard` tiene like optimista (`PU
 Comentarios (S3-01): `src/comments/` con `GET`/`POST /api/posts/:id/comments` (paginado por cursor, del más antiguo al más reciente, RN07) y `DELETE /api/comments/:id` (403 si es ajeno, RN04). Todavía sin consumir desde la web (le toca a S3-08).
 
 Búsqueda de usuarios (S3-02): `GET /api/users/search?q=` en `UsersController`, hasta 20 resultados, 400 si `q` tiene menos de 2 caracteres (RN14). Todavía sin consumir desde la web (le toca a S3-09).
+
+Notificaciones persistidas (S3-03): `src/notifications/` con `GET /api/notifications` (paginado por cursor, de la más reciente a la más antigua), `GET /api/notifications/unread-count` y `POST /api/notifications/read` (`{ ids }` o `{ all: true }`). `NotificationsListener` crea la de like, comentario, seguimiento y mensaje (nunca para uno mismo, RN08; de mensaje, una sin leer por remitente) y emite `notification.created`, que el Gateway enviará en S3-05. No se muestran ni cuentan las de publicaciones o comentarios eliminados. El listener termina después de responder: las e2e que cuentan `emit` lo apagan con `overrideProvider`. Todavía sin consumir desde la web (le toca a S3-07).
 
 Botón de cerrar sesión (S3-13): `logout()` en `src/lib/api-client.ts` llama `POST /api/auth/logout` y siempre recarga a la portada (`window.location.href`), incluso si la petición falla, porque el endpoint borra las cookies y responde 204 siempre. El botón vive en `LogoutButton`, fijo en la esquina inferior izquierda (montado en `layout.tsx`, no en `Navbar`), visible solo con sesión activa.
 

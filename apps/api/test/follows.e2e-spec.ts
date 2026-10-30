@@ -9,6 +9,7 @@ import { configureApp } from './../src/configure-app';
 import { DomainEvents } from './../src/events/domain-events.service';
 import type { FollowStatusDto } from './../src/follows/dto/follow-status.dto';
 import type { UserSummaryPageDto } from './../src/follows/dto/user-summary-page.dto';
+import { NotificationsListener } from './../src/notifications/notifications.listener';
 import { PrismaService } from './../src/prisma/prisma.service';
 import { cookiesOf } from './utils/cookies';
 import { resetDatabase } from './utils/database';
@@ -46,9 +47,15 @@ describe('Seguimiento (e2e)', () => {
   }
 
   beforeAll(async () => {
+    // Sin el listener de notificaciones: escribiría y emitiría notification.created después de
+    // responder, y las cuentas de emit de este archivo dependerían de cuándo termina.
+    // Las notificaciones se prueban en notifications.e2e-spec.ts.
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(NotificationsListener)
+      .useValue({})
+      .compile();
     app = moduleRef.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.init();
