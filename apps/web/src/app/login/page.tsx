@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { LoginDto } from "@red/api-types";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
@@ -30,7 +29,6 @@ function validate(identifier: string, password: string): FormErrors {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
@@ -53,7 +51,9 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier, password } satisfies LoginDto),
       });
-      router.push("/feed");
+      // Navegación completa que reemplaza la entrada (no router.replace: la caché
+      // del router de Next puede resolver "atrás" sin pasar por proxy.ts) (S3-12).
+      window.location.replace("/feed");
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.statusCode === 400) {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { BfcacheReload } from "@/components/bfcache-reload";
 import { LogoutButton } from "@/components/logout-button";
 import { Navbar } from "@/components/navbar";
 import "./globals.css";
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
+        <BfcacheReload />
         <Navbar />
         {children}
         <LogoutButton />

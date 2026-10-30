@@ -76,6 +76,8 @@ Botón de cerrar sesión (S3-13): `logout()` en `src/lib/api-client.ts` llama `P
 
 Mostrar/ocultar contraseña (S3-11): `PasswordInput` (`apps/web/src/components/password-input.tsx`) envuelve el input con un botón que alterna `type="password"`/`type="text"` (ícono de ojo, `aria-pressed`), usado en login y registro. No valida ni cambia el límite de 128 caracteres, solo la visibilidad.
 
+Atrás no muestra login ni otra sesión (S3-12): `src/proxy.ts` ahora también redirige a `/feed` si hay sesión y la ruta es pública (`/`, `/login`, `/registro`), el espejo de la regla que ya existía; además agrega `Cache-Control: no-store` a toda respuesta que deja pasar. Login y registro usan `router.replace("/feed")` en vez de `router.push` tras el éxito. `BfcacheReload` (montado en `layout.tsx`) escucha `pageshow`: si el navegador restauró la página desde su back-forward cache (`event.persisted`), fuerza `window.location.reload()` para no mostrar datos de una cuenta distinta a la que inició sesión después.
+
 Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05) y el cliente de Socket.io en la web. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
