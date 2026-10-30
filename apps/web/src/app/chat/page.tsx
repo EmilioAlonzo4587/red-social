@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import {
+  Suspense,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type {
   ConversationDto,
   MeDto,
@@ -23,6 +30,14 @@ import {
 
 const MESSAGE_MAX = 2000;
 const TYPING_INDICATOR_MS = 3000;
+// Distancia al fondo (px) con la que se considera que el usuario está leyendo lo último
+const NEAR_BOTTOM_PX = 80;
+
+// Qué hacer con el scroll del historial después del próximo render
+type PendingScroll =
+  | { kind: "bottom" }
+  | { kind: "keep"; fromBottom: number }
+  | null;
 
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
@@ -89,12 +104,38 @@ function ChatView() {
   const selectedIdRef = useRef<string | null>(null);
   const currentUserIdRef = useRef<string | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+  const pendingScrollRef = useRef<PendingScroll>(null);
+
+  function isNearBottom(): boolean {
+    const el = messagesRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
+  }
+
+  // Al abrir, al enviar o al recibir estando abajo, baja al último mensaje. Al cargar
+  // anteriores, conserva lo que se estaba viendo en vez de saltar a lo más antiguo.
+  useLayoutEffect(() => {
+    const el = messagesRef.current;
+    const pending = pendingScrollRef.current;
+    if (!el || !pending) return;
+    pendingScrollRef.current = null;
+    el.scrollTop =
+      pending.kind === "bottom"
+        ? el.scrollHeight
+        : el.scrollHeight - el.clientHeight - pending.fromBottom;
+  }, [messages, otherTyping]);
   useEffect(() => {
     selectedIdRef.current = selectedId;
     currentUserIdRef.current = currentUserId;
   }, [selectedId, currentUserId]);
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
+
+  // openConversation lee el estado más reciente sin que la carga inicial dependa de él
+  const openFromQuery = useEffectEvent((id: string, list: ConversationDto[]) =>
+    openConversation(id, list),
+  );
 
   // Carga inicial: usuario actual, bandeja y, si viene ?username=, abre esa conversación.
   useEffect(() => {
@@ -124,7 +165,7 @@ function ChatView() {
         setInboxStatus("ready");
 
         if (opened) {
-          openConversation(opened.id, merged);
+          openFromQuery(opened.id, merged);
         }
       } catch (err) {
         if (cancelled) return;
@@ -139,7 +180,6 @@ function ChatView() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetUsername]);
 
   // Escucha conversation:updated en user:{id} para actualizar y reordenar la bandeja en vivo.
@@ -177,6 +217,7 @@ function ChatView() {
       .then((page) => {
         if (cancelled) return;
         // La api entrega del más reciente al más antiguo; se invierten para mostrarlos (docs/05-api.md).
+        pendingScrollRef.current = { kind: "bottom" };
         setMessages([...page.items].reverse());
         setNextCursor(page.nextCursor);
         setMessagesStatus("ready");
@@ -192,6 +233,12 @@ function ChatView() {
     const unsubSocket = subscribeConversationMessages(
       convId,
       (message) => {
+        if (
+          isNearBottom() ||
+          message.senderId === currentUserIdRef.current
+        ) {
+          pendingScrollRef.current = { kind: "bottom" };
+        }
         setMessages((prev) => appendUniqueMessage(prev, message));
         if (
           currentUserIdRef.current &&
@@ -227,6 +274,7 @@ function ChatView() {
           ) {
             return;
           }
+          if (isNearBottom()) pendingScrollRef.current = { kind: "bottom" };
           setOtherTyping(true);
           if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
           typingTimerRef.current = setTimeout(() => {
@@ -292,6 +340,13 @@ function ChatView() {
         `/api/conversations/${selectedId}/messages?cursor=${encodeURIComponent(nextCursor)}`,
       );
       const olderChronological = [...page.items].reverse();
+      const el = messagesRef.current;
+      if (el) {
+        pendingScrollRef.current = {
+          kind: "keep",
+          fromBottom: el.scrollHeight - el.clientHeight - el.scrollTop,
+        };
+      }
       setMessages((prev) => prependUniqueMessages(olderChronological, prev));
       setNextCursor(page.nextCursor);
     } catch (err) {
@@ -326,6 +381,7 @@ function ChatView() {
         },
       );
       setDraft("");
+      pendingScrollRef.current = { kind: "bottom" };
       setMessages((prev) => appendUniqueMessage(prev, created));
       setConversations((prev) => {
         const current = prev.find((c) => c.id === selectedId);
@@ -486,6 +542,7 @@ function ChatView() {
             </div>
 
             <div
+              ref={messagesRef}
               onScroll={handleMessagesScroll}
               className="flex flex-1 flex-col gap-2 overflow-y-auto p-4"
             >
