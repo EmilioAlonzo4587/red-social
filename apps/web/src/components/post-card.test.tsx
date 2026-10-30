@@ -64,6 +64,16 @@ describe("PostCard", () => {
       "href",
       "/u/ana_lopez",
     );
+    expect(
+      screen.getByText("Primer atardecer del semestre").closest("a"),
+    ).toHaveAttribute("href", `/p/${BASE_POST.id}`);
+  });
+
+  it("linkToDetail=false (S3-08, ya estás en /p/[id]): no enlaza el contenido a sí misma", () => {
+    render(<PostCard post={BASE_POST} linkToDetail={false} />);
+    expect(
+      screen.getByText("Primer atardecer del semestre").closest("a"),
+    ).not.toBeInTheDocument();
   });
 
   it("el avatar del autor también enlaza a su perfil", () => {
@@ -231,6 +241,47 @@ describe("PostCard", () => {
       `/api/posts/${BASE_POST.id}`,
       { method: "DELETE" },
     );
+  });
+
+  it("confirmar elimina: llama a onDeleted (S3-08, para que /p/[id] redirija)", async () => {
+    const user = userEvent.setup();
+    const onDeleted = vi.fn();
+    apiFetchClient.mockResolvedValueOnce(undefined);
+
+    render(
+      <PostCard
+        post={BASE_POST}
+        currentUserId={BASE_POST.author.id}
+        onDeleted={onDeleted}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+    await user.click(screen.getByRole("button", { name: "Sí, eliminar" }));
+
+    await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1));
+  });
+
+  it("si eliminar falla, no llama a onDeleted", async () => {
+    const user = userEvent.setup();
+    const onDeleted = vi.fn();
+    apiFetchClient.mockRejectedValueOnce(new Error("caído"));
+
+    render(
+      <PostCard
+        post={BASE_POST}
+        currentUserId={BASE_POST.author.id}
+        onDeleted={onDeleted}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+    await user.click(screen.getByRole("button", { name: "Sí, eliminar" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("No se pudo eliminar. Intenta de nuevo."),
+      ).toBeInTheDocument();
+    });
+    expect(onDeleted).not.toHaveBeenCalled();
   });
 
   it("si eliminar falla, muestra un error y deja la publicación", async () => {
