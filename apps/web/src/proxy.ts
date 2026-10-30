@@ -27,5 +27,7 @@ export function proxy(request: NextRequest) {
 export const config = {
   // /api/* no pasa por aquí: la api tiene sus propias rutas públicas (@Public(), ej. /api/health,
   // /api/docs, /api/auth/login) y el resto exige sesión con su propio guard, no con este proxy.
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  // icon es el favicon generado con next/og (S3-17): cualquier visitante sin sesión también
+  // necesita poder pedirlo, igual que ya pasaba con el favicon.ico estático.
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon).*)"],
 };
