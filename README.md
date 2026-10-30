@@ -15,8 +15,8 @@ Monorepo con Next.js, NestJS, PostgreSQL y Prisma, desplegado con Docker en un V
 apps/web            Next.js (frontend)
 apps/api            NestJS (backend) y prisma/ (esquema, migraciones, seed)
 packages/api-types  Tipos generados desde OpenAPI
-infra/              docker-compose, Caddyfile y deploy.sh
-scripts/            Creación de issues y respaldos
+infra/              docker-compose, Caddyfile, deploy.sh y backup-db.sh
+scripts/            Creación de issues
 docs/               Documentación del proyecto (Markdown + Mermaid)
 tools/docs-pdf/     Generador del PDF de la documentación
 ```

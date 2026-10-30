@@ -16,7 +16,8 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de lo transver
 - Autenticación (S1-02): `src/auth/` y la configuración global de `configure-app.ts` (abajo).
 - Socket.io (S1-04): `src/realtime/` con el adaptador, el Gateway y la sala `user:{id}` (abajo).
 - Media (S2-01): `src/media/` (`MediaModule`), `POST /api/media` y las funciones `belongsToUser`/`deleteByPublicId` de `CloudinaryService`, exportadas para que Dev 2 las use en publicaciones (S2-04) y avatar (S2-11).
-- Pendiente: respaldos (S2-02), endurecimiento con helmet y CORS (S4-02).
+- Respaldos (S2-02): `infra/backup-db.sh`, desplegado por `deploy.yml` igual que el compose, corre por cron en el VPS y sube los respaldos cifrados con rclone a `BACKUP_REMOTE` (detalle abajo, en Despliegue).
+- Pendiente: endurecimiento con helmet y CORS (S4-02).
 
 ## Configuración global de la api
 
@@ -80,4 +81,9 @@ En `apps/api/src/configure-app.ts` (lo usan `main.ts` y las e2e), cuando lo pida
 - PostgreSQL sin puertos publicados: solo en la red interna de Docker.
 - Caddy enruta `/api/*` y `/socket.io/*` a la api y lo demás a la web, con HTTPS automático (D07). El dominio sale de `DOMAIN` en el `.env` del servidor.
 - Secretos solo en GitHub Secrets y en `~/app/.env` del VPS. Nunca en el repo, en issues, en PRs ni en los logs del workflow. Tampoco la IP, el usuario SSH ni el proveedor: el repo es público.
-- Respaldos con `scripts/backup-db.sh` por cron, guardados fuera del servidor, y la restauración probada (S2-02, S4-03).
+- Respaldos con `infra/backup-db.sh` (S2-02), copiado por `deploy.yml` y dejado ejecutable por `deploy.sh`; cron lo corre a las 03:00 UTC. Reglas al tocarlo:
+  - Nunca `source .env` ni `eval`: el script lee solo `BACKUP_REMOTE` con `grep`, y `pg_dump` usa las variables del propio contenedor `db`.
+  - Escribe en `.parcial`, lo valida con `pg_restore -f /dev/null` (no `--list`: no detecta un archivo cortado al final) y solo entonces lo renombra. Se rota solo después de un respaldo válido y, si hay remoto, ya subido.
+  - Fuera del VPS los respaldos van cifrados (remoto `crypt` de rclone). La contraseña del `crypt` vive en el gestor del equipo, nunca en el repo.
+  - Antes de cambiarlo, pruébalo en local contra `infra/docker-compose.dev.yml` con un remoto `:local:` (el comando está en `docs/06-devops.md`, sección Respaldos) y pásale `shellcheck`.
+  - La restauración probada y su procedimiento son S4-03.
