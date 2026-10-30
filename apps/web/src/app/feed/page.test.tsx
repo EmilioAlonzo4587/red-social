@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import type { MeDto, PostDto, PostPageDto } from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api-error";
@@ -69,6 +70,23 @@ describe("FeedPage", () => {
       expect(screen.getByText("Publicación 1")).toBeInTheDocument();
     });
     expect(screen.getByText("Publicación 2")).toBeInTheDocument();
+  });
+
+  it("con Strict Mode (desarrollo) carga la pestaña en vez de quedarse en Cargando…", async () => {
+    // Strict Mode monta, limpia y vuelve a montar el efecto: la primera petición se descarta
+    apiFetchClient.mockImplementation((path: string) =>
+      Promise.resolve(path === "/api/auth/me" ? ME : page([post("1")])),
+    );
+    render(
+      <StrictMode>
+        <FeedPage />
+      </StrictMode>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Publicación 1")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Cargando…")).not.toBeInTheDocument();
   });
 
   it("cambiar a Siguiendo pide /api/feed", async () => {

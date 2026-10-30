@@ -61,9 +61,11 @@ export default function FeedPage() {
 
   // Carga la pestaña activa la primera vez que se muestra (o de nuevo tras publicar).
   useEffect(() => {
-    if (fetchedRef.current[tab] === reloadToken) return;
-    fetchedRef.current[tab] = reloadToken;
+    const fetched = fetchedRef.current;
+    if (fetched[tab] === reloadToken) return;
+    fetched[tab] = reloadToken;
     let cancelled = false;
+    let done = false;
 
     setTabs((prev) => ({
       ...prev,
@@ -72,6 +74,7 @@ export default function FeedPage() {
 
     fetchPage(tab, null)
       .then((page) => {
+        done = true;
         if (cancelled) return;
         setTabs((prev) => ({
           ...prev,
@@ -84,6 +87,7 @@ export default function FeedPage() {
         }));
       })
       .catch((error: unknown) => {
+        done = true;
         if (cancelled) return;
         setTabs((prev) => ({
           ...prev,
@@ -97,6 +101,11 @@ export default function FeedPage() {
 
     return () => {
       cancelled = true;
+      // Si se canceló antes de terminar, su respuesta se descarta: hay que liberar la marca
+      // para que la próxima ejecución vuelva a pedir. Pasa siempre en desarrollo, porque
+      // Strict Mode monta, limpia y vuelve a montar cada efecto, y también al cambiar de
+      // pestaña mientras una carga. Sin esto la pestaña se quedaba en "Cargando…".
+      if (!done) fetched[tab] = -1;
     };
   }, [tab, reloadToken]);
 
