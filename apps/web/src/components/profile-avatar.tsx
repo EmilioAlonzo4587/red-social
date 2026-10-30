@@ -25,7 +25,7 @@ export function ProfileAvatar({
   }, [expanded]);
 
   if (!avatarPublicId) {
-    return <Avatar name={name} size="lg" />;
+    return <Avatar name={name} size="xl" />;
   }
 
   return (
@@ -36,7 +36,7 @@ export function ProfileAvatar({
         aria-label={`Ver la foto de perfil de ${name} más grande`}
         className="rounded-full outline-primary"
       >
-        <Avatar name={name} avatarPublicId={avatarPublicId} size="lg" />
+        <Avatar name={name} avatarPublicId={avatarPublicId} size="xl" />
       </button>
 
       {expanded && (
@@ -61,7 +61,7 @@ export function ProfileAvatar({
               alt={`Foto de perfil de ${name}`}
               fill
               sizes="80vw"
-              className="rounded-md object-contain"
+              className="rounded-xl object-contain"
             />
           </div>
         </div>

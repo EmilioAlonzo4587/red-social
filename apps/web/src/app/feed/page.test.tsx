@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
-import type { MeDto, PostDto, PostPageDto } from "@red/api-types";
+import type { MeDto, PostDto, PostPageDto, ProfileDto } from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api-error";
 import FeedPage from "./page";
@@ -52,13 +52,29 @@ const ME: MeDto = {
   createdAt: new Date().toISOString(),
 };
 
+const PROFILE: ProfileDto = {
+  id: "u1",
+  username: "ana_lopez",
+  displayName: "Ana López",
+  avatarPublicId: null,
+  bio: null,
+  createdAt: new Date().toISOString(),
+  postCount: 3,
+  followerCount: 128,
+  followingCount: 96,
+  isFollowing: false,
+};
+
 describe("FeedPage", () => {
   beforeEach(() => {
     apiFetchClient.mockReset();
-    // FeedPage también pide /api/auth/me (para el botón de eliminar); los tests
-    // de abajo solo encolan valores para las llamadas de feed con mockResolvedValueOnce,
-    // así que esta queda como respuesta por defecto para la llamada sin encolar.
-    apiFetchClient.mockResolvedValue(ME);
+    // FeedPage pide /api/auth/me (botón de eliminar y tarjeta de perfil) y, encadenado,
+    // /api/users/{username} (seguidores/seguidos de la tarjeta). Los tests de abajo solo
+    // encolan valores para las llamadas de feed con mockResolvedValueOnce, así que esto
+    // queda como respuesta por defecto para las llamadas sin encolar.
+    apiFetchClient.mockImplementation((path: string) =>
+      Promise.resolve(path === "/api/auth/me" ? ME : PROFILE),
+    );
     uploadMedia.mockReset();
   });
 
@@ -184,7 +200,7 @@ describe("FeedPage", () => {
     apiFetchClient.mockResolvedValueOnce(page([post("nueva")])); // recarga de explorar
 
     await user.type(
-      screen.getByPlaceholderText("¿Qué está pasando?"),
+      screen.getByPlaceholderText("¿Qué estás pensando?"),
       "hola",
     );
     await user.click(screen.getByRole("button", { name: "Publicar" }));
@@ -199,5 +215,33 @@ describe("FeedPage", () => {
       ([path]) => path === "/api/feed/explore",
     );
     expect(explorarCalls.length).toBe(2);
+  });
+
+  it("tarjeta de perfil (S4-09): muestra tus datos, con seguidores/seguidos de /api/users/{username}", async () => {
+    apiFetchClient.mockResolvedValueOnce(page([]));
+    render(<FeedPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("@ana_lopez")).toBeInTheDocument();
+    });
+    expect(screen.getByText("128")).toBeInTheDocument();
+    expect(screen.getByText("96")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(apiFetchClient).toHaveBeenCalledWith("/api/users/ana_lopez");
+    });
+  });
+
+  it("tarjeta de perfil: si falla GET /api/auth/me, no se muestra y el feed sigue funcionando", async () => {
+    apiFetchClient.mockImplementation((path: string) =>
+      path === "/api/auth/me"
+        ? Promise.reject(new Error("caído"))
+        : Promise.resolve(page([post("1")])),
+    );
+    render(<FeedPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Publicación 1")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("@ana_lopez")).not.toBeInTheDocument();
   });
 });

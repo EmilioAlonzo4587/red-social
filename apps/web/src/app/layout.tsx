@@ -1,18 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import { BfcacheReload } from "@/components/bfcache-reload";
 import { LogoutButton } from "@/components/logout-button";
 import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// S4-09: la libre más cercana a SF Pro de Apple. Igual que Geist antes, se
+// descarga en el build (next/font) y se ve idéntica en cualquier dispositivo.
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -23,7 +20,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="es" className={inter.variable}>
       <body>
         <BfcacheReload />
         <Navbar />

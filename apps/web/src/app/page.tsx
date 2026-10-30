@@ -13,13 +13,13 @@ export default function Home() {
       <div className="flex w-full flex-col gap-3">
         <Link
           href="/login"
-          className="w-full rounded-md bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover"
+          className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover"
         >
           Iniciar sesión
         </Link>
         <Link
           href="/registro"
-          className="w-full rounded-md border border-border px-4 py-2 font-medium text-foreground transition-colors hover:bg-surface"
+          className="w-full rounded-lg border border-border px-4 py-2 font-medium text-foreground transition-colors hover:bg-surface"
         >
           Crear cuenta
         </Link>

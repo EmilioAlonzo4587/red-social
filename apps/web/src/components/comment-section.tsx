@@ -73,7 +73,7 @@ function CommentRow({
         <p className="whitespace-pre-line text-sm">{comment.content}</p>
 
         {stage !== "idle" && (
-          <div className="mt-2 flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm">
+          <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2 text-sm">
             <span>¿Eliminar este comentario?</span>
             <button
               type="button"
@@ -254,7 +254,7 @@ export function CommentSection({
           rows={2}
           placeholder="Escribe un comentario…"
           aria-invalid={fieldErrors.content !== undefined}
-          className="resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-primary"
+          className="resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-primary"
         />
         {fieldErrors.content && (
           <p className="text-sm text-red-600">{fieldErrors.content}</p>
@@ -269,7 +269,7 @@ export function CommentSection({
           <button
             type="submit"
             disabled={!canSubmit}
-            className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Comentando…" : "Comentar"}
           </button>
@@ -299,7 +299,7 @@ export function CommentSection({
             type="button"
             onClick={loadMore}
             disabled={loadingMore}
-            className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:opacity-50"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:opacity-50"
           >
             {loadingMore ? "Cargando…" : "Cargar más"}
           </button>

@@ -8,31 +8,14 @@
   --color-foreground: #0f1a14;
   --color-muted: #5b6b61;
   --color-border: #d8ebdf;
+
+  /* S4-09: Inter en toda la app (antes, Geist se cargaba pero no se usaba en
+     ningún font-family; la red se veía con el stack por defecto del navegador). */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
   color: var(--color-foreground);
   background: var(--color-background);
-}
-
-/* Tarjeta "estás en tu cuenta" en el Navbar (S3-19): fade + deslizamiento breve al aparecer. */
-@keyframes nav-profile-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.nav-profile {
-  animation: nav-profile-in 200ms ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .nav-profile {
-    animation: none;
-  }
+  font-family: var(--font-sans);
 }

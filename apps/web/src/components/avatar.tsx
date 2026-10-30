@@ -17,12 +17,13 @@ export function Avatar({
 }: {
   name: string;
   avatarPublicId?: string | null;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 }) {
   const sizeClasses = {
     sm: "h-8 w-8 text-xs",
-    md: "h-11 w-11 text-sm",
-    lg: "h-20 w-20 text-xl",
+    md: "h-10 w-10 text-sm",
+    lg: "h-14 w-14 text-lg",
+    xl: "h-20 w-20 text-xl",
   }[size];
 
   if (avatarPublicId) {

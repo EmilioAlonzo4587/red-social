@@ -89,7 +89,11 @@ export function PostCard({
 
   const postBody = (
     <>
-      {post.content && <p className="whitespace-pre-line">{post.content}</p>}
+      {post.content && (
+        <p className="whitespace-pre-line text-base leading-[1.55] [overflow-wrap:anywhere]">
+          {post.content}
+        </p>
+      )}
 
       {post.media.length > 0 && (
         <div
@@ -98,7 +102,7 @@ export function PostCard({
           {post.media.map((media) => (
             <div
               key={media.publicId}
-              className="relative aspect-video overflow-hidden rounded-md bg-surface"
+              className="relative aspect-video overflow-hidden rounded-xl bg-surface"
             >
               <Image
                 src={cloudinaryImageUrl(media.publicId)}
@@ -115,16 +119,16 @@ export function PostCard({
   );
 
   return (
-    <article className="flex flex-col gap-3 border-b border-border py-4">
+    <article className="flex flex-col gap-2.5 border-b border-border py-4">
       <div className="flex items-center gap-3">
         <Link href={`/u/${post.author.username}`} className="shrink-0">
           <Avatar
             name={authorName}
             avatarPublicId={post.author.avatarPublicId}
-            size="sm"
+            size="md"
           />
         </Link>
-        <div className="flex flex-col">
+        <div className="flex min-w-0 flex-col">
           <Link
             href={`/u/${post.author.username}`}
             className="text-sm font-semibold hover:underline"
@@ -148,7 +152,7 @@ export function PostCard({
       </div>
 
       {deleteStage !== "idle" && (
-        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2 text-sm">
           <span>¿Eliminar esta publicación?</span>
           <button
             type="button"
@@ -176,7 +180,7 @@ export function PostCard({
         postBody
       )}
 
-      <div className="flex gap-6 text-sm">
+      <div className="flex gap-[22px] text-sm tabular-nums">
         <button
           type="button"
           onClick={toggleLike}
@@ -184,8 +188,8 @@ export function PostCard({
           aria-label={likedByMe ? "Quitar like" : "Dar like"}
           className={
             likedByMe
-              ? "font-semibold text-primary"
-              : "text-muted hover:text-primary"
+              ? "font-semibold text-red-600"
+              : "text-muted hover:text-red-600"
           }
         >
           ❤ {likeCount}
