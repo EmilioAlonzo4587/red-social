@@ -102,7 +102,8 @@ sequenceDiagram
 |---|---|---|
 | `user:{id}` | Cada usuario al conectarse, con todas sus pestañas (S1-04) | `notification:new`, `conversation:updated` |
 | `post:{id}` | Clientes con esa publicación en pantalla | `post:likes`, `post:comments` |
-| `conv:{id}` | Participantes de la conversación, verificados al unirse | `message:new` |
+| `conv:{id}` | Participantes de la conversación, verificados al unirse | `message:new`, `conversation:typing`, `conversation:read` |
+| `presence:{id}` | Quien tiene una conversación con ese usuario y envió `presence:watch` (S3-06) | `user:presence` |
 
 El Gateway valida la cookie en el handshake con el mismo `SessionTokenService` que el guard HTTP y cierra el socket cuando vence el JWT, así un logout o el cierre de sesiones de RN12 llega al socket en 15 minutos como máximo. `session:ready` se envía solo al socket que se conecta, no a la sala.
 

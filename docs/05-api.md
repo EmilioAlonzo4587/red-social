@@ -231,3 +231,11 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
 - `conversation:join` con un payload inválido (sin `conversationId`, un id que no es UUID o campos de más) también responde `{ ok: false, error: "forbidden" }`. Repetir el `join` de una sala en la que ya está responde `{ ok: true }` sin volver a consultar.
 - Un socket está como máximo en 50 salas `conv:{id}`. Al unirse a una más, sale de la más antigua y responde `{ ok: true }`; la web abre una conversación a la vez, así que no lo nota.
 - Al reconectar, el socket ya no está en ninguna sala `conv:{id}`: el cliente vuelve a mandar `conversation:join` con la conversación abierta. `conversation:updated` y `notification:new` llegan por `user:{id}`, que no requiere `join`.
+
+**Escribiendo, visto y en línea (S3-06).**
+
+- `conversation:typing` solo se reenvía si el socket ya está en `conv:{id}` (entró con `conversation:join`); si no, se ignora sin respuesta. Llega al otro participante, no a quien escribe. La web lo manda como máximo una vez cada 2 segundos y oculta el indicador a los 3 segundos sin avisos nuevos.
+- `conversation:read` sale cuando un participante llama `POST /api/conversations/:id/read` y había mensajes (`readAt` es la fecha guardada en la base). Al hacer `conversation:join`, el socket también recibe el último `conversation:read` de la otra persona, para mostrar "Visto" sin esperar.
+- `presence:watch` solo considera a personas con las que el usuario tiene una conversación: las demás ids se ignoran y nunca aparecen en `onlineUserIds` ni mandan `user:presence`. Un socket mira como máximo 50 usuarios.
+- Un usuario está en línea mientras tenga al menos un socket conectado. `user:presence` con `online: true` sale al abrir la primera pestaña y con `online: false` al cerrar la última.
+- Al reconectar, el cliente vuelve a mandar `presence:watch` con los usuarios que sigue mostrando.
