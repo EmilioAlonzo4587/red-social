@@ -13,6 +13,10 @@ export type AppClientSocket = Socket<
 
 type LikeCountListener = (likeCount: number) => void;
 
+// El servidor rechaza entero un post:watch/post:unwatch con más de 100 ids
+// (MAX_WATCH_POST_IDS de la api), así que se mandan en bloques de ese tamaño.
+const MAX_IDS_PER_EVENT = 100;
+
 let socket: AppClientSocket | null = null;
 let needsResubscribe = false;
 let flushScheduled = false;
@@ -31,6 +35,16 @@ async function reconnectAfterRefresh(target: AppClientSocket): Promise<void> {
     return;
   }
   target.connect();
+}
+
+function emitInChunks(
+  target: AppClientSocket,
+  event: "post:watch" | "post:unwatch",
+  postIds: string[],
+): void {
+  for (let i = 0; i < postIds.length; i += MAX_IDS_PER_EVENT) {
+    target.emit(event, { postIds: postIds.slice(i, i + MAX_IDS_PER_EVENT) });
+  }
 }
 
 function getSocket(): AppClientSocket {
@@ -58,9 +72,7 @@ function getSocket(): AppClientSocket {
     for (const id of activeIds) {
       pendingWatch.delete(id);
     }
-    if (activeIds.length > 0) {
-      instance.emit("post:watch", { postIds: activeIds });
-    }
+    emitInChunks(instance, "post:watch", activeIds);
   });
 
   instance.on("disconnect", (reason) => {
@@ -91,16 +103,12 @@ function scheduleFlush(): void {
       pendingUnwatch.clear();
       return;
     }
-    if (pendingWatch.size > 0) {
-      const postIds = [...pendingWatch];
-      pendingWatch.clear();
-      socket.emit("post:watch", { postIds });
-    }
-    if (pendingUnwatch.size > 0) {
-      const postIds = [...pendingUnwatch];
-      pendingUnwatch.clear();
-      socket.emit("post:unwatch", { postIds });
-    }
+    const toWatch = [...pendingWatch];
+    const toUnwatch = [...pendingUnwatch];
+    pendingWatch.clear();
+    pendingUnwatch.clear();
+    emitInChunks(socket, "post:watch", toWatch);
+    emitInChunks(socket, "post:unwatch", toUnwatch);
   });
 }
 

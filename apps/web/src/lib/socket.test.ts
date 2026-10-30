@@ -91,6 +91,37 @@ describe("socket (S2-03)", () => {
     unsub();
   });
 
+  it("manda post:watch y post:unwatch en bloques de 100 ids (límite del servidor)", async () => {
+    const ids = Array.from({ length: 150 }, (_, i) => `p${i}`);
+    const unsubs = ids.map((id) => subscribePostLikes(id, vi.fn()));
+    await Promise.resolve();
+
+    expect(emit).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenNthCalledWith(1, "post:watch", {
+      postIds: ids.slice(0, 100),
+    });
+    expect(emit).toHaveBeenNthCalledWith(2, "post:watch", {
+      postIds: ids.slice(100),
+    });
+
+    // Al reconectar se reenvían todas las activas, también en bloques
+    emit.mockClear();
+    trigger("disconnect", "transport close");
+    trigger("connect");
+    expect(emit).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenNthCalledWith(2, "post:watch", {
+      postIds: ids.slice(100),
+    });
+
+    emit.mockClear();
+    for (const unsub of unsubs) unsub();
+    await Promise.resolve();
+    expect(emit).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenNthCalledWith(1, "post:unwatch", {
+      postIds: ids.slice(0, 100),
+    });
+  });
+
   it("ante connect_error unauthorized o io server disconnect, refresca la sesión y reconecta", async () => {
     refreshSession.mockResolvedValue(true);
     const unsub = subscribePostLikes("p1", vi.fn());
