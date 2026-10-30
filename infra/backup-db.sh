@@ -51,13 +51,3 @@ fi
 find "$BACKUP_DIR" -maxdepth 1 -name 'chatinit-*.dump' | sobrantes |
   while read -r f; do rm -- "$f"; done
 echo "$(date -u +%FT%TZ) Respaldo creado: $(basename "$OUT")"
-
-cd "$(dirname "$0")"
-source .env
-STAMP=$(date -u +%Y%m%d-%H%M)
-OUT="$HOME/backups/chatinit-$STAMP.sql.gz"
-mkdir -p "$HOME/backups"
-docker compose exec -T db pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner | gzip > "$OUT"
-if [ -n "${BACKUP_UPLOAD_CMD:-}" ]; then eval "$BACKUP_UPLOAD_CMD \"$OUT\""; fi
-ls -1t "$HOME"/backups/chatinit-*.sql.gz | tail -n +8 | xargs -r rm --
-echo "Respaldo creado: $OUT"

@@ -13,9 +13,11 @@ PREV_TAG=$(grep '^IMAGE_TAG=' .env | cut -d= -f2)
 DOMAIN=$(grep '^DOMAIN=' .env | cut -d= -f2)
 HEALTH_URL="${HEALTH_URL:-https://$DOMAIN/api/health}"
 
-# 1. El repo es la fuente de verdad de compose y Caddyfile.
+# 1. El repo es la fuente de verdad de compose, Caddyfile y el script de respaldo.
 #    cp escribe sobre el mismo archivo, así el montaje de Caddy ve el cambio.
 cp infra-nuevo/docker-compose.yml docker-compose.yml
+# El script de respaldo (S2-02) también viene del repo; install lo deja ejecutable aunque la copia no conserve permisos
+install -m 755 infra-nuevo/backup-db.sh backup-db.sh
 CADDY_CHANGED=0
 if ! cmp -s infra-nuevo/Caddyfile Caddyfile; then
   cp infra-nuevo/Caddyfile Caddyfile
