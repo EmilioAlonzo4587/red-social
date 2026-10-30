@@ -352,4 +352,64 @@ describe("PostCard", () => {
     unmount();
     expect(unsubscribe).toHaveBeenCalledTimes(2);
   });
+
+  it("el 💬 del feed abre el recuadro para comentar debajo, y se envía ahí mismo", async () => {
+    const user = userEvent.setup();
+    apiFetchClient.mockResolvedValueOnce({ id: "c1" });
+    render(<PostCard post={BASE_POST} />);
+
+    const toggle = screen.getByRole("button", { name: "Comentar (1 comentario)" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    const input = screen.getByLabelText("Escribe un comentario");
+    expect(input).toHaveFocus();
+    await user.type(input, "Qué bonito");
+    await user.click(screen.getByRole("button", { name: "Enviar" }));
+
+    expect(apiFetchClient).toHaveBeenCalledWith(
+      `/api/posts/${BASE_POST.id}/comments`,
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ content: "Qué bonito" }),
+      }),
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent("Comentario publicado.");
+    });
+    expect(screen.queryByLabelText("Escribe un comentario")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver comentarios" })).toHaveAttribute(
+      "href",
+      `/p/${BASE_POST.id}`,
+    );
+  });
+
+  it("el recuadro se cierra con Cancelar sin enviar nada", async () => {
+    const user = userEvent.setup();
+    render(<PostCard post={BASE_POST} />);
+
+    await user.click(screen.getByRole("button", { name: "Comentar (1 comentario)" }));
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByLabelText("Escribe un comentario")).not.toBeInTheDocument();
+    expect(apiFetchClient).not.toHaveBeenCalled();
+  });
+
+  it("ya en el detalle, el 💬 enfoca el cuadro de comentario sin navegar", async () => {
+    render(
+      <>
+        <PostCard post={BASE_POST} linkToDetail={false} />
+        <textarea id="comment-content" aria-label="Escribe un comentario" />
+      </>,
+    );
+    const input = screen.getByRole("textbox", { name: "Escribe un comentario" });
+    input.scrollIntoView = vi.fn();
+
+    await userEvent.setup().click(
+      screen.getByRole("button", { name: "Comentar (1 comentario)" }),
+    );
+    expect(input).toHaveFocus();
+    expect(input.scrollIntoView).toHaveBeenCalled();
+  });
 });
