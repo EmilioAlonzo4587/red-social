@@ -88,6 +88,8 @@ Lista de seguidores y seguidos (S3-10): `FollowListModal` (`apps/web/src/compone
 
 Barra lateral de navegación (S3-14): `Sidebar` (`apps/web/src/components/sidebar.tsx`), montada en `layout.tsx` en una fila flex junto a `{children}` (no `fixed`, así el contenido centrado de cada página se acomoda al espacio que le queda en vez de que la barra lo tape). Inicio, Notificaciones, Mensajes y Mi perfil (este último pedido con `GET /api/auth/me` al montar, igual que `LogoutButton`). Notificaciones y Mensajes enlazan a sus páginas actuales (todavía wireframes) hasta que existan S3-07 y S3-06. No duplica el buscador (S3-09, barra superior) ni cerrar sesión (S3-13, esquina inferior izquierda). Oculta por debajo del breakpoint `sm` de Tailwind (640 px) para no romper pantallas angostas. Cada ítem lleva su ícono SVG junto al texto (S3-16), igual que ya tiene `LogoutButton`.
 
+API de chat (S3-04): `src/conversations/` con `POST /api/conversations` (abre u obtiene la conversación con un `username`, 201 o 200), `GET /api/conversations` (bandeja con `unread`, máximo 50), `GET`/`POST /api/conversations/:id/messages` (historial paginado por cursor, del más reciente al más antiguo) y `POST /api/conversations/:id/read`. Solo los participantes leen o escriben (403, RN09). Enviar emite `message.created`. Todavía sin consumir desde la web (le toca a S3-06).
+
 Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02) y los eventos de Socket.io de chat y notificaciones (S3-05). La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
