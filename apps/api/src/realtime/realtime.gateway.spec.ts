@@ -1,10 +1,12 @@
+import { ConversationJoinDto } from './dto/conversation-join.dto';
 import {
   MAX_WATCH_POST_IDS,
   PostWatchDto,
   parseWsDto,
 } from './dto/post-watch.dto';
-import { postRoom } from './realtime.events';
+import { conversationRoom, postRoom, userRoom } from './realtime.events';
 import {
+  MAX_JOINED_CONVERSATIONS_PER_SOCKET,
   MAX_WATCHED_POSTS_PER_SOCKET,
   RealtimeGateway,
   msUntilExpiry,
@@ -59,16 +61,39 @@ describe('PostWatchDto (parseWsDto)', () => {
   });
 });
 
+describe('ConversationJoinDto (parseWsDto)', () => {
+  it('acepta un conversationId UUID válido y rechaza payloads inválidos', () => {
+    expect(
+      parseWsDto(ConversationJoinDto, { conversationId: VALID_ID_1 }),
+    ).toEqual({ conversationId: VALID_ID_1 });
+
+    for (const invalid of [
+      null,
+      undefined,
+      {},
+      { conversationId: 'no-es-uuid' },
+      { conversationId: VALID_ID_1, extra: true },
+    ]) {
+      expect(parseWsDto(ConversationJoinDto, invalid)).toBeNull();
+    }
+  });
+});
+
 describe('RealtimeGateway (likes en vivo)', () => {
   function createGateway() {
     const emit = jest.fn();
     const to = jest.fn().mockReturnValue({ emit });
+    const conversations = {
+      isParticipant: jest.fn(),
+      findOneForUser: jest.fn(),
+    };
     const gateway = new RealtimeGateway(
       {} as never,
       { corsOrigin: 'http://localhost:3001' } as never,
+      conversations as never,
     );
     gateway.server = { to } as never;
-    return { gateway, to, emit };
+    return { gateway, to, emit, conversations };
   }
 
   it('post:watch mete el socket en las salas post:{id}', async () => {
@@ -165,6 +190,210 @@ describe('RealtimeGateway (likes en vivo)', () => {
     expect(emit).toHaveBeenCalledWith('post:comments', {
       postId: VALID_ID_1,
       commentCount: 3,
+    });
+  });
+    
+  describe('mensajes y notificaciones en vivo (S3-05)', () => {
+    it('conversation:join une a conv:{id} y responde { ok: true } si participa', async () => {
+      const { gateway, conversations } = createGateway();
+      conversations.isParticipant.mockResolvedValueOnce(true);
+      const join = jest.fn().mockResolvedValue(undefined);
+
+      const ack = await gateway.handleConversationJoin(
+        {
+          join,
+          rooms: new Set(),
+          data: { userId: 'u1', expiresAt: 0 },
+        } as never,
+        { conversationId: VALID_ID_1 },
+      );
+
+      expect(conversations.isParticipant).toHaveBeenCalledWith(
+        VALID_ID_1,
+        'u1',
+      );
+      expect(join).toHaveBeenCalledWith(conversationRoom(VALID_ID_1));
+      expect(ack).toEqual({ ok: true });
+    });
+
+    it('conversation:join responde { ok: false, error: "forbidden" } sin unir si no participa o el payload es inválido (RN09)', async () => {
+      const { gateway, conversations } = createGateway();
+      const join = jest.fn();
+      const socket = {
+        join,
+        rooms: new Set(),
+        data: { userId: 'u3', expiresAt: 0 },
+      } as never;
+
+      expect(
+        await gateway.handleConversationJoin(socket, {
+          conversationId: 'no-es-uuid',
+        }),
+      ).toEqual({ ok: false, error: 'forbidden' });
+      expect(conversations.isParticipant).not.toHaveBeenCalled();
+
+      conversations.isParticipant.mockResolvedValueOnce(false);
+      expect(
+        await gateway.handleConversationJoin(socket, {
+          conversationId: VALID_ID_1,
+        }),
+      ).toEqual({ ok: false, error: 'forbidden' });
+      expect(join).not.toHaveBeenCalled();
+    });
+
+    it('conversation:join no vuelve a consultar si el socket ya está en la sala', async () => {
+      const { gateway, conversations } = createGateway();
+      const join = jest.fn();
+      const socket = {
+        join,
+        rooms: new Set([conversationRoom(VALID_ID_1)]),
+        data: { userId: 'u1', expiresAt: 0 },
+      } as never;
+
+      expect(
+        await gateway.handleConversationJoin(socket, {
+          conversationId: VALID_ID_1,
+        }),
+      ).toEqual({ ok: true });
+      expect(conversations.isParticipant).not.toHaveBeenCalled();
+      expect(join).not.toHaveBeenCalled();
+    });
+
+    it('conversation:join sale de la conversación más antigua al llegar al tope', async () => {
+      const { gateway, conversations } = createGateway();
+      conversations.isParticipant.mockResolvedValueOnce(true);
+      const oldest = conversationRoom('c-0');
+      const rooms = new Set([
+        'socket-id',
+        userRoom('u1'),
+        postRoom(VALID_ID_2),
+        ...Array.from({ length: MAX_JOINED_CONVERSATIONS_PER_SOCKET }, (_, i) =>
+          conversationRoom(`c-${i}`),
+        ),
+      ]);
+      const join = jest.fn();
+      const leave = jest.fn();
+
+      const ack = await gateway.handleConversationJoin(
+        { join, leave, rooms, data: { userId: 'u1', expiresAt: 0 } } as never,
+        { conversationId: VALID_ID_1 },
+      );
+
+      expect(ack).toEqual({ ok: true });
+      expect(leave).toHaveBeenCalledTimes(1);
+      expect(leave).toHaveBeenCalledWith(oldest);
+      expect(join).toHaveBeenCalledWith(conversationRoom(VALID_ID_1));
+    });
+
+    it('message.created emite message:new a conv:{id} y conversation:updated a las salas user:{id} de ambos', async () => {
+      const { gateway, to, emit, conversations } = createGateway();
+      const createdAt = new Date('2026-10-30T15:00:00.000Z');
+      const message = {
+        id: 'm1',
+        conversationId: VALID_ID_1,
+        senderId: 'u1',
+        content: 'Hola Beto',
+        createdAt,
+      };
+      conversations.findOneForUser
+        .mockResolvedValueOnce({
+          id: VALID_ID_1,
+          otherUser: {
+            id: 'u2',
+            username: 'beto',
+            displayName: 'Beto',
+            avatarPublicId: null,
+          },
+          lastMessage: message,
+          unread: 0,
+        })
+        .mockResolvedValueOnce({
+          id: VALID_ID_1,
+          otherUser: {
+            id: 'u1',
+            username: 'ana',
+            displayName: 'Ana',
+            avatarPublicId: null,
+          },
+          lastMessage: message,
+          unread: 1,
+        });
+
+      await gateway.handleMessageCreated({ message, recipientId: 'u2' });
+
+      const expectedMessage = {
+        id: 'm1',
+        conversationId: VALID_ID_1,
+        senderId: 'u1',
+        content: 'Hola Beto',
+        createdAt: '2026-10-30T15:00:00.000Z',
+      };
+      expect(to).toHaveBeenNthCalledWith(1, conversationRoom(VALID_ID_1));
+      expect(emit).toHaveBeenNthCalledWith(1, 'message:new', expectedMessage);
+
+      expect(to).toHaveBeenNthCalledWith(2, userRoom('u1'));
+      expect(emit).toHaveBeenNthCalledWith(2, 'conversation:updated', {
+        id: VALID_ID_1,
+        otherUser: {
+          id: 'u2',
+          username: 'beto',
+          displayName: 'Beto',
+          avatarPublicId: null,
+        },
+        lastMessage: expectedMessage,
+        unread: 0,
+      });
+
+      expect(to).toHaveBeenNthCalledWith(3, userRoom('u2'));
+      expect(emit).toHaveBeenNthCalledWith(3, 'conversation:updated', {
+        id: VALID_ID_1,
+        otherUser: {
+          id: 'u1',
+          username: 'ana',
+          displayName: 'Ana',
+          avatarPublicId: null,
+        },
+        lastMessage: expectedMessage,
+        unread: 1,
+      });
+    });
+
+    it('notification.created emite notification:new a user:{recipientId}', () => {
+      const { gateway, to, emit } = createGateway();
+      const createdAt = new Date('2026-10-30T15:05:00.000Z');
+      gateway.handleNotificationCreated({
+        recipientId: 'u1',
+        notification: {
+          id: 'n1',
+          type: 'like',
+          actor: {
+            id: 'u2',
+            username: 'beto',
+            displayName: null,
+            avatarPublicId: null,
+          },
+          postId: VALID_ID_2,
+          commentId: null,
+          read: false,
+          createdAt,
+        },
+      });
+
+      expect(to).toHaveBeenCalledWith(userRoom('u1'));
+      expect(emit).toHaveBeenCalledWith('notification:new', {
+        id: 'n1',
+        type: 'like',
+        actor: {
+          id: 'u2',
+          username: 'beto',
+          displayName: null,
+          avatarPublicId: null,
+        },
+        postId: VALID_ID_2,
+        commentId: null,
+        read: false,
+        createdAt: '2026-10-30T15:05:00.000Z',
+      });
     });
   });
 });
