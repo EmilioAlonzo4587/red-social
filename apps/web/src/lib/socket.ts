@@ -1,6 +1,7 @@
 import { io, type Socket } from "socket.io-client";
 import type {
   ClientToServerEvents,
+  PostCommentsEvent,
   PostLikesEvent,
   ServerToClientEvents,
 } from "@red/api-types";
@@ -12,6 +13,7 @@ export type AppClientSocket = Socket<
 >;
 
 type LikeCountListener = (likeCount: number) => void;
+type CommentCountListener = (commentCount: number) => void;
 
 // El servidor rechaza entero un post:watch/post:unwatch con más de 100 ids
 // (MAX_WATCH_POST_IDS de la api), así que se mandan en bloques de ese tamaño.
@@ -26,9 +28,16 @@ let flushScheduled = false;
 // Vuelve a false cuando el socket conecta.
 let refreshAttempted = false;
 
-const listenersByPost = new Map<string, Set<LikeCountListener>>();
+const likeListenersByPost = new Map<string, Set<LikeCountListener>>();
+const commentListenersByPost = new Map<string, Set<CommentCountListener>>();
 const pendingWatch = new Set<string>();
 const pendingUnwatch = new Set<string>();
+
+// post:{id} se comparte entre likes y comentarios (S3-18): solo se deja de mirar
+// cuando ninguna de las dos razones sigue suscrita.
+function isWatched(postId: string): boolean {
+  return likeListenersByPost.has(postId) || commentListenersByPost.has(postId);
+}
 
 async function reconnectAfterRefresh(target: AppClientSocket): Promise<void> {
   if (socket !== target || refreshAttempted) return;
@@ -64,10 +73,18 @@ function getSocket(): AppClientSocket {
   needsResubscribe = false;
 
   instance.on("post:likes", ({ postId, likeCount }: PostLikesEvent) => {
-    const set = listenersByPost.get(postId);
+    const set = likeListenersByPost.get(postId);
     if (!set) return;
     for (const listener of set) {
       listener(likeCount);
+    }
+  });
+
+  instance.on("post:comments", ({ postId, commentCount }: PostCommentsEvent) => {
+    const set = commentListenersByPost.get(postId);
+    if (!set) return;
+    for (const listener of set) {
+      listener(commentCount);
     }
   });
 
@@ -75,7 +92,12 @@ function getSocket(): AppClientSocket {
     refreshAttempted = false;
     if (!needsResubscribe) return;
     needsResubscribe = false;
-    const activeIds = [...listenersByPost.keys()];
+    const activeIds = [
+      ...new Set([
+        ...likeListenersByPost.keys(),
+        ...commentListenersByPost.keys(),
+      ]),
+    ];
     for (const id of activeIds) {
       pendingWatch.delete(id);
     }
@@ -120,19 +142,25 @@ function scheduleFlush(): void {
 }
 
 /**
- * Suscribe una tarjeta de publicación a los cambios de contador de likes en vivo (S2-03).
- * Agrupa en el mismo microtask las altas y bajas de todas las tarjetas que se montan
- * o desmontan juntas (por ejemplo una página de 20 publicaciones en el feed).
+ * Suscribe una tarjeta a los cambios en vivo de un contador (likes o comentarios, S2-03/S3-18)
+ * de una publicación. Agrupa en el mismo microtask las altas y bajas de todas las tarjetas que
+ * se montan o desmontan juntas (por ejemplo una página de 20 publicaciones en el feed), y solo
+ * manda post:watch/post:unwatch cuando nadie más sigue mirando esa publicación por la otra razón.
  */
-export function subscribePostLikes(
+function subscribeToPost<T>(
+  listenersByPost: Map<string, Set<T>>,
   postId: string,
-  onLikeCount: LikeCountListener,
+  listener: T,
 ): () => void {
   const activeSocket = getSocket();
+  const alreadyWatched = isWatched(postId);
   let set = listenersByPost.get(postId);
   if (!set) {
     set = new Set();
     listenersByPost.set(postId, set);
+  }
+  set.add(listener);
+  if (!alreadyWatched) {
     if (pendingUnwatch.has(postId)) {
       pendingUnwatch.delete(postId);
     } else {
@@ -140,15 +168,15 @@ export function subscribePostLikes(
       scheduleFlush();
     }
   }
-  set.add(onLikeCount);
 
   return () => {
     const currentSet = listenersByPost.get(postId);
     if (!currentSet) return;
-    currentSet.delete(onLikeCount);
+    currentSet.delete(listener);
     if (currentSet.size > 0) return;
 
     listenersByPost.delete(postId);
+    if (isWatched(postId)) return;
     if (pendingWatch.has(postId)) {
       pendingWatch.delete(postId);
     } else if (socket === activeSocket) {
@@ -156,6 +184,20 @@ export function subscribePostLikes(
       scheduleFlush();
     }
   };
+}
+
+export function subscribePostLikes(
+  postId: string,
+  onLikeCount: LikeCountListener,
+): () => void {
+  return subscribeToPost(likeListenersByPost, postId, onLikeCount);
+}
+
+export function subscribePostComments(
+  postId: string,
+  onCommentCount: CommentCountListener,
+): () => void {
+  return subscribeToPost(commentListenersByPost, postId, onCommentCount);
 }
 
 /**

@@ -150,4 +150,21 @@ describe('RealtimeGateway (likes en vivo)', () => {
       likeCount: 7,
     });
   });
+
+  it('comment.changed emite post:comments a la sala post:{postId}', () => {
+    const { gateway, to, emit } = createGateway();
+    gateway.handleCommentChanged({
+      postId: VALID_ID_1,
+      postAuthorId: 'u1',
+      actorId: 'u2',
+      commentId: 'c1',
+      change: 'added',
+      commentCount: 3,
+    });
+    expect(to).toHaveBeenCalledWith(postRoom(VALID_ID_1));
+    expect(emit).toHaveBeenCalledWith('post:comments', {
+      postId: VALID_ID_1,
+      commentCount: 3,
+    });
+  });
 });

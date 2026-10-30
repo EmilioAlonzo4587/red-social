@@ -7,14 +7,19 @@ import { PostCard } from "./post-card";
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
-const { subscribePostLikes, unsubscribe } = vi.hoisted(() => {
-  const unsubscribe = vi.fn();
-  const subscribePostLikes = vi.fn<
-    (postId: string, onLikeCount: (count: number) => void) => () => void
-  >(() => unsubscribe);
-  return { subscribePostLikes, unsubscribe };
-});
-vi.mock("@/lib/socket", () => ({ subscribePostLikes }));
+const { subscribePostLikes, subscribePostComments, unsubscribe } = vi.hoisted(
+  () => {
+    const unsubscribe = vi.fn();
+    const subscribePostLikes = vi.fn<
+      (postId: string, onLikeCount: (count: number) => void) => () => void
+    >(() => unsubscribe);
+    const subscribePostComments = vi.fn<
+      (postId: string, onCommentCount: (count: number) => void) => () => void
+    >(() => unsubscribe);
+    return { subscribePostLikes, subscribePostComments, unsubscribe };
+  },
+);
+vi.mock("@/lib/socket", () => ({ subscribePostLikes, subscribePostComments }));
 
 const BASE_POST: PostDto = {
   id: "11111111-1111-1111-1111-111111111111",
@@ -36,6 +41,7 @@ describe("PostCard", () => {
   beforeEach(() => {
     apiFetchClient.mockReset();
     subscribePostLikes.mockClear();
+    subscribePostComments.mockClear();
     unsubscribe.mockClear();
   });
 
@@ -267,6 +273,32 @@ describe("PostCard", () => {
     expect(screen.getByText("❤ 12")).toBeInTheDocument();
 
     unmount();
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    // El mismo unsubscribe lo devuelven tanto likes como comentarios (S3-18): se llama una vez por cada uno.
+    expect(unsubscribe).toHaveBeenCalledTimes(2);
+  });
+
+  it("se suscribe a comentarios en vivo al montar, actualiza el contador y se desuscribe al desmontar (S3-18)", () => {
+    let onCommentCount: ((count: number) => void) | undefined;
+    subscribePostComments.mockImplementationOnce(
+      (_postId: string, listener: (count: number) => void) => {
+        onCommentCount = listener;
+        return unsubscribe;
+      },
+    );
+
+    const { unmount } = render(<PostCard post={BASE_POST} />);
+    expect(subscribePostComments).toHaveBeenCalledWith(
+      BASE_POST.id,
+      expect.any(Function),
+    );
+    expect(screen.getByText("💬 1")).toBeInTheDocument();
+
+    act(() => {
+      onCommentCount?.(5);
+    });
+    expect(screen.getByText("💬 5")).toBeInTheDocument();
+
+    unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(2);
   });
 });

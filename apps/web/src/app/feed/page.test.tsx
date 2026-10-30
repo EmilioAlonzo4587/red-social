@@ -17,6 +17,7 @@ vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
 vi.mock("@/lib/socket", () => ({
   subscribePostLikes: vi.fn(() => () => {}),
+  subscribePostComments: vi.fn(() => () => {}),
 }));
 
 function post(id: string): PostDto {

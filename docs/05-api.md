@@ -219,3 +219,4 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
 - Un socket mira como máximo 500 publicaciones a la vez. Pasado el tope, las salas de más no se agregan; `post:unwatch` libera lugar. Repetir un id que ya mira no ocupa otro lugar.
 - Al reconectar, el socket ya no está en ninguna sala `post:{id}`: el cliente vuelve a mandar `post:watch` con las publicaciones que sigue mostrando.
 - `post:likes` sale cuando el contador cambia de verdad (`like.changed`): repetir un `PUT` idempotente no emite nada (RN05).
+- `post:comments` sale al crear o borrar un comentario (`comment.changed`), a la misma sala `post:{id}` (S3-18).

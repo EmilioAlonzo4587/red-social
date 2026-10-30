@@ -12,7 +12,10 @@ import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 import { ACCESS_COOKIE } from '../auth/cookies';
 import { SessionTokenService } from '../auth/session-token.service';
 import { ENV, type Env } from '../config/env';
-import type { LikeChangedEvent } from '../events/domain-events';
+import type {
+  CommentChangedEvent,
+  LikeChangedEvent,
+} from '../events/domain-events';
 import { OnDomainEvent } from '../events/on-domain-event.decorator';
 import { PostWatchDto, parseWsDto } from './dto/post-watch.dto';
 import {
@@ -134,6 +137,15 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
     this.server.to(postRoom(event.postId)).emit('post:likes', {
       postId: event.postId,
       likeCount: event.likeCount,
+    });
+  }
+
+  // S3-18: igual que handleLikeChanged, pero para el contador de comentarios (S3-01)
+  @OnDomainEvent('comment.changed')
+  handleCommentChanged(event: CommentChangedEvent): void {
+    this.server.to(postRoom(event.postId)).emit('post:comments', {
+      postId: event.postId,
+      commentCount: event.commentCount,
     });
   }
 
