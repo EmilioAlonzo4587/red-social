@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { MeDto, UpdateMeDto } from "@red/api-types";
 import { Avatar } from "@/components/avatar";
 import { apiFetchClient } from "@/lib/api-client";
@@ -29,6 +30,7 @@ function uploadErrorMessage(error: unknown): string {
 }
 
 export function EditProfileForm({ me }: { me: MeDto }) {
+  const router = useRouter();
   const [displayName, setDisplayName] = useState(me.displayName ?? "");
   const [bio, setBio] = useState(me.bio ?? "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -38,7 +40,6 @@ export function EditProfileForm({ me }: { me: MeDto }) {
   const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const hasCurrentAvatar = me.avatarPublicId !== null && !avatarRemoved;
   const canRemove = avatarPreviewUrl !== null || hasCurrentAvatar;
@@ -54,7 +55,6 @@ export function EditProfileForm({ me }: { me: MeDto }) {
     event.target.value = "";
     if (!file) return;
 
-    setSuccess(false);
     const error = validateImageFile(file);
     if (error) {
       setErrors((prev) => ({ ...prev, avatarPublicId: error }));
@@ -68,7 +68,6 @@ export function EditProfileForm({ me }: { me: MeDto }) {
   }
 
   function handleRemoveAvatar() {
-    setSuccess(false);
     clearPreview();
     setAvatarRemoved(true);
     setErrors((prev) => ({ ...prev, avatarPublicId: undefined }));
@@ -101,8 +100,9 @@ export function EditProfileForm({ me }: { me: MeDto }) {
         body: JSON.stringify(body),
       });
       clearPreview();
-      setAvatarRemoved(false);
-      setSuccess(true);
+      // Al perfil, no quedarse en el formulario: ahí se ve la información ya
+      // guardada de verdad, pedida fresca al servidor (como Instagram o Facebook).
+      router.push(`/u/${me.username}`);
     } catch (error) {
       if (error instanceof ApiError && error.statusCode === 400) {
         setErrors(fieldErrorsFromDetails(error.details));
@@ -130,12 +130,6 @@ export function EditProfileForm({ me }: { me: MeDto }) {
           {errors.general}
         </p>
       )}
-      {success && (
-        <p className="rounded-md bg-surface px-3 py-2 text-sm text-primary">
-          Perfil actualizado.
-        </p>
-      )}
-
       <div className="flex items-center gap-4">
         {avatarPreviewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:) antes de subir el archivo
@@ -189,10 +183,7 @@ export function EditProfileForm({ me }: { me: MeDto }) {
           type="text"
           maxLength={DISPLAY_NAME_MAX}
           value={displayName}
-          onChange={(event) => {
-            setDisplayName(event.target.value);
-            setSuccess(false);
-          }}
+          onChange={(event) => setDisplayName(event.target.value)}
           aria-invalid={Boolean(errors.displayName)}
           className="rounded-md border border-border px-3 py-2 outline-primary"
         />
@@ -214,10 +205,7 @@ export function EditProfileForm({ me }: { me: MeDto }) {
           rows={4}
           maxLength={BIO_MAX}
           value={bio}
-          onChange={(event) => {
-            setBio(event.target.value);
-            setSuccess(false);
-          }}
+          onChange={(event) => setBio(event.target.value)}
           aria-invalid={Boolean(errors.bio)}
           className="resize-none rounded-md border border-border px-3 py-2 outline-primary"
         />

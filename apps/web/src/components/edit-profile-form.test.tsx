@@ -14,6 +14,9 @@ vi.mock("@/lib/media", async (importOriginal) => {
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 function jpeg(name: string, sizeBytes = 1024): File {
   return new File([new Uint8Array(sizeBytes)], name, { type: "image/jpeg" });
 }
@@ -44,6 +47,7 @@ describe("EditProfileForm", () => {
   beforeEach(() => {
     uploadMedia.mockReset();
     apiFetchClient.mockReset();
+    push.mockReset();
   });
 
   it("precarga el nombre y la biografía actuales", () => {
@@ -94,7 +98,7 @@ describe("EditProfileForm", () => {
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Perfil actualizado.")).toBeInTheDocument();
+      expect(push).toHaveBeenCalledWith("/u/ana_lopez");
     });
     expect(uploadMedia).not.toHaveBeenCalled();
     expect(apiFetchClient).toHaveBeenCalledWith(
@@ -145,7 +149,7 @@ describe("EditProfileForm", () => {
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Perfil actualizado.")).toBeInTheDocument();
+      expect(push).toHaveBeenCalledWith("/u/ana_lopez");
     });
     expect(uploadMedia).toHaveBeenCalledWith(expect.any(File));
     expect(apiFetchClient).toHaveBeenCalledWith(
