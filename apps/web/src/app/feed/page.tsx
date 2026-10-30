@@ -155,7 +155,7 @@ export default function FeedPage() {
         }}
       />
 
-      <div className="sticky top-14 flex border-b border-border bg-background">
+      <div className="sticky top-16 flex border-b border-border bg-background">
         <button
           type="button"
           onClick={() => setTab("siguiendo")}

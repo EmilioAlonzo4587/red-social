@@ -56,7 +56,7 @@ export function Sidebar() {
   return (
     <nav
       aria-label="Navegación principal"
-      className="sticky top-14 hidden h-[calc(100vh-56px)] w-56 shrink-0 flex-col gap-1 border-r border-border p-4 sm:flex"
+      className="sticky top-16 hidden h-[calc(100vh-64px)] w-56 shrink-0 flex-col gap-1 border-r border-border p-4 sm:flex"
     >
       <Link href="/feed" className={linkClass(pathname === "/feed")}>
         <Icon path={ICONS.inicio} />
