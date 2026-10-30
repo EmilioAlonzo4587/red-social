@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { BfcacheReload } from "@/components/bfcache-reload";
 import { LogoutButton } from "@/components/logout-button";
 import { Navbar } from "@/components/navbar";
+import { Sidebar } from "@/components/sidebar";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,7 +27,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <BfcacheReload />
         <Navbar />
-        {children}
+        <div className="flex">
+          <Sidebar />
+          <div className="min-w-0 flex-1">{children}</div>
+        </div>
         <LogoutButton />
       </body>
     </html>
