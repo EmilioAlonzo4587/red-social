@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { FollowStatusDto } from "@red/api-types";
+import type { ConversationDto, FollowStatusDto } from "@red/api-types";
 import { apiFetchClient } from "@/lib/api-client";
 import { FollowListModal } from "@/components/follow-list-modal";
 
@@ -21,12 +22,29 @@ export function ProfileStats({
   initialFollowerCount: number;
   initialIsFollowing: boolean;
 }) {
+  const router = useRouter();
   const [followerCount, setFollowerCount] = useState(initialFollowerCount);
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [submitting, setSubmitting] = useState(false);
+  const [openingChat, setOpeningChat] = useState(false);
   const [openList, setOpenList] = useState<"followers" | "following" | null>(
     null,
   );
+
+  async function openChat() {
+    if (openingChat) return;
+    setOpeningChat(true);
+    try {
+      await apiFetchClient<ConversationDto>("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      router.push(`/chat?username=${encodeURIComponent(username)}`);
+    } catch {
+      setOpeningChat(false);
+    }
+  }
 
   async function toggleFollow() {
     if (submitting) return;
@@ -95,7 +113,9 @@ export function ProfileStats({
             </button>
             <button
               type="button"
-              className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface"
+              onClick={openChat}
+              disabled={openingChat}
+              className="flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:opacity-50"
             >
               Mensaje
             </button>

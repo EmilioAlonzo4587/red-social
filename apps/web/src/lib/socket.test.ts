@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   disconnectSocket,
+  emitConversationTyping,
+  notifyConversationRead,
+  subscribeConversationMessages,
+  subscribeConversationRead,
+  subscribeConversationUpdated,
   subscribePostComments,
   subscribePostLikes,
+  watchUsersPresence,
 } from "./socket";
 
 type Handler = (...args: unknown[]) => void;
@@ -212,5 +218,133 @@ describe("socket (S2-03)", () => {
     await Promise.resolve();
     expect(emit).toHaveBeenCalledTimes(1);
     expect(emit).toHaveBeenCalledWith("post:unwatch", { postIds: ["p1"] });
+  });
+
+  it("subscribeConversationMessages emite conversation:join, recibe message:new y reenvía join al reconectar (S3-06)", () => {
+    const onMessage = vi.fn();
+    const onJoinResult = vi.fn();
+
+    const unsub = subscribeConversationMessages("c1", onMessage, onJoinResult);
+    expect(emit).toHaveBeenCalledWith(
+      "conversation:join",
+      { conversationId: "c1" },
+      expect.any(Function),
+    );
+
+    const ackFn = emit.mock.calls[0]?.[2] as (ack: { ok: true }) => void;
+    ackFn({ ok: true });
+    expect(onJoinResult).toHaveBeenCalledWith({ ok: true });
+
+    const msg1 = {
+      id: "m1",
+      conversationId: "c1",
+      senderId: "u2",
+      content: "Hola",
+      createdAt: "2026-10-30T15:00:00.000Z",
+    };
+    const msgOther = { ...msg1, id: "m2", conversationId: "c2" };
+    trigger("message:new", msgOther);
+    expect(onMessage).not.toHaveBeenCalled();
+
+    trigger("message:new", msg1);
+    expect(onMessage).toHaveBeenCalledWith(msg1);
+
+    // Al reconectar tras desconexión, vuelve a mandar conversation:join
+    emit.mockClear();
+    trigger("disconnect", "transport close");
+    trigger("connect");
+    expect(emit).toHaveBeenCalledWith(
+      "conversation:join",
+      { conversationId: "c1" },
+      expect.any(Function),
+    );
+
+    unsub();
+  });
+
+  it("subscribeConversationUpdated y subscribeConversationRead notifican cambios de bandeja y lectura (S3-06)", () => {
+    const onUpdated = vi.fn();
+    const onRead = vi.fn();
+
+    const unsubUpdated = subscribeConversationUpdated(onUpdated);
+    const unsubRead = subscribeConversationRead(onRead);
+
+    const conv = {
+      id: "c1",
+      otherUser: {
+        id: "u2",
+        username: "beto",
+        displayName: "Beto",
+        avatarPublicId: null,
+      },
+      lastMessage: null,
+      unread: 2,
+    };
+    trigger("conversation:updated", conv);
+    expect(onUpdated).toHaveBeenCalledWith(conv);
+
+    notifyConversationRead("c1");
+    expect(onRead).toHaveBeenCalledWith("c1");
+
+    unsubUpdated();
+    unsubRead();
+  });
+
+  it("recibe conversation:typing y conversation:read, y limita emitConversationTyping (S3-06)", () => {
+    const onTyping = vi.fn();
+    const onRemoteRead = vi.fn();
+
+    const unsub = subscribeConversationMessages("c1", vi.fn(), undefined, {
+      onTyping,
+      onRemoteRead,
+    });
+    emit.mockClear();
+
+    emitConversationTyping("c1");
+    emitConversationTyping("c1"); // dentro de la ventana de 2 s: se ignora
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith("conversation:typing", {
+      conversationId: "c1",
+    });
+
+    trigger("conversation:typing", { conversationId: "c1", userId: "u2" });
+    expect(onTyping).toHaveBeenCalledWith("u2");
+
+    trigger("conversation:read", {
+      conversationId: "c1",
+      userId: "u2",
+      readAt: "2026-10-30T15:00:00.000Z",
+    });
+    expect(onRemoteRead).toHaveBeenCalledWith(
+      "2026-10-30T15:00:00.000Z",
+      "u2",
+    );
+
+    unsub();
+  });
+
+  it("watchUsersPresence emite presence:watch, procesa el ack y escucha user:presence (S3-06)", () => {
+    const onPresence = vi.fn();
+    const unsub = watchUsersPresence(["u2", "u3"], onPresence);
+
+    expect(emit).toHaveBeenCalledWith(
+      "presence:watch",
+      { userIds: ["u2", "u3"] },
+      expect.any(Function),
+    );
+
+    const ackFn = emit.mock.calls[0]?.[2] as (ack: {
+      onlineUserIds: string[];
+    }) => void;
+    ackFn({ onlineUserIds: ["u2"] });
+    expect(onPresence).toHaveBeenLastCalledWith(new Set(["u2"]));
+
+    trigger("user:presence", { userId: "u3", online: true });
+    expect(onPresence).toHaveBeenLastCalledWith(new Set(["u2", "u3"]));
+
+    trigger("user:presence", { userId: "u2", online: false });
+    expect(onPresence).toHaveBeenLastCalledWith(new Set(["u3"]));
+
+    unsub();
   });
 });

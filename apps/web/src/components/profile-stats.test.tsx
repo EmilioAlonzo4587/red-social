@@ -7,6 +7,9 @@ import { ProfileStats } from "./profile-stats";
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 const { FollowListModal } = vi.hoisted(() => ({
   FollowListModal: vi.fn(
     ({ kind, onClose }: { kind: string; onClose: () => void }) => (
@@ -33,6 +36,7 @@ describe("ProfileStats", () => {
   beforeEach(() => {
     apiFetchClient.mockReset();
     FollowListModal.mockClear();
+    push.mockClear();
   });
 
   it("tocar 'seguidores' abre la lista de seguidores", async () => {
@@ -150,5 +154,32 @@ describe("ProfileStats", () => {
       expect(screen.getByRole("button", { name: "Seguir" })).toBeEnabled();
     });
     expect(screen.getByText("10")).toBeInTheDocument();
+  });
+
+  it("tocar 'Mensaje' abre la conversación con POST /api/conversations y navega a /chat?username= (S3-06)", async () => {
+    const user = userEvent.setup();
+    apiFetchClient.mockResolvedValueOnce({
+      id: "c1",
+      otherUser: {
+        id: "u1",
+        username: "ana_lopez",
+        displayName: "Ana López",
+        avatarPublicId: null,
+      },
+      lastMessage: null,
+      unread: 0,
+    });
+
+    render(<ProfileStats {...BASE_PROPS} />);
+    await user.click(screen.getByRole("button", { name: "Mensaje" }));
+
+    await waitFor(() => {
+      expect(apiFetchClient).toHaveBeenCalledWith("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "ana_lopez" }),
+      });
+      expect(push).toHaveBeenCalledWith("/chat?username=ana_lopez");
+    });
   });
 });

@@ -3,9 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { MeDto } from "@red/api-types";
+import type { ConversationDto, MeDto } from "@red/api-types";
 import { apiFetchClient } from "@/lib/api-client";
 import { PUBLIC_PATHS } from "@/lib/public-paths";
+import {
+  subscribeConversationRead,
+  subscribeConversationUpdated,
+} from "@/lib/socket";
 
 function linkClass(active: boolean): string {
   return active
@@ -40,15 +44,55 @@ export function Sidebar() {
   const pathname = usePathname();
   const isPublic = PUBLIC_PATHS.includes(pathname);
   const [username, setUsername] = useState<string | null>(null);
+  const [unreadByConv, setUnreadByConv] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (isPublic) return;
-    apiFetchClient<MeDto>("/api/auth/me")
-      .then((me) => setUsername(me.username))
-      .catch(() => {});
+
+    void (async () => {
+      try {
+        const me = await apiFetchClient<MeDto>("/api/auth/me");
+        if (me?.username) setUsername(me.username);
+      } catch {
+        // Silencioso: el resto del menú sigue funcionando.
+      }
+    })();
+
+    void (async () => {
+      try {
+        const conversations =
+          await apiFetchClient<ConversationDto[]>("/api/conversations");
+        if (Array.isArray(conversations)) {
+          setUnreadByConv(
+            Object.fromEntries(conversations.map((c) => [c.id, c.unread])),
+          );
+        }
+      } catch {
+        // Silencioso: si falla la carga inicial, conversation:updated lo irá actualizando.
+      }
+    })();
+
+    const unsubUpdated = subscribeConversationUpdated((conv) => {
+      setUnreadByConv((prev) => ({ ...prev, [conv.id]: conv.unread }));
+    });
+    const unsubRead = subscribeConversationRead((conversationId) => {
+      setUnreadByConv((prev) =>
+        prev[conversationId] ? { ...prev, [conversationId]: 0 } : prev,
+      );
+    });
+
+    return () => {
+      unsubUpdated();
+      unsubRead();
+    };
   }, [isPublic]);
 
   if (isPublic) return null;
+
+  const unreadMessages = Object.values(unreadByConv).reduce(
+    (sum, count) => sum + count,
+    0,
+  );
 
   return (
     <nav
@@ -67,10 +111,17 @@ export function Sidebar() {
         <Icon path={ICONS.notificaciones} />
         Notificaciones
       </Link>
-      {/* Mientras S3-06 no exista, enlaza a la página actual en vez de abrir un panel. */}
       <Link href="/chat" className={linkClass(pathname === "/chat")}>
         <Icon path={ICONS.mensajes} />
-        Mensajes
+        <span className="flex-1">Mensajes</span>
+        {unreadMessages > 0 && (
+          <span
+            aria-label={`${unreadMessages} sin leer`}
+            className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white"
+          >
+            {unreadMessages}
+          </span>
+        )}
       </Link>
       {username && (
         <Link
