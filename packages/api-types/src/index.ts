@@ -26,6 +26,11 @@ export type NotificationDto = components["schemas"]["NotificationDto"];
 export type NotificationPageDto = components["schemas"]["NotificationPageDto"];
 export type UnreadCountDto = components["schemas"]["UnreadCountDto"];
 export type MarkReadDto = components["schemas"]["MarkReadDto"];
+export type ConversationDto = components["schemas"]["ConversationDto"];
+export type MessageDto = components["schemas"]["MessageDto"];
+export type MessagePageDto = components["schemas"]["MessagePageDto"];
+export type OpenConversationDto = components["schemas"]["OpenConversationDto"];
+export type SendMessageDto = components["schemas"]["SendMessageDto"];
 
 // Eventos de Socket.io (docs/05-api.md)
 export interface SessionReadyEvent {
