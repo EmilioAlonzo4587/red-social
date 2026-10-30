@@ -14,6 +14,10 @@ vi.mock("@/lib/media", async (importOriginal) => {
 
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
+// La lista "Siguiendo" de la columna derecha tiene sus propias pruebas
+// (following-panel.test.tsx). Aquí se simula: si no, su pedido a la api podía
+// llevarse una respuesta encolada para el feed y la prueba fallaba a veces.
+vi.mock("@/components/following-panel", () => ({ FollowingPanel: () => null }));
 
 vi.mock("@/lib/socket", () => ({
   subscribePostLikes: vi.fn(() => () => {}),
