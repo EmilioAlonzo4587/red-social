@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { MeDto, PostDto, PostPageDto, ProfileDto } from "@red/api-types";
+import { FollowingPanel } from "@/components/following-panel";
 import { HomeProfileCard } from "@/components/home-profile-card";
 import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
@@ -262,8 +263,11 @@ export default function FeedPage() {
       {/* Columna derecha solo en pantallas anchas, nunca fixed (D10: si se abren los
           paneles de notificaciones/chat, S3-07/S3-06, deben quedar siempre por encima). */}
       <aside className="hidden w-[260px] shrink-0 border-l border-border p-4 lg:block">
-        <div className="sticky top-20">
+        {/* Con la lista de seguidos (hasta 10) la columna puede pasar de la altura de la
+            pantalla: tiene su propio scroll en vez de cortarse. */}
+        <div className="sticky top-20 flex max-h-[calc(100vh-96px)] flex-col gap-6 overflow-y-auto overflow-x-hidden">
           <HomeProfileCard me={me} profile={profile} loading={meLoading} />
+          {me && <FollowingPanel username={me.username} />}
         </div>
       </aside>
     </div>
