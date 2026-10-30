@@ -194,7 +194,7 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
   - `"forbidden"`: la cabecera `Origin` no es la de la web (`CORS_ORIGIN`).
 - Con la sesión válida, el socket entra a la sala `user:{id}` y recibe `session:ready`.
 - El servidor cierra el socket cuando vence el JWT con el que se conectó (15 minutos como máximo). El cliente recibe `disconnect` con el motivo `"io server disconnect"`.
-- Socket.io no reconecta solo después de un `connect_error` del handshake ni de una desconexión del servidor. En los dos casos el cliente llama a `POST /api/auth/refresh` y, si responde 204, a `socket.connect()`; si responde 401, la sesión terminó y va a `/login`.
+- Socket.io no reconecta solo después de un `connect_error` del handshake ni de una desconexión del servidor. En los dos casos el cliente llama a `POST /api/auth/refresh` y, si responde 204, a `socket.connect()`; si responde 401, la sesión terminó y va a `/login`. Un solo refresh por desconexión: si el handshake vuelve a dar `"unauthorized"` antes de conectar, el cliente no insiste.
 - Al cerrar sesión, el cliente llama a `socket.disconnect()` antes de `POST /api/auth/logout`.
 
 | Dirección | Evento | Datos | Efecto |
@@ -208,3 +208,10 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
 | Servidor → cliente | `message:new` | `Message` | Agrega el mensaje a la conversación abierta |
 | Servidor → cliente | `conversation:updated` | `Conversation`, vista por quien la recibe | Actualiza la fila de la bandeja (o la agrega si es nueva), la reordena y ajusta el contador del menú |
 | Servidor → cliente | `notification:new` | `Notification` | Suma uno a la campana y la agrega a la lista |
+
+**Publicaciones en vivo (S2-03).**
+
+- `postIds` lleva de 1 a 100 UUID por evento; el cliente manda listas más largas en varios eventos. Un payload inválido (otro tipo, ids que no son UUID, más de 100 o campos de más) se ignora sin respuesta ni error.
+- Un socket mira como máximo 500 publicaciones a la vez. Pasado el tope, las salas de más no se agregan; `post:unwatch` libera lugar. Repetir un id que ya mira no ocupa otro lugar.
+- Al reconectar, el socket ya no está en ninguna sala `post:{id}`: el cliente vuelve a mandar `post:watch` con las publicaciones que sigue mostrando.
+- `post:likes` sale cuando el contador cambia de verdad (`like.changed`): repetir un `PUT` idempotente no emite nada (RN05).

@@ -1,7 +1,10 @@
 import { Inject, Logger } from '@nestjs/common';
 import {
+  ConnectedSocket,
+  MessageBody,
   OnGatewayConnection,
   OnGatewayInit,
+  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
@@ -9,21 +12,25 @@ import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 import { ACCESS_COOKIE } from '../auth/cookies';
 import { SessionTokenService } from '../auth/session-token.service';
 import { ENV, type Env } from '../config/env';
+import type { LikeChangedEvent } from '../events/domain-events';
+import { OnDomainEvent } from '../events/on-domain-event.decorator';
+import { PostWatchDto, parseWsDto } from './dto/post-watch.dto';
 import {
+  type ClientToServerEvents,
   type ServerToClientEvents,
   type SocketData,
+  postRoom,
   userRoom,
 } from './realtime.events';
 
-// Los eventos cliente → servidor llegan con S2-03 (post:watch) y S3-05 (conversation:join)
 type AppServer = Server<
-  DefaultEventsMap,
+  ClientToServerEvents,
   ServerToClientEvents,
   DefaultEventsMap,
   SocketData
 >;
 type AppSocket = Socket<
-  DefaultEventsMap,
+  ClientToServerEvents,
   ServerToClientEvents,
   DefaultEventsMap,
   SocketData
@@ -31,6 +38,11 @@ type AppSocket = Socket<
 
 // setTimeout acepta como máximo 2^31 - 1 ms (unos 24 días); con más, se dispara enseguida
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
+
+// Tope de salas post:{id} por socket. Cada post:watch trae hasta 100 ids, pero sin este tope
+// un cliente podría unirse a salas sin límite mandando muchos eventos. 500 alcanza para
+// 25 páginas de feed cargadas a la vez.
+export const MAX_WATCHED_POSTS_PER_SOCKET = 500;
 
 // Cuánto falta para que venza el JWT, en milisegundos, dentro del rango que acepta setTimeout
 export function msUntilExpiry(expiresAt: number, now = Date.now()): number {
@@ -75,6 +87,54 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
 
     // Evento de prueba (docs/05-api.md): confirma al cliente que la sesión funcionó
     socket.emit('session:ready', { userId });
+  }
+
+  // S2-03: el cliente se suscribe a las publicaciones que tiene en pantalla
+  @SubscribeMessage('post:watch')
+  async handlePostWatch(
+    @ConnectedSocket() socket: AppSocket,
+    @MessageBody() payload: unknown,
+  ): Promise<void> {
+    const dto = parseWsDto(PostWatchDto, payload);
+    if (!dto) return;
+
+    // Solo las salas nuevas cuentan para el tope; repetir un id no ocupa otro lugar
+    const rooms = [...new Set(dto.postIds.map(postRoom))].filter(
+      (room) => !socket.rooms.has(room),
+    );
+    const watching = [...socket.rooms].filter((room) =>
+      room.startsWith('post:'),
+    ).length;
+    const free = MAX_WATCHED_POSTS_PER_SOCKET - watching;
+    if (rooms.length > free) {
+      this.logger.warn(
+        `Socket ${socket.id} llegó al tope de ${MAX_WATCHED_POSTS_PER_SOCKET} publicaciones en vivo`,
+      );
+    }
+    if (free <= 0) return;
+    await socket.join(rooms.slice(0, free));
+  }
+
+  // S2-03: el cliente sale de las salas de publicaciones que ya no están en pantalla
+  @SubscribeMessage('post:unwatch')
+  async handlePostUnwatch(
+    @ConnectedSocket() socket: AppSocket,
+    @MessageBody() payload: unknown,
+  ): Promise<void> {
+    const dto = parseWsDto(PostWatchDto, payload);
+    if (!dto) return;
+    for (const postId of dto.postIds) {
+      await socket.leave(postRoom(postId));
+    }
+  }
+
+  // S2-03: cuando cambia el contador de likes (S2-07), avisa a quienes miran esa publicación
+  @OnDomainEvent('like.changed')
+  handleLikeChanged(event: LikeChangedEvent): void {
+    this.server.to(postRoom(event.postId)).emit('post:likes', {
+      postId: event.postId,
+      likeCount: event.likeCount,
+    });
   }
 
   // Devuelve el error con el que se rechaza la conexión, o undefined para aceptarla.

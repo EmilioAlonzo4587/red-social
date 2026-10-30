@@ -26,3 +26,28 @@ export type NotificationDto = components["schemas"]["NotificationDto"];
 export type NotificationPageDto = components["schemas"]["NotificationPageDto"];
 export type UnreadCountDto = components["schemas"]["UnreadCountDto"];
 export type MarkReadDto = components["schemas"]["MarkReadDto"];
+
+// Eventos de Socket.io (docs/05-api.md)
+export interface SessionReadyEvent {
+  userId: string;
+}
+
+export interface PostWatchPayload {
+  postIds: string[];
+}
+
+export interface PostLikesEvent {
+  postId: string;
+  likeCount: number;
+}
+
+export interface ClientToServerEvents {
+  "post:watch": (data: PostWatchPayload) => void;
+  "post:unwatch": (data: PostWatchPayload) => void;
+}
+
+export interface ServerToClientEvents {
+  "session:ready": (data: SessionReadyEvent) => void;
+  "post:likes": (data: PostLikesEvent) => void;
+}
+

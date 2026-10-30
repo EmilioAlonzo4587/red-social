@@ -15,7 +15,7 @@
 | Entradas maliciosas | `ValidationPipe` global con `whitelist` y `forbidNonWhitelisted`; mismos límites en DTOs y en la base | Todas |
 | Datos de una cuenta visibles tras cambiar de sesión en el mismo navegador | Portada, login y registro redirigen a `/feed` si ya hay sesión en vez de mostrarse; páginas con datos de sesión con `Cache-Control: no-store` y recarga forzada si el navegador las restaura desde su *back-forward cache* (evento `pageshow` con `persisted`) | S3-12 |
 | Inyección SQL | Consultas por Prisma; el SQL manual usa parámetros, nunca concatenación | Todas |
-| Archivos maliciosos | Solo jpeg, png y webp de hasta 5 MB; Cloudinary verifica el formato real | S2-01 |
+| Archivos maliciosos | Solo jpeg, png y webp de hasta 5 MB. El filtro de la api mira el tipo declarado y Cloudinary revisa el contenido real con `allowed_formats` (un SVG o GIF renombrado responde 400) | S2-01, S2-03 |
 | XSS | React escapa el contenido; prohibido `dangerouslySetInnerHTML` con datos de usuarios; cabeceras con `helmet` | S4-02 |
 | CORS abierto | `CORS_ORIGIN` limitado al dominio de producción: en Socket.io desde S1-04 y en HTTP con S4-02 | S1-04, S4-02 |
 | Base expuesta a internet | PostgreSQL sin puertos publicados; acceso solo por la red interna de Docker | S1-01 |

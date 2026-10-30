@@ -1,4 +1,5 @@
 import { toApiError } from "./api-error";
+import { disconnectSocket } from "./socket";
 
 let refreshPromise: Promise<boolean> | null = null;
 
@@ -15,7 +16,7 @@ async function requestRefreshLock(): Promise<boolean> {
   });
 }
 
-function refreshSession(): Promise<boolean> {
+export function refreshSession(): Promise<boolean> {
   refreshPromise ??= requestRefreshLock().finally(() => {
     refreshPromise = null;
   });
@@ -58,10 +59,11 @@ export async function apiFetchClient<T>(
 }
 
 /**
- * Cierra la sesión (S3-13): el endpoint borra las cookies y responde 204 siempre,
- * así que la recarga a la portada ocurre aunque la petición falle.
+ * Cierra la sesión (S3-13): desconecta el socket antes del logout (docs/05-api.md)
+ * y recarga a la portada aunque la petición falle.
  */
 export async function logout(): Promise<void> {
+  disconnectSocket();
   try {
     await apiFetchClient<void>("/api/auth/logout", { method: "POST" });
   } finally {
