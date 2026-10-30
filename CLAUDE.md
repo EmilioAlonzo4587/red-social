@@ -82,6 +82,8 @@ Foto de perfil real (S3-15): `Avatar` (`apps/web/src/components/avatar.tsx`) rec
 
 Lista de seguidores y seguidos (S3-10): `FollowListModal` (`apps/web/src/components/follow-list-modal.tsx`) es un modal que pide `GET /api/users/:username/followers` o `/following` (paginado por cursor, con "Cargar más"), muestra cada fila con avatar, nombre y username enlazando a su perfil, y un estado vacío por tipo. Se abre desde `ProfileStats` al tocar los contadores "seguidores"/"seguidos" (ahora son botones, no texto suelto); se monta con `key={openList}` para que cada apertura sea una instancia nueva, sin necesitar resetear el estado a mano.
 
+Barra lateral de navegación (S3-14): `Sidebar` (`apps/web/src/components/sidebar.tsx`), montada en `layout.tsx` en una fila flex junto a `{children}` (no `fixed`, así el contenido centrado de cada página se acomoda al espacio que le queda en vez de que la barra lo tape). Inicio, Notificaciones, Mensajes y Mi perfil (este último pedido con `GET /api/auth/me` al montar, igual que `LogoutButton`). Notificaciones y Mensajes enlazan a sus páginas actuales (todavía wireframes) hasta que existan S3-07 y S3-06. No duplica el buscador (S3-09, barra superior) ni cerrar sesión (S3-13, esquina inferior izquierda). Oculta por debajo del breakpoint `sm` de Tailwind (640 px) para no romper pantallas angostas.
+
 Todavía no existe, aunque los docs lo describan: helmet y CORS de HTTP (S4-02), los eventos de Socket.io de likes, chat y notificaciones (S2-03, S3-05) y el cliente de Socket.io en la web. La configuración global de la api va en `apps/api/src/configure-app.ts`, que usan `main.ts` y las e2e. Cuando una tarea dependa de algo de esta lista, dilo y propón crearlo en su issue; no lo des por hecho.
 
 ## Flujo de trabajo
