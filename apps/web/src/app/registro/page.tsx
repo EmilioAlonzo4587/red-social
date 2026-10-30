@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { RegisterDto } from "@red/api-types";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
@@ -39,7 +38,6 @@ function validate(username: string, email: string, password: string): FormErrors
 }
 
 export default function RegistroPage() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,8 +65,9 @@ export default function RegistroPage() {
           password,
         } satisfies RegisterDto),
       });
-      // replace, no push: que "atrás" no regrese al formulario de registro (S3-12).
-      router.replace("/feed");
+      // Navegación completa que reemplaza la entrada (no router.replace: la caché
+      // del router de Next puede resolver "atrás" sin pasar por proxy.ts) (S3-12).
+      window.location.replace("/feed");
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.statusCode === 400 || error.statusCode === 409) {
