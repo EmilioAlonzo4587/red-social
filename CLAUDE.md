@@ -70,7 +70,7 @@ Likes, seguir y eliminar en la web (S2-10): `PostCard` tiene like optimista (`PU
 
 Comentarios (S3-01): `src/comments/` con `GET`/`POST /api/posts/:id/comments` (paginado por cursor, del más antiguo al más reciente, RN07) y `DELETE /api/comments/:id` (403 si es ajeno, RN04). Todavía sin consumir desde la web (le toca a S3-08).
 
-Búsqueda de usuarios (S3-02): `GET /api/users/search?q=` en `UsersController`, hasta 20 resultados, 400 si `q` tiene menos de 2 caracteres (RN14). Todavía sin consumir desde la web (le toca a S3-09).
+Búsqueda de usuarios (S3-02): `GET /api/users/search?q=` en `UsersController`, hasta 20 resultados, 400 si `q` tiene menos de 2 caracteres (RN14). Buscador en la web (S3-09): `UserSearch` (`apps/web/src/components/user-search.tsx`) en `Navbar`, espera 300 ms tras la última tecla, no busca con menos de 2 caracteres sin espacios, descarta respuestas de búsquedas viejas y muestra cada resultado con `Avatar` enlazando a `/u/[username]`; se cierra con Escape, con un click fuera o al elegir un resultado.
 
 Notificaciones persistidas (S3-03): `src/notifications/` con `GET /api/notifications` (paginado por cursor, de la más reciente a la más antigua), `GET /api/notifications/unread-count` y `POST /api/notifications/read` (`{ ids }` o `{ all: true }`). `NotificationsListener` crea la de like, comentario, seguimiento y mensaje (nunca para uno mismo, RN08; de mensaje, una sin leer por remitente) y emite `notification.created`, que el Gateway enviará en S3-05. No se muestran ni cuentan las de publicaciones o comentarios eliminados. El listener termina después de responder: las e2e que cuentan `emit` lo apagan con `overrideProvider`. Todavía sin consumir desde la web (le toca a S3-07).
 
