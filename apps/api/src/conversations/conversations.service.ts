@@ -197,7 +197,7 @@ export class ConversationsService {
   // sigue contando como no leído.
   async markRead(conversationId: string, userId: string): Promise<void> {
     await this.findParticipants(this.prisma, conversationId, userId);
-    await this.prisma.$executeRaw`
+    const rows = await this.prisma.$queryRaw<{ readAt: Date | null }[]>`
       UPDATE conversations c
       SET user_a_last_read_at = CASE WHEN c.user_a_id = ${userId}::uuid
             THEN GREATEST(m.latest, COALESCE(c.user_a_last_read_at, m.latest))
@@ -208,7 +208,45 @@ export class ConversationsService {
       FROM (SELECT max(created_at) AS latest FROM messages
             WHERE conversation_id = ${conversationId}::uuid) m
       WHERE c.id = ${conversationId}::uuid AND m.latest IS NOT NULL
+      RETURNING CASE WHEN c.user_a_id = ${userId}::uuid
+        THEN c.user_a_last_read_at ELSE c.user_b_last_read_at END AS "readAt"
     `;
+    const readAt = rows?.[0]?.readAt;
+    if (readAt) {
+      this.events.emit('conversation.read', {
+        conversationId,
+        userId,
+        readAt,
+      });
+    }
+  }
+
+  // S3-06: devuelve hasta qué fecha leyó la otra persona, para mostrar "Visto" al abrir el chat
+  async getOtherLastReadAt(
+    conversationId: string,
+    userId: string,
+  ): Promise<{ otherUserId: string; readAt: Date } | null> {
+    const row = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: {
+        userAId: true,
+        userBId: true,
+        userALastReadAt: true,
+        userBLastReadAt: true,
+      },
+    });
+    if (!row) return null;
+    if (row.userAId === userId) {
+      return row.userBLastReadAt
+        ? { otherUserId: row.userBId, readAt: row.userBLastReadAt }
+        : null;
+    }
+    if (row.userBId === userId) {
+      return row.userALastReadAt
+        ? { otherUserId: row.userAId, readAt: row.userALastReadAt }
+        : null;
+    }
+    return null;
   }
 
   // S3-05: el Gateway comprueba si el usuario del socket participa en la conversación (RN09)

@@ -3,6 +3,7 @@ import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
+  OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
@@ -16,6 +17,7 @@ import { ConversationsService } from '../conversations/conversations.service';
 import type { ConversationDto } from '../conversations/dto/conversation.dto';
 import type {
   CommentChangedEvent,
+  ConversationReadEvent,
   LikeChangedEvent,
   MessageCreatedEvent,
   MessageData,
@@ -25,16 +27,19 @@ import type {
 import { OnDomainEvent } from '../events/on-domain-event.decorator';
 import { ConversationJoinDto } from './dto/conversation-join.dto';
 import { PostWatchDto, parseWsDto } from './dto/post-watch.dto';
+import { PresenceWatchDto } from './dto/presence-watch.dto';
 import {
   type ClientToServerEvents,
   type ConversationUpdatedEvent,
   type ConversationJoinAck,
   type MessageNewEvent,
   type NotificationNewEvent,
+  type PresenceWatchAck,
   type ServerToClientEvents,
   type SocketData,
   conversationRoom,
   postRoom,
+  presenceRoom,
   userRoom,
 } from './realtime.events';
 
@@ -71,7 +76,9 @@ export function msUntilExpiry(expiresAt: number, now = Date.now()): number {
 
 // Sin puerto: Socket.io comparte el servidor HTTP de la api (el adaptador lo configura)
 @WebSocketGateway()
-export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
+export class RealtimeGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   private readonly logger = new Logger(RealtimeGateway.name);
 
   @WebSocketServer()
@@ -92,10 +99,22 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
     });
   }
 
+  // Un usuario está conectado si tiene al menos una pestaña con socket activo en user:{id}
+  isUserOnline(userId: string): boolean {
+    const room = this.server?.sockets?.adapter?.rooms?.get(userRoom(userId));
+    return Boolean(room && room.size > 0);
+  }
+
   // Ya autenticado: entra a su sala y queda programada la desconexión al vencer el JWT
   async handleConnection(socket: AppSocket): Promise<void> {
     const { userId, expiresAt } = socket.data;
+    const wasOnline = this.isUserOnline(userId);
     await socket.join(userRoom(userId));
+    if (!wasOnline) {
+      this.server
+        ?.to(presenceRoom(userId))
+        .emit('user:presence', { userId, online: true });
+    }
 
     // El socket no vuelve a mirar la cookie: sin este temporizador seguiría abierto aunque el
     // JWT venza, haya logout o RN12 cierre las sesiones. El cliente renueva con
@@ -108,6 +127,42 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
 
     // Evento de prueba (docs/05-api.md): confirma al cliente que la sesión funcionó
     socket.emit('session:ready', { userId });
+  }
+
+  // Al cerrarse la última pestaña de ese usuario, avisa a quienes observan su presencia
+  handleDisconnect(socket: AppSocket): void {
+    const { userId } = socket.data;
+    if (userId && !this.isUserOnline(userId)) {
+      this.server
+        ?.to(presenceRoom(userId))
+        .emit('user:presence', { userId, online: false });
+    }
+  }
+
+  // S3-06: suscribe el socket a la presencia de una lista de usuarios y devuelve cuáles están activos
+  @SubscribeMessage('presence:watch')
+  async handlePresenceWatch(
+    @ConnectedSocket() socket: AppSocket,
+    @MessageBody() payload: unknown,
+  ): Promise<PresenceWatchAck> {
+    const dto = parseWsDto(PresenceWatchDto, payload);
+    if (!dto) return { onlineUserIds: [] };
+
+    const uniqueIds = [...new Set(dto.userIds)];
+    const rooms = uniqueIds
+      .map(presenceRoom)
+      .filter((room) => !socket.rooms.has(room));
+    const watching = [...socket.rooms].filter((room) =>
+      room.startsWith('presence:'),
+    ).length;
+    const free = MAX_WATCHED_POSTS_PER_SOCKET - watching;
+    if (free > 0 && rooms.length > 0) {
+      await socket.join(rooms.slice(0, free));
+    }
+
+    return {
+      onlineUserIds: uniqueIds.filter((id) => this.isUserOnline(id)),
+    };
   }
 
   // S2-03: el cliente se suscribe a las publicaciones que tiene en pantalla
@@ -191,7 +246,49 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
       await socket.leave(joined[0]);
     }
     await socket.join(room);
+
+    const otherRead = await this.conversations.getOtherLastReadAt?.(
+      dto.conversationId,
+      socket.data.userId,
+    );
+    if (otherRead) {
+      socket.emit('conversation:read', {
+        conversationId: dto.conversationId,
+        userId: otherRead.otherUserId,
+        readAt: otherRead.readAt.toISOString(),
+      });
+    }
     return { ok: true };
+  }
+
+  // S3-06: avisa al otro participante que este usuario está escribiendo
+  @SubscribeMessage('conversation:typing')
+  handleConversationTyping(
+    @ConnectedSocket() socket: AppSocket,
+    @MessageBody() payload: unknown,
+  ): void {
+    const dto = parseWsDto(ConversationJoinDto, payload);
+    if (!dto) return;
+    const room = conversationRoom(dto.conversationId);
+    if (!socket.rooms.has(room)) return;
+    socket.to(room).emit('conversation:typing', {
+      conversationId: dto.conversationId,
+      userId: socket.data.userId,
+    });
+  }
+
+  // S3-06: avisa a la sala conv:{id} cuando un participante marca la conversación como leída
+  @OnDomainEvent('conversation.read')
+  handleConversationRead({
+    conversationId,
+    userId,
+    readAt,
+  }: ConversationReadEvent): void {
+    this.server.to(conversationRoom(conversationId)).emit('conversation:read', {
+      conversationId,
+      userId,
+      readAt: readAt.toISOString(),
+    });
   }
 
   // S3-05: envía el mensaje nuevo a la conversación abierta y actualiza la bandeja de ambos
