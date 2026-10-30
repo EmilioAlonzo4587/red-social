@@ -75,4 +75,22 @@ describe("Sidebar", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Inicio" })).toBeInTheDocument();
   });
+
+  it("cada ítem tiene su ícono junto al texto, sin cambiar el nombre accesible", async () => {
+    apiFetchClient.mockResolvedValueOnce(ME);
+    const { container } = render(<Sidebar />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "Mi perfil" })).toBeInTheDocument();
+    });
+
+    // 4 ítems, 4 íconos: el nombre accesible de cada enlace sigue siendo solo
+    // el texto porque el svg lleva aria-hidden.
+    expect(container.querySelectorAll("nav > a svg")).toHaveLength(4);
+    expect(screen.getByRole("link", { name: "Inicio" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Notificaciones" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Mensajes" })).toBeInTheDocument();
+  });
 });
