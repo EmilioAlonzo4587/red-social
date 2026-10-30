@@ -14,6 +14,9 @@ vi.mock("@/lib/media", async (importOriginal) => {
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 function jpeg(name: string, sizeBytes = 1024): File {
   return new File([new Uint8Array(sizeBytes)], name, { type: "image/jpeg" });
 }
@@ -44,6 +47,7 @@ describe("EditProfileForm", () => {
   beforeEach(() => {
     uploadMedia.mockReset();
     apiFetchClient.mockReset();
+    push.mockReset();
   });
 
   it("precarga el nombre y la biografía actuales", () => {
@@ -57,6 +61,24 @@ describe("EditProfileForm", () => {
     expect(
       screen.queryByRole("button", { name: "Quitar foto" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("muestra la foto real guardada si ya hay un avatar", () => {
+    const { container } = render(<EditProfileForm me={ME_CON_AVATAR} />);
+    expect(container.querySelectorAll("img")).toHaveLength(1);
+  });
+
+  it("sin avatar guardado, muestra las iniciales", () => {
+    render(<EditProfileForm me={ME_SIN_AVATAR} />);
+    expect(screen.getByText("AL")).toBeInTheDocument();
+  });
+
+  it("tiene un enlace para cancelar que regresa al perfil", () => {
+    render(<EditProfileForm me={ME_SIN_AVATAR} />);
+    expect(screen.getByRole("link", { name: "Cancelar" })).toHaveAttribute(
+      "href",
+      "/u/ana_lopez",
+    );
   });
 
   it("muestra Quitar foto si ya hay un avatar guardado", () => {
@@ -76,7 +98,7 @@ describe("EditProfileForm", () => {
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Perfil actualizado.")).toBeInTheDocument();
+      expect(push).toHaveBeenCalledWith("/u/ana_lopez");
     });
     expect(uploadMedia).not.toHaveBeenCalled();
     expect(apiFetchClient).toHaveBeenCalledWith(
@@ -127,7 +149,7 @@ describe("EditProfileForm", () => {
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Perfil actualizado.")).toBeInTheDocument();
+      expect(push).toHaveBeenCalledWith("/u/ana_lopez");
     });
     expect(uploadMedia).toHaveBeenCalledWith(expect.any(File));
     expect(apiFetchClient).toHaveBeenCalledWith(

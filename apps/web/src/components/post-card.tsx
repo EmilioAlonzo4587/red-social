@@ -71,7 +71,13 @@ export function PostCard({
   return (
     <article className="flex flex-col gap-3 border-b border-border py-4">
       <div className="flex items-center gap-3">
-        <Avatar name={authorName} size="sm" />
+        <Link href={`/u/${post.author.username}`} className="shrink-0">
+          <Avatar
+            name={authorName}
+            avatarPublicId={post.author.avatarPublicId}
+            size="sm"
+          />
+        </Link>
         <div className="flex flex-col">
           <Link
             href={`/u/${post.author.username}`}

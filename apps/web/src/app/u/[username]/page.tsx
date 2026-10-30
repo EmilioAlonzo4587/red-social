@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import type { MeDto, PostPageDto, ProfileDto } from "@red/api-types";
 import { apiFetchServer } from "@/lib/api-server";
 import { ApiError } from "@/lib/api-error";
-import { Avatar } from "@/components/avatar";
 import { PostCard } from "@/components/post-card";
+import { ProfileAvatar } from "@/components/profile-avatar";
 import { ProfileStats } from "@/components/profile-stats";
 
 async function getProfile(username: string): Promise<ProfileDto> {
@@ -35,7 +35,7 @@ export default async function ProfilePage({
   return (
     <main className="mx-auto max-w-xl px-4">
       <div className="flex items-center gap-4 py-6">
-        <Avatar name={displayName} size="lg" />
+        <ProfileAvatar name={displayName} avatarPublicId={profile.avatarPublicId} />
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-bold">{displayName}</h1>
           <span className="text-sm text-muted">@{profile.username}</span>
