@@ -10,6 +10,11 @@ export interface PostLikesEvent {
   likeCount: number;
 }
 
+export interface PostCommentsEvent {
+  postId: string;
+  commentCount: number;
+}
+
 // Cliente → servidor
 export interface ClientToServerEvents {
   'post:watch': (data: PostWatchPayload) => void;
@@ -20,6 +25,7 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
   'session:ready': (data: { userId: string }) => void;
   'post:likes': (data: PostLikesEvent) => void;
+  'post:comments': (data: PostCommentsEvent) => void;
 }
 
 // Lo que el middleware del handshake guarda en cada socket

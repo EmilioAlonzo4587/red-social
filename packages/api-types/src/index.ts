@@ -46,6 +46,11 @@ export interface PostLikesEvent {
   likeCount: number;
 }
 
+export interface PostCommentsEvent {
+  postId: string;
+  commentCount: number;
+}
+
 export interface ClientToServerEvents {
   "post:watch": (data: PostWatchPayload) => void;
   "post:unwatch": (data: PostWatchPayload) => void;
@@ -54,5 +59,6 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
   "session:ready": (data: SessionReadyEvent) => void;
   "post:likes": (data: PostLikesEvent) => void;
+  "post:comments": (data: PostCommentsEvent) => void;
 }
 

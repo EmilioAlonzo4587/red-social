@@ -8,7 +8,7 @@ import { Avatar } from "@/components/avatar";
 import { apiFetchClient } from "@/lib/api-client";
 import { formatRelativeTime } from "@/lib/format";
 import { cloudinaryImageUrl } from "@/lib/media";
-import { subscribePostLikes } from "@/lib/socket";
+import { subscribePostComments, subscribePostLikes } from "@/lib/socket";
 
 export function PostCard({
   post,
@@ -20,6 +20,7 @@ export function PostCard({
   const authorName = post.author.displayName ?? post.author.username;
   const [likedByMe, setLikedByMe] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [commentCount, setCommentCount] = useState(post.commentCount);
   const [liking, setLiking] = useState(false);
   const [deleteStage, setDeleteStage] = useState<
     "idle" | "confirming" | "deleting"
@@ -29,10 +30,15 @@ export function PostCard({
 
   const isOwner = currentUserId !== undefined && post.author.id === currentUserId;
 
-  // S2-03: se suscribe a post:{id} mientras la tarjeta está en pantalla y hace unwatch al desmontar
+  // S2-03/S3-18: se suscribe a post:{id} mientras la tarjeta está en pantalla y hace unwatch al desmontar
   useEffect(() => {
     if (deleted) return;
     return subscribePostLikes(post.id, setLikeCount);
+  }, [post.id, deleted]);
+
+  useEffect(() => {
+    if (deleted) return;
+    return subscribePostComments(post.id, setCommentCount);
   }, [post.id, deleted]);
 
   async function confirmDelete() {
@@ -172,7 +178,7 @@ export function PostCard({
         >
           ❤ {likeCount}
         </button>
-        <span className="text-muted">💬 {post.commentCount}</span>
+        <span className="text-muted">💬 {commentCount}</span>
       </div>
     </article>
   );

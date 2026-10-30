@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { disconnectSocket, subscribePostLikes } from "./socket";
+import {
+  disconnectSocket,
+  subscribePostComments,
+  subscribePostLikes,
+} from "./socket";
 
 type Handler = (...args: unknown[]) => void;
 
@@ -165,5 +169,48 @@ describe("socket (S2-03)", () => {
     disconnectSocket();
     expect(disconnect).toHaveBeenCalledTimes(1);
     unsub();
+  });
+
+  it("post:comments llega solo a quien está suscrito a esa publicación (S3-18)", async () => {
+    const l1 = vi.fn();
+    const l2 = vi.fn();
+
+    const unsub1 = subscribePostComments("p1", l1);
+    const unsub2 = subscribePostComments("p2", l2);
+    await Promise.resolve();
+
+    trigger("post:comments", { postId: "p1", commentCount: 4 });
+    expect(l1).toHaveBeenCalledWith(4);
+    expect(l2).not.toHaveBeenCalled();
+
+    unsub1();
+    unsub2();
+  });
+
+  it("una publicación mirada por like y por comentario solo manda un post:watch y un post:unwatch (S3-18)", async () => {
+    const likeListener = vi.fn();
+    const commentListener = vi.fn();
+
+    const unsubLike = subscribePostLikes("p1", likeListener);
+    const unsubComment = subscribePostComments("p1", commentListener);
+    await Promise.resolve();
+
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith("post:watch", { postIds: ["p1"] });
+
+    // Se va el listener de likes: todavía hay uno de comentarios, así que sigue mirando la sala
+    emit.mockClear();
+    unsubLike();
+    await Promise.resolve();
+    expect(emit).not.toHaveBeenCalled();
+
+    trigger("post:comments", { postId: "p1", commentCount: 2 });
+    expect(commentListener).toHaveBeenCalledWith(2);
+
+    // Se va el último: ahí sí deja de mirarla
+    unsubComment();
+    await Promise.resolve();
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith("post:unwatch", { postIds: ["p1"] });
   });
 });
