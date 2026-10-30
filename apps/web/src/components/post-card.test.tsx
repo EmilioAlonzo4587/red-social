@@ -49,6 +49,25 @@ describe("PostCard", () => {
     );
   });
 
+  it("el avatar del autor también enlaza a su perfil", () => {
+    render(<PostCard post={BASE_POST} />);
+    // Sin avatarPublicId, el avatar muestra las iniciales ("AL") como texto del enlace.
+    expect(screen.getByRole("link", { name: "AL" })).toHaveAttribute(
+      "href",
+      "/u/ana_lopez",
+    );
+  });
+
+  it("muestra la foto real del autor si tiene avatarPublicId", () => {
+    const post: PostDto = {
+      ...BASE_POST,
+      author: { ...BASE_POST.author, avatarPublicId: "users/u1/foto" },
+    };
+    const { container } = render(<PostCard post={post} />);
+    expect(screen.queryByText("AL")).not.toBeInTheDocument();
+    expect(container.querySelectorAll("img")).toHaveLength(1);
+  });
+
   it("usa el username si no hay nombre visible", () => {
     render(
       <PostCard

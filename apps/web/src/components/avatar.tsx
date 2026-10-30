@@ -1,3 +1,6 @@
+import Image from "next/image";
+import { cloudinaryImageUrl } from "@/lib/media";
+
 function getInitials(name: string) {
   return name
     .trim()
@@ -9,9 +12,11 @@ function getInitials(name: string) {
 
 export function Avatar({
   name,
+  avatarPublicId,
   size = "md",
 }: {
   name: string;
+  avatarPublicId?: string | null;
   size?: "sm" | "md" | "lg";
 }) {
   const sizeClasses = {
@@ -19,6 +24,22 @@ export function Avatar({
     md: "h-11 w-11 text-sm",
     lg: "h-20 w-20 text-xl",
   }[size];
+
+  if (avatarPublicId) {
+    return (
+      <div
+        className={`relative shrink-0 overflow-hidden rounded-full ${sizeClasses}`}
+      >
+        <Image
+          src={cloudinaryImageUrl(avatarPublicId)}
+          alt=""
+          fill
+          sizes="80px"
+          className="object-cover"
+        />
+      </div>
+    );
+  }
 
   return (
     <div

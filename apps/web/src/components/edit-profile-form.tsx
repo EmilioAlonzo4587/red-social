@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { MeDto, UpdateMeDto } from "@red/api-types";
 import { Avatar } from "@/components/avatar";
 import { apiFetchClient } from "@/lib/api-client";
@@ -144,7 +145,11 @@ export function EditProfileForm({ me }: { me: MeDto }) {
             className="h-20 w-20 rounded-full object-cover"
           />
         ) : (
-          <Avatar name={displayName || me.username} size="lg" />
+          <Avatar
+            name={displayName || me.username}
+            avatarPublicId={hasCurrentAvatar ? me.avatarPublicId : null}
+            size="lg"
+          />
         )}
 
         <div className="flex flex-col items-start gap-1">
@@ -224,13 +229,21 @@ export function EditProfileForm({ me }: { me: MeDto }) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded-md bg-primary px-4 py-2 font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {submitting ? "Guardando…" : "Guardar cambios"}
-      </button>
+      <div className="flex gap-3">
+        <Link
+          href={`/u/${me.username}`}
+          className="flex-1 rounded-md border border-border px-4 py-2 text-center font-medium hover:bg-surface"
+        >
+          Cancelar
+        </Link>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="flex-1 rounded-md bg-primary px-4 py-2 font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {submitting ? "Guardando…" : "Guardar cambios"}
+        </button>
+      </div>
     </form>
   );
 }

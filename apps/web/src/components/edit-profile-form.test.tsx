@@ -59,6 +59,24 @@ describe("EditProfileForm", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("muestra la foto real guardada si ya hay un avatar", () => {
+    const { container } = render(<EditProfileForm me={ME_CON_AVATAR} />);
+    expect(container.querySelectorAll("img")).toHaveLength(1);
+  });
+
+  it("sin avatar guardado, muestra las iniciales", () => {
+    render(<EditProfileForm me={ME_SIN_AVATAR} />);
+    expect(screen.getByText("AL")).toBeInTheDocument();
+  });
+
+  it("tiene un enlace para cancelar que regresa al perfil", () => {
+    render(<EditProfileForm me={ME_SIN_AVATAR} />);
+    expect(screen.getByRole("link", { name: "Cancelar" })).toHaveAttribute(
+      "href",
+      "/u/ana_lopez",
+    );
+  });
+
   it("muestra Quitar foto si ya hay un avatar guardado", () => {
     render(<EditProfileForm me={ME_CON_AVATAR} />);
     expect(
