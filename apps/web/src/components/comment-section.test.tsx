@@ -136,6 +136,34 @@ describe("CommentSection (S3-08)", () => {
     );
   });
 
+  it("comentar con Enter: envía; Shift+Enter hace un salto de línea (S4-16)", async () => {
+    const user = userEvent.setup();
+    apiFetchClient.mockResolvedValueOnce(comment("c1", "u1", "uno\ndos"));
+    render(
+      <CommentSection
+        postId={POST_ID}
+        initialComments={page([])}
+        currentUserId="u1"
+      />,
+    );
+    const input = screen.getByPlaceholderText("Escribe un comentario…");
+    expect(input).toHaveAttribute("enterkeyhint", "send");
+
+    await user.type(input, "uno{Shift>}{Enter}{/Shift}dos");
+    expect(apiFetchClient).not.toHaveBeenCalled();
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(apiFetchClient).toHaveBeenCalledWith(
+        `/api/posts/${POST_ID}/comments`,
+        expect.objectContaining({
+          body: JSON.stringify({ content: "uno\ndos" }),
+        }),
+      );
+    });
+    expect(apiFetchClient).toHaveBeenCalledTimes(1);
+  });
+
   it("no deja comentar en blanco", async () => {
     render(
       <CommentSection

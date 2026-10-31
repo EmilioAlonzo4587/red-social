@@ -8,6 +8,7 @@ import type { ErrorResponseDto } from './../src/common/dto/error-response.dto';
 import { configureApp } from './../src/configure-app';
 import { DomainEvents } from './../src/events/domain-events.service';
 import type { LikeStatusDto } from './../src/likes/dto/like-status.dto';
+import type { RecentReactionsDto } from './../src/likes/dto/recent-reactions.dto';
 import { NotificationsListener } from './../src/notifications/notifications.listener';
 import type { PostDto } from './../src/posts/dto/post.dto';
 import { PrismaService } from './../src/prisma/prisma.service';
@@ -403,6 +404,102 @@ describe('Likes (e2e)', () => {
 
     it('401 sin sesión', async () => {
       await request(server).delete(`/api/posts/${MISSING_ID}/like`).expect(401);
+    });
+  });
+
+  describe('GET /api/posts/:id/reactions (S4-16)', () => {
+    const recentOf = (res: Response) => res.body as RecentReactionsDto;
+
+    it('200: las 5 más recientes con quién y qué reacción, y el total', async () => {
+      const ana = await signUp('ana');
+      const postId = await postBy(ana.id);
+      const reactions = ['like', 'love', 'haha', 'wow', 'sad', 'angry'];
+      const people: string[] = [];
+      // Directo en la base (registrar 6 cuentas pasaría el límite de 5 por minuto), con un
+      // minuto de diferencia entre cada una para que el orden sea seguro
+      for (const [index, reaction] of reactions.entries()) {
+        const person = await prisma.user.create({
+          data: {
+            username: `persona_${index}`,
+            email: `persona_${index}@example.com`,
+            passwordHash: 'sin-uso',
+          },
+        });
+        people.push(person.id);
+        await prisma.postLike.create({
+          data: {
+            userId: person.id,
+            postId,
+            reaction,
+            createdAt: new Date(Date.UTC(2026, 9, 31, 12, index)),
+          },
+        });
+      }
+      await prisma.post.update({
+        where: { id: postId },
+        data: { likeCount: reactions.length },
+      });
+
+      const res = await request(server)
+        .get(`/api/posts/${postId}/reactions`)
+        .set('Cookie', ana.cookie)
+        .expect(200);
+      const body = recentOf(res);
+      expect(body.total).toBe(6);
+      // La primera (like de persona_0) queda fuera; la más reciente va primero
+      expect(body.items.map((item) => item.reaction)).toEqual([
+        'angry',
+        'sad',
+        'wow',
+        'haha',
+        'love',
+      ]);
+      expect(body.items[0]).toEqual({
+        user: {
+          id: people[5],
+          username: 'persona_5',
+          displayName: null,
+          avatarPublicId: null,
+        },
+        reaction: 'angry',
+        createdAt: '2026-10-31T12:05:00.000Z',
+      });
+    });
+
+    it('200: sin reacciones devuelve la lista vacía y total 0', async () => {
+      const ana = await signUp('ana');
+      const postId = await postBy(ana.id);
+      const res = await request(server)
+        .get(`/api/posts/${postId}/reactions`)
+        .set('Cookie', ana.cookie)
+        .expect(200);
+      expect(recentOf(res)).toEqual({ total: 0, items: [] });
+    });
+
+    it('404 si la publicación no existe o fue eliminada', async () => {
+      const ana = await signUp('ana');
+      const deletedId = await postBy(ana.id, true);
+      for (const id of [MISSING_ID, deletedId]) {
+        await request(server)
+          .get(`/api/posts/${id}/reactions`)
+          .set('Cookie', ana.cookie)
+          .expect(404);
+      }
+    });
+
+    it('400 si el id no es un UUID', async () => {
+      const ana = await signUp('ana');
+      const res = await request(server)
+        .get('/api/posts/no-es-uuid/reactions')
+        .set('Cookie', ana.cookie)
+        .expect(400);
+      expect(ruleOf(res, 'id')).toBe('isUuid');
+    });
+
+    it('401 sin sesión', async () => {
+      await request(server)
+        .get(`/api/posts/${MISSING_ID}/reactions`)
+        .expect(401);
     });
   });
 });

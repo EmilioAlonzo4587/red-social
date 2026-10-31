@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ConversationDto, MeDto, UnreadCountDto } from "@red/api-types";
+import { Avatar } from "@/components/avatar";
 import { NotificationsPanel } from "@/components/notifications-panel";
 import { apiFetchClient } from "@/lib/api-client";
 import { PUBLIC_PATHS } from "@/lib/public-paths";
@@ -67,7 +68,9 @@ async function fetchUnreadNotifications(): Promise<number | null> {
 export function Sidebar() {
   const pathname = usePathname();
   const isPublic = PUBLIC_PATHS.includes(pathname);
-  const [username, setUsername] = useState<string | null>(null);
+  // El usuario con sesión: su perfil y, en la barra inferior del celular, su foto (S4-16)
+  const [me, setMe] = useState<MeDto | null>(null);
+  const username = me?.username ?? null;
   const [unreadByConv, setUnreadByConv] = useState<Record<string, number>>({});
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -89,7 +92,7 @@ export function Sidebar() {
     void (async () => {
       try {
         const me = await apiFetchClient<MeDto>("/api/auth/me");
-        if (me?.username) setUsername(me.username);
+        if (me?.username) setMe(me);
       } catch {
         // Silencioso: el resto del menú sigue funcionando.
       }
@@ -310,7 +313,23 @@ export function Sidebar() {
           aria-current={!drawerOpen && pathname === profileHref ? "page" : undefined}
           className={mobileLinkClass(!drawerOpen && pathname === profileHref)}
         >
-          <Icon path={ICONS.perfil} className="h-[22px] w-[22px]" />
+          {/* En el celular, tu foto en vez del ícono (S4-16); sin foto, tus iniciales */}
+          {me && (
+            <span
+              aria-hidden="true"
+              className={`rounded-full ${
+                !drawerOpen && pathname === profileHref
+                  ? "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                  : ""
+              }`}
+            >
+              <Avatar
+                name={me.displayName ?? me.username}
+                avatarPublicId={me.avatarPublicId}
+                size="2xs"
+              />
+            </span>
+          )}
           Mi perfil
         </Link>
       )}

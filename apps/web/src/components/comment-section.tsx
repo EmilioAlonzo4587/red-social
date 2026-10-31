@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/api-error";
 import { fieldErrorsFromDetails } from "@/lib/api-field-errors";
 import { formatRelativeTime } from "@/lib/format";
 import { subscribePostComments } from "@/lib/socket";
+import { submitOnEnter } from "@/lib/submit-on-enter";
 import { useEmojiInsert } from "@/lib/use-emoji-insert";
 
 // Ya dentro del detalle, el 💬 de PostCard llama a focusCommentInput() para llevar
@@ -477,8 +478,10 @@ export function CommentSection({
           rows={2}
           placeholder="Escribe un comentario…"
           aria-invalid={fieldErrors.content !== undefined}
+          enterKeyHint="send"
           onKeyDown={(event) => {
             if (event.key === "Escape") setEmojiOpen(false);
+            submitOnEnter(event);
           }}
           className="resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-primary"
         />

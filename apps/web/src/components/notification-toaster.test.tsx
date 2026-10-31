@@ -238,11 +238,61 @@ describe("NotificationToaster y sonido (S4-11)", () => {
       );
     });
 
-    expect(screen.getAllByRole("status")).toHaveLength(4);
+    expect(screen.getAllByRole("status", { hidden: true })).toHaveLength(4);
     for (const text of [/Primero/, /Segundo/, /Tercero/, /Cuarto/]) {
       expect(screen.getByText(text)).toBeInTheDocument();
     }
 
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("plegados van uno encima del otro: arriba el más reciente, 2 asomando y el resto escondido; con el mouse encima se despliegan (S4-16)", () => {
+    render(<NotificationToaster />);
+    act(() => {
+      for (const [id, preview] of [
+        ["n1", "Primero"],
+        ["n2", "Segundo"],
+        ["n3", "Tercero"],
+        ["n4", "Cuarto"],
+        ["n5", "Quinto"],
+      ]) {
+        onNotificationNew.current?.(makeNotification({ id, preview }));
+      }
+    });
+
+    const toastOf = (text: string) =>
+      screen.getByText(text).closest('[role="status"]') as HTMLElement;
+    // El más reciente arriba y usable
+    expect(toastOf("Quinto").style.zIndex).toBe("5");
+    expect(toastOf("Quinto")).not.toHaveAttribute("inert");
+    // Los 2 siguientes asoman detrás, sin clics ni foco
+    expect(toastOf("Cuarto").style.transform).toBe("translateY(10px) scale(0.95)");
+    expect(toastOf("Tercero").style.transform).toBe("translateY(20px) scale(0.9)");
+    expect(toastOf("Cuarto")).toHaveAttribute("inert");
+    // El resto, escondido y fuera del lector de pantalla
+    expect(toastOf("Primero").style.opacity).toBe("0");
+    expect(toastOf("Primero")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getAllByRole("status")).toHaveLength(3);
+
+    // Con el mouse encima se despliegan en lista y todos se pueden usar
+    const stack = toastOf("Quinto").parentElement as HTMLElement;
+    fireEvent.mouseEnter(stack);
+    expect(screen.getAllByRole("status")).toHaveLength(5);
+    expect(toastOf("Primero")).not.toHaveAttribute("inert");
+    expect(toastOf("Primero").style.transform).toBe("");
+
+    // Mientras el mouse está encima no se cierra ninguno
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+    expect(screen.getAllByRole("status")).toHaveLength(5);
+
+    fireEvent.mouseLeave(stack);
+    expect(screen.getAllByRole("status")).toHaveLength(3);
+    // Al salir vuelven a correr los 5 s
     act(() => {
       vi.advanceTimersByTime(5000);
     });
@@ -273,7 +323,7 @@ describe("NotificationToaster y sonido (S4-11)", () => {
       onConversationUpdated.current?.(makeConversation(BETO, "u2", "Cuarto"));
       onConversationUpdated.current?.(makeConversation(BETO, "u2", "Quinto"));
     });
-    expect(screen.getAllByRole("status")).toHaveLength(5);
+    expect(screen.getAllByRole("status", { hidden: true })).toHaveLength(5);
     expect(screen.getByText("Hola")).toBeInTheDocument();
 
     const link = screen.getAllByRole("link", { name: /Beto/ })[0];

@@ -14,10 +14,10 @@ import { focusCommentInput } from "@/components/comment-section";
 import { PostMedia } from "@/components/post-media";
 import { QuickCommentBox } from "@/components/quick-comment-box";
 import { ReactionButton } from "@/components/reaction-button";
+import { RecentReactions } from "@/components/recent-reactions";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
 import { formatRelativeTime } from "@/lib/format";
-import { reactionInfo } from "@/lib/reactions";
 import { subscribePostComments, subscribePostLikes } from "@/lib/socket";
 
 // Mismo límite que POST/PATCH /api/posts (RN03)
@@ -218,19 +218,20 @@ export function PostCard({
     </form>
   );
 
-  const media = <PostMedia media={post.media} authorName={authorName} />;
+  // En el feed y los perfiles, la imagen lleva al detalle; ya ahí, abre el visor (S4-16)
+  const media = (
+    <PostMedia
+      media={post.media}
+      authorName={authorName}
+      detailHref={linkToDetail ? `/p/${post.id}` : undefined}
+    />
+  );
 
   const contentText = content && (
     <p className="whitespace-pre-line text-base leading-[1.55] [overflow-wrap:anywhere]">
       {content}
     </p>
   );
-
-  const reactionsLabel = `${likeCount} ${likeCount === 1 ? "reacción" : "reacciones"}${
-    topReactions.length > 0
-      ? `: ${topReactions.map((type) => reactionInfo(type).label).join(", ")}`
-      : ""
-  }`;
 
   const commentLabel = `Comentar (${commentCount} ${commentCount === 1 ? "comentario" : "comentarios"})`;
 
@@ -329,19 +330,18 @@ export function PostCard({
           ))}
       {media}
 
-      <div className="flex flex-wrap items-center gap-x-[22px] gap-y-2 text-sm tabular-nums">
+      {/* relative: la ventana de reacciones recientes se ubica contra esta fila */}
+      <div className="relative flex flex-wrap items-center gap-x-[22px] gap-y-2 text-sm tabular-nums">
         <ReactionButton
           myReaction={myReaction}
           onSelect={changeReaction}
           onRemove={() => changeReaction(null)}
         />
-        <span className="text-muted">
-          <span aria-hidden="true">
-            {topReactions.map((type) => reactionInfo(type).emoji).join("")}{" "}
-            {likeCount}
-          </span>
-          <span className="sr-only">{reactionsLabel}</span>
-        </span>
+        <RecentReactions
+          postId={post.id}
+          likeCount={likeCount}
+          topReactions={topReactions}
+        />
         {/* En el feed abre el recuadro para comentar debajo de la publicación; ya en
             el detalle, enfoca el formulario de CommentSection, que está justo abajo. */}
         {linkToDetail ? (

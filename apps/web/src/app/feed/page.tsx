@@ -8,6 +8,7 @@ import type {
   PostPageDto,
   ProfileDto,
 } from "@red/api-types";
+import { Avatar } from "@/components/avatar";
 import { FollowingPanel } from "@/components/following-panel";
 import { HomeProfileCard } from "@/components/home-profile-card";
 import { NewPostsButton } from "@/components/new-posts-button";
@@ -226,12 +227,27 @@ export default function FeedPage() {
       <main className="mx-auto w-full min-w-0 max-w-2xl flex-1 px-4 py-4 sm:px-6">
         <h1 className="mb-3 text-xl font-bold">Inicio</h1>
 
-        <PostComposer
-          onPosted={() => {
-            // Vuelve a pedir el feed desde el principio: hay una publicación nueva.
-            setReloadToken((n) => n + 1);
-          }}
-        />
+        {/* En el celular, tu foto a la izquierda del compositor (S4-16); desde sm la
+            tarjeta de perfil de la columna derecha ya la muestra */}
+        <div className="flex items-start gap-3">
+          {me && (
+            <div className="shrink-0 pt-1 sm:hidden">
+              <Avatar
+                name={me.displayName ?? me.username}
+                avatarPublicId={me.avatarPublicId}
+                size="md"
+              />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <PostComposer
+              onPosted={() => {
+                // Vuelve a pedir el feed desde el principio: hay una publicación nueva.
+                setReloadToken((n) => n + 1);
+              }}
+            />
+          </div>
+        </div>
 
         {/* El aviso de nuevas va en la misma fila fija que las pestañas, a la par de
             ellas (S4-15): sigue a la vista al bajar por el feed. */}

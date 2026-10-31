@@ -17,9 +17,11 @@ export function Avatar({
 }: {
   name: string;
   avatarPublicId?: string | null;
-  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  size?: "2xs" | "xs" | "sm" | "md" | "lg" | "xl";
 }) {
   const sizeClasses = {
+    // 24px: del alto de los íconos de la barra inferior del celular (S4-16)
+    "2xs": "h-6 w-6 text-[10px]",
     xs: "h-7 w-7 text-[11px]",
     sm: "h-8 w-8 text-xs",
     md: "h-10 w-10 text-sm",

@@ -308,6 +308,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/posts/{id}/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReactionsController_recent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/posts/{id}/comments": {
         parameters: {
             query?: never;
@@ -678,6 +694,29 @@ export interface components {
              *     ]
              */
             topReactions: ("like" | "love" | "haha" | "wow" | "sad" | "angry")[];
+        };
+        RecentReactionDto: {
+            /** @description Quién reaccionó */
+            user: components["schemas"]["UserSummaryDto"];
+            /**
+             * @example love
+             * @enum {string}
+             */
+            reaction: "like" | "love" | "haha" | "wow" | "sad" | "angry";
+            /**
+             * Format: date-time
+             * @description Cuándo reaccionó por primera vez; cambiar de reacción no la mueve
+             */
+            createdAt: string;
+        };
+        RecentReactionsDto: {
+            /**
+             * @description Total de reacciones
+             * @example 25
+             */
+            total: number;
+            /** @description Hasta 5, de la más reciente a la más antigua */
+            items: components["schemas"]["RecentReactionDto"][];
         };
         CommentDto: {
             /** Format: uuid */
@@ -1779,6 +1818,54 @@ export interface operations {
                 };
             };
             /** @description id no es un UUID o la reacción no es válida */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description La publicación no existe o fue eliminada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    ReactionsController_recent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Las 5 reacciones más recientes, de la más reciente a la más antigua, y el total */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecentReactionsDto"];
+                };
+            };
+            /** @description id no es un UUID */
             400: {
                 headers: {
                     [name: string]: unknown;

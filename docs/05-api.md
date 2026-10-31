@@ -149,10 +149,12 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 | GET | `/api/feed/explore` 🔒 | `?cursor=` | `Page<Post>`: todas (RN10) | | S2-05 |
 | PUT | `/api/posts/:id/like` 🔒 | `{ reaction? }` | `{ likeCount, likedByMe: true, myReaction, topReactions }` | 400 si la reacción no es válida, 404 | S2-07, S4-12 |
 | DELETE | `/api/posts/:id/like` 🔒 | | `{ likeCount, likedByMe: false, myReaction: null, topReactions }` | 404 | S2-07, S4-12 |
+| GET | `/api/posts/:id/reactions` 🔒 | | `{ total, items: { user: UserSummary, reaction, createdAt }[] }` | 400 si `id` no es un UUID; 404, también si fue eliminada | S4-16 |
 
 - Cada elemento de `media` es lo que devolvió `POST /api/media` (`publicId`, `width` y `height`, enteros positivos), en el orden en que se muestran. La api guarda las medidas para que la web reserve el espacio de la imagen.
 - Like y unlike son idempotentes: repetirlos responde 200 con el mismo contador (RN05).
 - Reacciones: `like`, `love`, `haha`, `wow`, `sad` o `angry`. Sin `reaction` cuenta como `like`. Cada persona tiene una sola: elegir otra la reemplaza sin sumar a `likeCount`, que es el total. `topReactions` trae hasta 3, de la más usada a la menos usada; un empate sigue ese orden (S4-12).
+- `GET /posts/:id/reactions` trae las 5 reacciones más recientes, de la más reciente a la más antigua, y `total` (el mismo `likeCount`). El orden es por cuándo esa persona reaccionó por primera vez: cambiar de reacción no la mueve (S4-16).
 
 ### Comentarios (S3-01)
 

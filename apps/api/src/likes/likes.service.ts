@@ -4,7 +4,10 @@ import type { LikeChange } from '../events/domain-events';
 import { DomainEvents } from '../events/domain-events.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LikeStatusDto } from './dto/like-status.dto';
-import { loadTopReactions, type ReactionType } from './reactions';
+import { RecentReactionsDto } from './dto/recent-reactions.dto';
+import { isReaction, loadTopReactions, type ReactionType } from './reactions';
+
+export const RECENT_REACTIONS_LIMIT = 5;
 
 @Injectable()
 export class LikesService {
@@ -43,6 +46,49 @@ export class LikesService {
       });
       return count === 1 ? 'removed' : null;
     });
+  }
+
+  // Las últimas personas que reaccionaron (S4-16), por cuándo reaccionaron por primera vez:
+  // cambiar de reacción no actualiza created_at. El total es like_count (D05).
+  async recent(postId: string): Promise<RecentReactionsDto> {
+    const post = await this.prisma.post.findFirst({
+      where: { id: postId, deletedAt: null },
+      select: { likeCount: true },
+    });
+    if (!post) throw new NotFoundException('Publicación no encontrada');
+
+    const rows = await this.prisma.postLike.findMany({
+      where: { postId },
+      orderBy: [{ createdAt: 'desc' }, { userId: 'desc' }],
+      take: RECENT_REACTIONS_LIMIT,
+      select: {
+        reaction: true,
+        createdAt: true,
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarPublicId: true,
+          },
+        },
+      },
+    });
+    return {
+      total: post.likeCount,
+      // El CHECK de la base solo admite las reacciones conocidas; el filtro estrecha el tipo
+      items: rows.flatMap((row) =>
+        isReaction(row.reaction)
+          ? [
+              {
+                user: row.user,
+                reaction: row.reaction,
+                createdAt: row.createdAt,
+              },
+            ]
+          : [],
+      ),
+    };
   }
 
   // La fila de la reacción y like_count cambian en la misma transacción (D05). El evento

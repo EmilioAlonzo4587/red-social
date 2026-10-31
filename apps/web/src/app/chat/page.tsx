@@ -712,11 +712,15 @@ function ChatView() {
                   }
                 }}
                 maxLength={MESSAGE_MAX}
+                enterKeyHint="send"
                 placeholder="Escribe un mensaje..."
                 className="min-w-0 flex-1 rounded-lg border border-border px-3 py-2 text-sm outline-primary"
               />
+              {/* preventDefault al presionar: el foco no pasa del campo al botón, así en
+                  el celular el teclado no se cierra al enviar (S4-16). El clic igual envía. */}
               <button
                 type="submit"
+                onMouseDown={(event) => event.preventDefault()}
                 disabled={sending || draft.trim().length === 0}
                 className="rounded-lg bg-action px-4 py-2 text-sm font-medium text-white hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
               >

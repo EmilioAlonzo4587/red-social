@@ -5,6 +5,8 @@ import { Navbar } from "./navbar";
 const { pathname } = vi.hoisted(() => ({ pathname: { value: "/feed" } }));
 vi.mock("next/navigation", () => ({
   usePathname: () => pathname.value,
+  // UserSearch (dentro de Navbar) navega con el router al elegir con Enter (S4-16)
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));

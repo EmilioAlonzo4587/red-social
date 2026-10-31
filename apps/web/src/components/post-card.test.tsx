@@ -68,7 +68,7 @@ describe("PostCard", () => {
     expect(
       screen.getByText("Primer atardecer del semestre"),
     ).toBeInTheDocument();
-    expect(screen.getByText("3 reacciones: Me gusta")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "3 reacciones: Me gusta. Ver quién reaccionó" })).toBeInTheDocument();
     expect(screen.getByText("💬 1")).toBeInTheDocument();
   });
 
@@ -83,7 +83,8 @@ describe("PostCard", () => {
     ).toHaveAttribute("href", `/p/${BASE_POST.id}`);
   });
 
-  it("las imágenes quedan fuera del enlace al detalle y la hora enlaza al detalle (S4-15)", () => {
+  it("en el feed la imagen y la hora llevan al detalle; en el detalle la imagen abre el visor (S4-16)", async () => {
+    const user = userEvent.setup();
     const post: PostDto = {
       ...BASE_POST,
       content: null,
@@ -91,15 +92,30 @@ describe("PostCard", () => {
         { publicId: "users/u1/a", mediaType: "image", width: 10, height: 10 },
       ],
     };
-    render(<PostCard post={post} />);
-    const image = screen.getByRole("button", {
-      name: "Ver imagen de la publicación de Ana López",
-    });
-    expect(image.closest("a")).not.toBeInTheDocument();
-    const detailLinks = screen
-      .getAllByRole("link")
-      .filter((link) => link.getAttribute("href") === `/p/${BASE_POST.id}`);
-    expect(detailLinks).toHaveLength(1);
+    const { unmount } = render(<PostCard post={post} />);
+    expect(
+      screen.getByRole("link", {
+        name: "Abrir la publicación (imagen de la publicación de Ana López)",
+      }),
+    ).toHaveAttribute("href", `/p/${BASE_POST.id}`);
+    expect(
+      screen.queryByRole("button", { name: /^Ver imagen/ }),
+    ).not.toBeInTheDocument();
+    // La hora también enlaza al detalle
+    expect(
+      screen
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("href") === `/p/${BASE_POST.id}`),
+    ).toHaveLength(2);
+    unmount();
+
+    render(<PostCard post={post} linkToDetail={false} />);
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ver imagen de la publicación de Ana López",
+      }),
+    );
+    expect(screen.getByRole("dialog", { name: "Imagen ampliada" })).toBeInTheDocument();
   });
 
   it("linkToDetail=false (S3-08, ya estás en /p/[id]): no enlaza el contenido a sí misma", () => {
@@ -205,7 +221,7 @@ describe("PostCard", () => {
       screen.getByRole("button", { name: "Reaccionar con Me gusta" }),
     );
 
-    expect(screen.getByText(/^4 reacciones/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^4 reacciones/ })).toBeInTheDocument();
     await waitFor(() => {
       expect(apiFetchClient).toHaveBeenCalledWith(
         `/api/posts/${BASE_POST.id}/like`,
@@ -239,7 +255,7 @@ describe("PostCard", () => {
       screen.getByRole("button", { name: "Quitar tu reacción: Me encanta" }),
     );
 
-    expect(screen.getByText(/^2 reacciones/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^2 reacciones/ })).toBeInTheDocument();
     await waitFor(() => {
       expect(apiFetchClient).toHaveBeenCalledWith(
         `/api/posts/${BASE_POST.id}/like`,
@@ -267,7 +283,7 @@ describe("PostCard", () => {
     expect(within(group).getAllByRole("button")).toHaveLength(6);
     await user.click(within(group).getByRole("button", { name: "Me entristece" }));
 
-    expect(screen.getByText(/^3 reacciones/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^3 reacciones/ })).toBeInTheDocument();
     await waitFor(() => {
       expect(apiFetchClient).toHaveBeenCalledWith(
         `/api/posts/${BASE_POST.id}/like`,
@@ -294,14 +310,14 @@ describe("PostCard", () => {
   it("muestra el total y los emojis, y los actualiza en vivo", () => {
     render(<PostCard post={BASE_POST} />);
     expect(
-      screen.getByText("3 reacciones: Me gusta"),
+      screen.getByRole("button", { name: "3 reacciones: Me gusta. Ver quién reaccionó" }),
     ).toBeInTheDocument();
 
     const onLikes = subscribePostLikes.mock.calls[0][1];
     act(() => onLikes(5, ["love", "like"]));
 
     expect(
-      screen.getByText("5 reacciones: Me encanta, Me gusta"),
+      screen.getByRole("button", { name: "5 reacciones: Me encanta, Me gusta. Ver quién reaccionó" }),
     ).toBeInTheDocument();
   });
 
@@ -315,7 +331,7 @@ describe("PostCard", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/^3 reacciones/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^3 reacciones/ })).toBeInTheDocument();
     });
     expect(
       screen.getByRole("button", { name: "Reaccionar con Me gusta" }),
@@ -458,12 +474,12 @@ describe("PostCard", () => {
       BASE_POST.id,
       expect.any(Function),
     );
-    expect(screen.getByText("3 reacciones: Me gusta")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "3 reacciones: Me gusta. Ver quién reaccionó" })).toBeInTheDocument();
 
     act(() => {
       onLikeCount?.(12, ["like"]);
     });
-    expect(screen.getByText("12 reacciones: Me gusta")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "12 reacciones: Me gusta. Ver quién reaccionó" })).toBeInTheDocument();
 
     unmount();
     // El mismo unsubscribe lo devuelven tanto likes como comentarios (S3-18): se llama una vez por cada uno.
