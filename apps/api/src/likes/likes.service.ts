@@ -89,6 +89,7 @@ export class LikesService {
         change: result.change,
         likeCount: result.likeCount,
         topReactions: result.topReactions,
+        reaction: myReaction,
       });
     }
     return {

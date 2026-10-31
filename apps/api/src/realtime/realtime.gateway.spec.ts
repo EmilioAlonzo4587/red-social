@@ -95,13 +95,17 @@ describe('RealtimeGateway (likes en vivo)', () => {
       getOtherLastReadAt: jest.fn(),
       filterContacts: jest.fn(),
     };
+    const follows = {
+      findFollowerIds: jest.fn().mockResolvedValue([]),
+    };
     const gateway = new RealtimeGateway(
       {} as never,
       { corsOrigin: 'http://localhost:3001' } as never,
       conversations as never,
+      follows as never,
     );
     gateway.server = { to } as never;
-    return { gateway, to, emit, conversations };
+    return { gateway, to, emit, conversations, follows };
   }
 
   it('post:watch mete el socket en las salas post:{id}', async () => {
@@ -177,6 +181,7 @@ describe('RealtimeGateway (likes en vivo)', () => {
       change: 'added',
       likeCount: 7,
       topReactions: ['love', 'like'],
+      reaction: 'love',
     });
     expect(to).toHaveBeenCalledWith(postRoom(VALID_ID_1));
     expect(emit).toHaveBeenCalledWith('post:likes', {
@@ -384,6 +389,8 @@ describe('RealtimeGateway (likes en vivo)', () => {
           },
           postId: VALID_ID_2,
           commentId: null,
+          preview: null,
+          reaction: null,
           read: false,
           createdAt,
         },
@@ -401,8 +408,29 @@ describe('RealtimeGateway (likes en vivo)', () => {
         },
         postId: VALID_ID_2,
         commentId: null,
+        preview: null,
+        reaction: null,
         read: false,
         createdAt: '2026-10-30T15:05:00.000Z',
+      });
+    });
+
+    it('post.created emite feed:new a la sala user:{id} de cada seguidor (S4-11)', async () => {
+      const { gateway, to, emit, follows } = createGateway();
+      follows.findFollowerIds.mockResolvedValueOnce(['u2', 'u3']);
+
+      await gateway.handlePostCreated({
+        postId: VALID_ID_1,
+        authorId: 'u1',
+      });
+
+      expect(follows.findFollowerIds).toHaveBeenCalledWith('u1');
+      expect(to).toHaveBeenCalledTimes(1);
+      expect(to).toHaveBeenCalledWith([userRoom('u2'), userRoom('u3')]);
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith('feed:new', {
+        postId: VALID_ID_1,
+        authorId: 'u1',
       });
     });
 

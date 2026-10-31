@@ -121,4 +121,13 @@ export class FollowsService {
   private countFollowers(followingId: string): Promise<number> {
     return this.prisma.follow.count({ where: { followingId } });
   }
+
+  // S4-11: ids de quienes siguen a un autor, para enviarles feed:new a user:{id}
+  async findFollowerIds(followingId: string): Promise<string[]> {
+    const rows = await this.prisma.follow.findMany({
+      where: { followingId },
+      select: { followerId: true },
+    });
+    return rows.map((row) => row.followerId);
+  }
 }

@@ -65,6 +65,7 @@ describe('LikesService', () => {
       change: 'added',
       likeCount: 5,
       topReactions: ['love'],
+      reaction: 'love',
     });
   });
 

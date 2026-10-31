@@ -61,12 +61,13 @@ Los tipos están en `apps/api/src/events/domain-events.ts`. Un servicio emite co
 
 | Evento | Lo emite | Datos | Quién lo escucha |
 |---|---|---|---|
-| `like.changed` | Likes (S2-07), solo si el contador cambió | `{ postId, postAuthorId, actorId, change: "added" \| "removed" \| "changed", likeCount, topReactions }` | Gateway: `post:likes` a `post:{postId}`. Notificaciones: crea la de like si `change` es `added` |
+| `like.changed` | Likes (S2-07), solo si el contador cambió | `{ postId, postAuthorId, actorId, change: "added" \| "removed" \| "changed", likeCount, topReactions, reaction }`. `reaction` es la reacción de quien actuó después del cambio; `null` si la quitó. | Gateway: `post:likes` a `post:{postId}`. Notificaciones: crea la de like si `change` es `added` |
 | `comment.changed` | Comentarios (S3-01) | `{ postId, postAuthorId, actorId, commentId, change, commentCount }` | Gateway: `post:comments` a `post:{postId}`. Notificaciones: crea la de comentario si `change` es `added` |
 | `follow.created` | Seguimiento (S2-06), solo si se creó la fila | `{ followerId, followingId }` | Notificaciones |
 | `message.created` | Chat (S3-04) | `{ message: Message, recipientId }` | Gateway: `message:new` a `conv:{conversationId}` y `conversation:updated` a los dos participantes. Notificaciones |
 | `conversation.read` | Chat (S3-06) | `{ conversationId, userId, readAt }` | Gateway: `conversation:read` a `conv:{conversationId}` |
 | `notification.created` | Notificaciones (S3-03) | `{ recipientId, notification: Notification }` | Gateway: `notification:new` a `user:{recipientId}` |
+| `post.created` | Publicaciones (S4-11) | `{ postId, authorId }` | Gateway: `feed:new` a `user:{id}` de cada seguidor |
 
 Reglas:
 
@@ -100,7 +101,7 @@ sequenceDiagram
 
 | Sala | Quién entra | Eventos que recibe |
 |---|---|---|
-| `user:{id}` | Cada usuario al conectarse, con todas sus pestañas (S1-04) | `notification:new`, `conversation:updated` |
+| `user:{id}` | Cada usuario al conectarse, con todas sus pestañas (S1-04) | `notification:new`, `conversation:updated`, `feed:new` |
 | `post:{id}` | Clientes con esa publicación en pantalla | `post:likes`, `post:comments` |
 | `conv:{id}` | Participantes de la conversación, verificados al unirse | `message:new`, `conversation:typing`, `conversation:read` |
 | `presence:{id}` | Quien tiene una conversación con ese usuario y envió `presence:watch` (S3-06) | `user:presence` |
@@ -141,3 +142,4 @@ El backend corre en **una sola instancia**. Para escalar a varias haría falta e
 | D08 | Eventos de dominio entre módulos | Llamadas directas al Gateway | Desacopla el trabajo de Dev 2 y Dev 3. |
 | D09 | Sin contenido público | Perfiles públicos | Decisión del equipo; simplifica permisos y consultas. |
 | D10 | Notificaciones y chat como paneles verticales a la mitad de pantalla (lado derecho), cada uno independiente, en vez de páginas completas separadas | Páginas completas independientes para /notificaciones y el chat | Decisión del equipo (S3-07, S3-06): permite abrir uno sin perder el feed de fondo y deja reservada la otra mitad para el otro panel. |
+| D11 | Avisos de notificaciones en pantalla con sonido sintetizado (Web Audio API) y aviso de publicaciones nuevas en Siguiendo sin guardar notificación en la base | Archivos de audio externos y una fila en `notifications` por cada seguidor al publicar | Dos tonos cortos con `OscillatorNode` no agregan peso ni dependencias; publicar a muchos seguidores llenaría `notifications` con algo que ya vive en el feed (S4-11). |

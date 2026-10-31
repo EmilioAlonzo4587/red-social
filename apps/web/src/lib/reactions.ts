@@ -13,3 +13,8 @@ export const REACTIONS: { type: ReactionType; label: string; emoji: string }[] =
 export function reactionInfo(type: ReactionType) {
   return REACTIONS.find((reaction) => reaction.type === type) ?? REACTIONS[0];
 }
+
+// Texto de una notificación de reacción; null si ya la quitó (la web usa el texto general)
+export function reactionActionText(reaction: ReactionType | null): string | null {
+  return reaction ? `reaccionó con ${reactionInfo(reaction).emoji}` : null;
+}

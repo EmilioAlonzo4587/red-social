@@ -454,9 +454,43 @@ describe('Socket.io autenticado (e2e)', () => {
           },
           postId: null,
           commentId: null,
+          preview: 'Hola en vivo',
           read: false,
         }) as unknown,
       });
+    });
+
+    it('crear publicación emite feed:new al seguidor y no a quien no sigue (S4-11)', async () => {
+      const ana = await registerUser('ana');
+      const beto = await registerUser('beto');
+      const carla = await registerUser('carla');
+
+      // Beto sigue a Ana; Carla no
+      await request(app.getHttpServer())
+        .put('/api/users/ana/follow')
+        .set('Cookie', `access_token=${beto.access}`)
+        .expect(200);
+
+      const betoSocket = connect(withCookie(beto.access));
+      const carlaSocket = connect(withCookie(carla.access));
+      await waitFor(betoSocket, ['session:ready']);
+      await waitFor(carlaSocket, ['session:ready']);
+
+      const onBetoFeed = waitFor(betoSocket, ['feed:new']);
+      const carlaNoFeed = expectNothing(carlaSocket, 'feed:new');
+
+      const created = await request(app.getHttpServer())
+        .post('/api/posts')
+        .set('Cookie', `access_token=${ana.access}`)
+        .send({ content: 'Publicación nueva para seguidores' })
+        .expect(201);
+      const postId = (created.body as { id: string }).id;
+
+      expect(await onBetoFeed).toEqual({
+        event: 'feed:new',
+        data: { postId, authorId: ana.id },
+      });
+      await carlaNoFeed;
     });
 
     it('conversation:join rechaza con "forbidden" a quien no participa, una conversación inexistente o un UUID inválido (RN09)', async () => {

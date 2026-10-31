@@ -5,7 +5,9 @@ import type {
   ConversationReadEvent,
   ConversationTypingEvent,
   ConversationUpdatedEvent,
+  FeedNewEvent,
   MessageNewEvent,
+  NotificationNewEvent,
   PostCommentsEvent,
   PostLikesEvent,
   ReactionType,
@@ -33,6 +35,10 @@ type ConversationUpdatedListener = (
 ) => void;
 type ConversationReadListener = (conversationId: string) => void;
 type PresenceListener = (onlineUserIds: ReadonlySet<string>) => void;
+type NotificationNewListener = (notification: NotificationNewEvent) => void;
+export type NotificationsReadEvent = { decrement?: number; all?: boolean };
+type NotificationsReadListener = (event: NotificationsReadEvent) => void;
+type FeedNewListener = (event: FeedNewEvent) => void;
 
 export interface ConversationSubscriptionOptions {
   onTyping?: TypingListener;
@@ -74,10 +80,14 @@ const lastTypingEmitByConversation = new Map<string, number>();
 const conversationUpdatedListeners = new Set<ConversationUpdatedListener>();
 const conversationReadListeners = new Set<ConversationReadListener>();
 const presenceListeners = new Set<PresenceListener>();
+const notificationNewListeners = new Set<NotificationNewListener>();
+const notificationsReadListeners = new Set<NotificationsReadListener>();
+const feedNewListeners = new Set<FeedNewListener>();
 const watchedPresenceUsers = new Set<string>();
 const onlineUsers = new Set<string>();
 const pendingWatch = new Set<string>();
 const pendingUnwatch = new Set<string>();
+let activeChatUserId: string | null = null;
 
 // post:{id} se comparte entre likes y comentarios (S3-18): solo se deja de mirar
 // cuando ninguna de las dos razones sigue suscrita.
@@ -218,6 +228,18 @@ function getSocket(): AppClientSocket {
       onlineUsers.delete(userId);
     }
     notifyPresenceListeners();
+  });
+
+  instance.on("notification:new", (notification: NotificationNewEvent) => {
+    for (const listener of notificationNewListeners) {
+      listener(notification);
+    }
+  });
+
+  instance.on("feed:new", (event: FeedNewEvent) => {
+    for (const listener of feedNewListeners) {
+      listener(event);
+    }
   });
 
   instance.on("connect", () => {
@@ -478,6 +500,61 @@ export function notifyConversationRead(conversationId: string): void {
 }
 
 /**
+ * Escucha notification:new en la sala personal user:{id} (S3-05, S4-11).
+ */
+export function subscribeNotificationNew(
+  onNotification: NotificationNewListener,
+): () => void {
+  getSocket();
+  notificationNewListeners.add(onNotification);
+  return () => {
+    notificationNewListeners.delete(onNotification);
+  };
+}
+
+/**
+ * Sincroniza el contador de notificaciones sin leer del menú lateral cuando
+ * se marca una o todas como leídas desde el panel o el aviso emergente (S4-11).
+ */
+export function subscribeNotificationsRead(
+  onRead: NotificationsReadListener,
+): () => void {
+  notificationsReadListeners.add(onRead);
+  return () => {
+    notificationsReadListeners.delete(onRead);
+  };
+}
+
+export function notifyNotificationsRead(event: NotificationsReadEvent): void {
+  for (const listener of notificationsReadListeners) {
+    listener(event);
+  }
+}
+
+/**
+ * Escucha feed:new en la sala personal user:{id} cuando alguien seguido publica (S4-11, D11).
+ */
+export function subscribeFeedNew(onFeedNew: FeedNewListener): () => void {
+  getSocket();
+  feedNewListeners.add(onFeedNew);
+  return () => {
+    feedNewListeners.delete(onFeedNew);
+  };
+}
+
+/**
+ * Registra con qué usuario está abierta actualmente la conversación en /chat,
+ * para no mostrar el aviso emergente de mensaje de esa conversación (S4-11).
+ */
+export function setActiveChatUser(userId: string | null): void {
+  activeChatUserId = userId;
+}
+
+export function getActiveChatUser(): string | null {
+  return activeChatUserId;
+}
+
+/**
  * Suscribe el socket al estado activo/inactivo (user:presence) de una lista de usuarios.
  */
 export function watchUsersPresence(
@@ -513,6 +590,7 @@ export function disconnectSocket(): void {
   lastTypingEmitByConversation.clear();
   watchedPresenceUsers.clear();
   onlineUsers.clear();
+  activeChatUserId = null;
   needsResubscribe = false;
   refreshAttempted = false;
   if (!socket) return;

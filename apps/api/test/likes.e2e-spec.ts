@@ -113,6 +113,7 @@ describe('Likes (e2e)', () => {
         change: 'added',
         likeCount: 1,
         topReactions: ['like'],
+        reaction: 'like',
       });
 
       const post = await request(server)
@@ -258,6 +259,7 @@ describe('Likes (e2e)', () => {
         change: 'changed',
         likeCount: 1,
         topReactions: ['love'],
+        reaction: 'love',
       });
     });
 
@@ -364,6 +366,7 @@ describe('Likes (e2e)', () => {
         change: 'removed',
         likeCount: 0,
         topReactions: [],
+        reaction: null,
       });
     });
 

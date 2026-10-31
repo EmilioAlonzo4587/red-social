@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { ConversationDto, MeDto } from "@red/api-types";
+import type { ConversationDto, MeDto, UnreadCountDto } from "@red/api-types";
+import { NotificationsPanel } from "@/components/notifications-panel";
 import { apiFetchClient } from "@/lib/api-client";
 import { PUBLIC_PATHS } from "@/lib/public-paths";
 import {
   subscribeConversationRead,
   subscribeConversationUpdated,
+  subscribeNotificationNew,
+  subscribeNotificationsRead,
 } from "@/lib/socket";
 
 function linkClass(active: boolean): string {
@@ -52,6 +55,19 @@ export function Sidebar() {
   const isPublic = PUBLIC_PATHS.includes(pathname);
   const [username, setUsername] = useState<string | null>(null);
   const [unreadByConv, setUnreadByConv] = useState<Record<string, number>>({});
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setDrawerOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [drawerOpen]);
 
   useEffect(() => {
     if (isPublic) return;
@@ -79,6 +95,19 @@ export function Sidebar() {
       }
     })();
 
+    void (async () => {
+      try {
+        const res = await apiFetchClient<UnreadCountDto>(
+          "/api/notifications/unread-count",
+        );
+        if (typeof res?.count === "number") {
+          setUnreadNotifications(res.count);
+        }
+      } catch {
+        // Silencioso: notification:new irá actualizando el contador en vivo.
+      }
+    })();
+
     const unsubUpdated = subscribeConversationUpdated((conv) => {
       setUnreadByConv((prev) => ({ ...prev, [conv.id]: conv.unread }));
     });
@@ -87,10 +116,24 @@ export function Sidebar() {
         prev[conversationId] ? { ...prev, [conversationId]: 0 } : prev,
       );
     });
+    const unsubNotificationNew = subscribeNotificationNew((notification) => {
+      if (!notification.read) {
+        setUnreadNotifications((count) => count + 1);
+      }
+    });
+    const unsubNotificationsRead = subscribeNotificationsRead(
+      ({ decrement, all }) => {
+        setUnreadNotifications((count) =>
+          all ? 0 : Math.max(0, count - (decrement ?? 1)),
+        );
+      },
+    );
 
     return () => {
       unsubUpdated();
       unsubRead();
+      unsubNotificationNew();
+      unsubNotificationsRead();
     };
   }, [isPublic]);
 
@@ -102,26 +145,61 @@ export function Sidebar() {
   );
 
   const profileHref = username ? `/u/${username}` : null;
+  const isNotificationsActive = drawerOpen || pathname === "/notificaciones";
+
+  function handleNotificationsClick(
+    event: React.MouseEvent<HTMLAnchorElement>,
+  ) {
+    if (
+      pathname === "/notificaciones" ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      event.button !== 0
+    ) {
+      return;
+    }
+    event.preventDefault();
+    setDrawerOpen((open) => !open);
+  }
 
   return (
     <>
     <nav
       aria-label="Navegación principal"
-      className="sticky top-16 hidden h-[calc(100vh-64px)] w-[190px] shrink-0 flex-col gap-0.5 border-r border-border px-2.5 py-4 sm:flex"
+      className="sticky top-16 z-30 hidden h-[calc(100vh-64px)] w-[190px] shrink-0 flex-col gap-0.5 border-r border-border bg-background px-2.5 py-4 sm:flex"
     >
-      <Link href="/feed" className={linkClass(pathname === "/feed")}>
+      <Link
+        href="/feed"
+        onClick={() => setDrawerOpen(false)}
+        className={linkClass(!drawerOpen && pathname === "/feed")}
+      >
         <Icon path={ICONS.inicio} />
         Inicio
       </Link>
-      {/* Mientras S3-07 no exista, enlaza a la página actual en vez de abrir un panel. */}
       <Link
         href="/notificaciones"
-        className={linkClass(pathname === "/notificaciones")}
+        aria-expanded={drawerOpen}
+        onClick={handleNotificationsClick}
+        className={linkClass(isNotificationsActive)}
       >
         <Icon path={ICONS.notificaciones} />
-        Notificaciones
+        <span className="flex-1">Notificaciones</span>
+        {unreadNotifications > 0 && (
+          <span
+            aria-label={`${unreadNotifications} notificaciones sin leer`}
+            className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white"
+          >
+            {unreadNotifications}
+          </span>
+        )}
       </Link>
-      <Link href="/chat" className={linkClass(pathname === "/chat")}>
+      <Link
+        href="/chat"
+        onClick={() => setDrawerOpen(false)}
+        className={linkClass(!drawerOpen && pathname === "/chat")}
+      >
         <Icon path={ICONS.mensajes} />
         <span className="flex-1">Mensajes</span>
         {unreadMessages > 0 && (
@@ -136,7 +214,8 @@ export function Sidebar() {
       {username && (
         <Link
           href={`/u/${username}`}
-          className={linkClass(pathname === `/u/${username}`)}
+          onClick={() => setDrawerOpen(false)}
+          className={linkClass(!drawerOpen && pathname === `/u/${username}`)}
         >
           <Icon path={ICONS.perfil} />
           Mi perfil
@@ -150,28 +229,42 @@ export function Sidebar() {
     <nav
       id="mobile-nav"
       aria-label="Navegación inferior"
-      className="fixed inset-x-0 bottom-0 z-20 flex h-16 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 flex h-16 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] sm:hidden"
     >
       <Link
         href="/feed"
-        aria-current={pathname === "/feed" ? "page" : undefined}
-        className={mobileLinkClass(pathname === "/feed")}
+        onClick={() => setDrawerOpen(false)}
+        aria-current={!drawerOpen && pathname === "/feed" ? "page" : undefined}
+        className={mobileLinkClass(!drawerOpen && pathname === "/feed")}
       >
         <Icon path={ICONS.inicio} className="h-[22px] w-[22px]" />
         Inicio
       </Link>
       <Link
         href="/notificaciones"
+        aria-expanded={drawerOpen}
+        onClick={handleNotificationsClick}
         aria-current={pathname === "/notificaciones" ? "page" : undefined}
-        className={mobileLinkClass(pathname === "/notificaciones")}
+        className={mobileLinkClass(isNotificationsActive)}
       >
-        <Icon path={ICONS.notificaciones} className="h-[22px] w-[22px]" />
+        <span className="relative">
+          <Icon path={ICONS.notificaciones} className="h-[22px] w-[22px]" />
+          {unreadNotifications > 0 && (
+            <span
+              aria-label={`${unreadNotifications} notificaciones sin leer`}
+              className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white"
+            >
+              {unreadNotifications}
+            </span>
+          )}
+        </span>
         Notificaciones
       </Link>
       <Link
         href="/chat"
-        aria-current={pathname === "/chat" ? "page" : undefined}
-        className={mobileLinkClass(pathname === "/chat")}
+        onClick={() => setDrawerOpen(false)}
+        aria-current={!drawerOpen && pathname === "/chat" ? "page" : undefined}
+        className={mobileLinkClass(!drawerOpen && pathname === "/chat")}
       >
         <span className="relative">
           <Icon path={ICONS.mensajes} className="h-[22px] w-[22px]" />
@@ -189,13 +282,34 @@ export function Sidebar() {
       {profileHref && (
         <Link
           href={profileHref}
-          aria-current={pathname === profileHref ? "page" : undefined}
-          className={mobileLinkClass(pathname === profileHref)}
+          onClick={() => setDrawerOpen(false)}
+          aria-current={!drawerOpen && pathname === profileHref ? "page" : undefined}
+          className={mobileLinkClass(!drawerOpen && pathname === profileHref)}
         >
           <Icon path={ICONS.perfil} className="h-[22px] w-[22px]" />
           Mi perfil
         </Link>
       )}
     </nav>
+
+    {drawerOpen && pathname !== "/notificaciones" && (
+      <>
+        <div
+          aria-hidden="true"
+          onClick={() => setDrawerOpen(false)}
+          className="fixed inset-0 top-16 z-20 bg-black/25 backdrop-blur-[1px] sm:left-[190px]"
+        />
+        <aside
+          role="dialog"
+          aria-label="Panel de notificaciones"
+          className="notification-drawer fixed top-16 bottom-16 left-0 z-30 flex w-full flex-col overflow-hidden border-r border-border bg-background shadow-[0_12px_40px_rgba(15,26,20,0.16)] sm:bottom-0 sm:left-[190px] sm:w-[420px] sm:rounded-r-2xl"
+        >
+          <NotificationsPanel
+            titleAs="h2"
+            onClose={() => setDrawerOpen(false)}
+          />
+        </aside>
+      </>
+    )}
     </>
   );}

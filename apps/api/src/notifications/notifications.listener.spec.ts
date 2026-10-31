@@ -4,7 +4,10 @@ import { NotificationsService } from './notifications.service';
 // Qué notificación pide cada evento de dominio. Que se registren con @OnDomainEvent lo prueba
 // test/notifications.e2e-spec.ts con la app completa.
 describe('NotificationsListener', () => {
-  const notifications = { notify: jest.fn() };
+  const notifications = {
+    notify: jest.fn(),
+    markConversationMessagesRead: jest.fn(),
+  };
   let listener: NotificationsListener;
 
   beforeEach(() => {
@@ -21,13 +24,15 @@ describe('NotificationsListener', () => {
       actorId: 'beto',
       change: 'added',
       likeCount: 1,
-      topReactions: ['like'],
+      topReactions: ['love'],
+      reaction: 'love',
     });
     expect(notifications.notify).toHaveBeenCalledWith({
       type: 'like',
       recipientId: 'ana',
       actorId: 'beto',
       postId: 'p1',
+      reaction: 'love',
     });
   });
 
@@ -39,6 +44,7 @@ describe('NotificationsListener', () => {
       change: 'changed',
       likeCount: 1,
       topReactions: ['love'],
+      reaction: 'love',
     });
     expect(notifications.notify).not.toHaveBeenCalled();
   });
@@ -51,6 +57,7 @@ describe('NotificationsListener', () => {
       change: 'removed',
       likeCount: 0,
       topReactions: [],
+      reaction: null,
     });
     expect(notifications.notify).not.toHaveBeenCalled();
   });
@@ -109,6 +116,21 @@ describe('NotificationsListener', () => {
       type: 'message',
       recipientId: 'ana',
       actorId: 'beto',
+      preview: 'Hola',
     });
+  });
+
+  it('conversation.read: marca como leídas las notificaciones de mensaje de esa conversación', async () => {
+    const readAt = new Date('2026-10-30T15:00:00Z');
+    await listener.onConversationRead({
+      conversationId: 'conv1',
+      userId: 'ana',
+      readAt,
+    });
+    expect(notifications.markConversationMessagesRead).toHaveBeenCalledWith(
+      'conv1',
+      'ana',
+      readAt,
+    );
   });
 });

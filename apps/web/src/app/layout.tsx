@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { BfcacheReload } from "@/components/bfcache-reload";
 import { LogoutButton } from "@/components/logout-button";
 import { Navbar } from "@/components/navbar";
+import { NotificationToaster } from "@/components/notification-toaster";
 import { Sidebar } from "@/components/sidebar";
 import "./globals.css";
 
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <BfcacheReload />
         <Navbar />
+        <NotificationToaster />
         {/* Con sesión y bajo `sm`, Sidebar pinta la barra inferior (#mobile-nav, 64px):
             se reserva ese alto para que no tape el final de la página. */}
         <div className="flex has-[#mobile-nav]:pb-16 sm:has-[#mobile-nav]:pb-0">

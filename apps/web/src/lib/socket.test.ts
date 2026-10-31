@@ -2,10 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   disconnectSocket,
   emitConversationTyping,
+  getActiveChatUser,
   notifyConversationRead,
+  notifyNotificationsRead,
+  setActiveChatUser,
   subscribeConversationMessages,
   subscribeConversationRead,
   subscribeConversationUpdated,
+  subscribeFeedNew,
+  subscribeNotificationNew,
+  subscribeNotificationsRead,
   subscribePostComments,
   subscribePostLikes,
   watchUsersPresence,
@@ -350,5 +356,51 @@ describe("socket (S2-03)", () => {
     expect(onPresence).toHaveBeenLastCalledWith(new Set(["u3"]));
 
     unsub();
+  });
+
+  it("subscribeNotificationNew, subscribeNotificationsRead, subscribeFeedNew y setActiveChatUser funcionan en vivo (S4-11)", () => {
+    const onNotification = vi.fn();
+    const onNotificationsRead = vi.fn();
+    const onFeedNew = vi.fn();
+
+    const unsubNotif = subscribeNotificationNew(onNotification);
+    const unsubNotifRead = subscribeNotificationsRead(onNotificationsRead);
+    const unsubFeed = subscribeFeedNew(onFeedNew);
+
+    const sampleNotif = {
+      id: "n1",
+      type: "comment" as const,
+      actor: {
+        id: "u2",
+        username: "beto",
+        displayName: "Beto",
+        avatarPublicId: null,
+      },
+      postId: "p1",
+      commentId: "c1",
+      preview: "Buen post",
+      reaction: null,
+      read: false,
+      createdAt: "2026-10-30T15:00:00.000Z",
+    };
+
+    trigger("notification:new", sampleNotif);
+    expect(onNotification).toHaveBeenCalledWith(sampleNotif);
+
+    notifyNotificationsRead({ decrement: 1 });
+    expect(onNotificationsRead).toHaveBeenCalledWith({ decrement: 1 });
+
+    trigger("feed:new", { postId: "p9", authorId: "u2" });
+    expect(onFeedNew).toHaveBeenCalledWith({ postId: "p9", authorId: "u2" });
+
+    expect(getActiveChatUser()).toBeNull();
+    setActiveChatUser("u2");
+    expect(getActiveChatUser()).toBe("u2");
+    disconnectSocket();
+    expect(getActiveChatUser()).toBeNull();
+
+    unsubNotif();
+    unsubNotifRead();
+    unsubFeed();
   });
 });

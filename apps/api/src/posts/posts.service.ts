@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { DomainEvents } from '../events/domain-events.service';
 import { loadTopReactions } from '../likes/reactions';
 import { CloudinaryService } from '../media/cloudinary.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,6 +21,7 @@ export class PostsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinary: CloudinaryService,
+    private readonly events: DomainEvents,
   ) {}
 
   // RN03: texto, imágenes o ambos, nunca vacía. Cada imagen debe estar en la carpeta
@@ -63,6 +65,7 @@ export class PostsService {
       },
       select: postSelect(authorId),
     });
+    this.events.emit('post.created', { postId: post.id, authorId });
     return toPostDto(post);
   }
 

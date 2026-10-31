@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type {
   CommentChangedEvent,
+  ConversationReadEvent,
   FollowCreatedEvent,
   LikeChangedEvent,
   MessageCreatedEvent,
@@ -24,6 +25,7 @@ export class NotificationsListener {
       recipientId: event.postAuthorId,
       actorId: event.actorId,
       postId: event.postId,
+      reaction: event.reaction,
     });
   }
 
@@ -55,6 +57,16 @@ export class NotificationsListener {
       type: 'message',
       recipientId: event.recipientId,
       actorId: event.message.senderId,
+      preview: event.message.content,
     });
+  }
+
+  @OnDomainEvent('conversation.read')
+  async onConversationRead(event: ConversationReadEvent): Promise<void> {
+    await this.notifications.markConversationMessagesRead(
+      event.conversationId,
+      event.userId,
+      event.readAt,
+    );
   }
 }

@@ -703,6 +703,14 @@ export interface components {
              * @description En comment
              */
             commentId: string | null;
+            /** @description Primeros ~80 caracteres del comentario o del último mensaje del remitente */
+            preview: string | null;
+            /**
+             * @description En like: la reacción actual de actor; null si ya la quitó o si es de otro tipo
+             * @example love
+             * @enum {string|null}
+             */
+            reaction: "like" | "love" | "haha" | "wow" | "sad" | "angry" | null;
             /** @example false */
             read: boolean;
             /** Format: date-time */
