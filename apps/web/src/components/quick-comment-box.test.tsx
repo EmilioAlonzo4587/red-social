@@ -58,6 +58,40 @@ describe("QuickCommentBox", () => {
     );
   });
 
+  it("Enter envía y Shift+Enter hace un salto de línea; el teclado del celular dice Enviar (S4-16)", async () => {
+    const user = userEvent.setup();
+    apiFetchClient.mockResolvedValueOnce({ id: "c1", content: "Hola\nmundo" });
+    const input = renderBox();
+    expect(input).toHaveAttribute("enterkeyhint", "send");
+
+    await user.type(input, "Hola{Shift>}{Enter}{/Shift}mundo");
+    expect(input).toHaveValue("Hola\nmundo");
+    expect(apiFetchClient).not.toHaveBeenCalled();
+
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(onPosted).toHaveBeenCalled());
+    expect(apiFetchClient).toHaveBeenCalledTimes(1);
+    expect(apiFetchClient).toHaveBeenCalledWith(
+      `/api/posts/${POST_ID}/comments`,
+      expect.objectContaining({
+        body: JSON.stringify({ content: "Hola\nmundo" }),
+      }),
+    );
+  });
+
+  it("Enter no envía un comentario vacío ni mientras se compone un carácter (IME) (S4-16)", async () => {
+    const user = userEvent.setup();
+    const input = renderBox();
+
+    await user.type(input, "   {Enter}");
+    expect(apiFetchClient).not.toHaveBeenCalled();
+
+    await user.clear(input);
+    await user.type(input, "ñ");
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    expect(apiFetchClient).not.toHaveBeenCalled();
+  });
+
   it("no deja enviar un comentario en blanco (RN07)", async () => {
     const user = userEvent.setup();
     const input = renderBox();

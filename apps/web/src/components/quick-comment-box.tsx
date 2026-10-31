@@ -5,6 +5,7 @@ import type { CommentDto } from "@red/api-types";
 import { apiFetchClient } from "@/lib/api-client";
 import { EmojiPicker, EmojiToggleButton } from "@/components/emoji-picker";
 import { ApiError } from "@/lib/api-error";
+import { submitOnEnter } from "@/lib/submit-on-enter";
 import { useEmojiInsert } from "@/lib/use-emoji-insert";
 
 // Mismo límite que la api y que CommentSection (RN07).
@@ -115,6 +116,8 @@ export function QuickCommentBox({
         rows={2}
         placeholder={`${label}…`}
         aria-invalid={error !== null}
+        enterKeyHint="send"
+        onKeyDown={submitOnEnter}
         className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-primary"
       />
       {emojiOpen && (
