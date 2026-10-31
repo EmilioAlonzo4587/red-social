@@ -68,7 +68,7 @@ describe("PostCard", () => {
     expect(
       screen.getByText("Primer atardecer del semestre"),
     ).toBeInTheDocument();
-    expect(screen.getByText("3 reacciones: Me gusta")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "3 reacciones: Me gusta. Ver quién reaccionó" })).toBeInTheDocument();
     expect(screen.getByText("💬 1")).toBeInTheDocument();
   });
 
@@ -221,7 +221,7 @@ describe("PostCard", () => {
       screen.getByRole("button", { name: "Reaccionar con Me gusta" }),
     );
 
-    expect(screen.getByText(/^4 reacciones/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^4 reacciones/ })).toBeInTheDocument();
     await waitFor(() => {
       expect(apiFetchClient).toHaveBeenCalledWith(
         `/api/posts/${BASE_POST.id}/like`,
@@ -255,7 +255,7 @@ describe("PostCard", () => {
       screen.getByRole("button", { name: "Quitar tu reacción: Me encanta" }),
     );
 
-    expect(screen.getByText(/^2 reacciones/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^2 reacciones/ })).toBeInTheDocument();
     await waitFor(() => {
       expect(apiFetchClient).toHaveBeenCalledWith(
         `/api/posts/${BASE_POST.id}/like`,
@@ -283,7 +283,7 @@ describe("PostCard", () => {
     expect(within(group).getAllByRole("button")).toHaveLength(6);
     await user.click(within(group).getByRole("button", { name: "Me entristece" }));
 
-    expect(screen.getByText(/^3 reacciones/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^3 reacciones/ })).toBeInTheDocument();
     await waitFor(() => {
       expect(apiFetchClient).toHaveBeenCalledWith(
         `/api/posts/${BASE_POST.id}/like`,
@@ -310,14 +310,14 @@ describe("PostCard", () => {
   it("muestra el total y los emojis, y los actualiza en vivo", () => {
     render(<PostCard post={BASE_POST} />);
     expect(
-      screen.getByText("3 reacciones: Me gusta"),
+      screen.getByRole("button", { name: "3 reacciones: Me gusta. Ver quién reaccionó" }),
     ).toBeInTheDocument();
 
     const onLikes = subscribePostLikes.mock.calls[0][1];
     act(() => onLikes(5, ["love", "like"]));
 
     expect(
-      screen.getByText("5 reacciones: Me encanta, Me gusta"),
+      screen.getByRole("button", { name: "5 reacciones: Me encanta, Me gusta. Ver quién reaccionó" }),
     ).toBeInTheDocument();
   });
 
@@ -331,7 +331,7 @@ describe("PostCard", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/^3 reacciones/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^3 reacciones/ })).toBeInTheDocument();
     });
     expect(
       screen.getByRole("button", { name: "Reaccionar con Me gusta" }),
@@ -474,12 +474,12 @@ describe("PostCard", () => {
       BASE_POST.id,
       expect.any(Function),
     );
-    expect(screen.getByText("3 reacciones: Me gusta")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "3 reacciones: Me gusta. Ver quién reaccionó" })).toBeInTheDocument();
 
     act(() => {
       onLikeCount?.(12, ["like"]);
     });
-    expect(screen.getByText("12 reacciones: Me gusta")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "12 reacciones: Me gusta. Ver quién reaccionó" })).toBeInTheDocument();
 
     unmount();
     // El mismo unsubscribe lo devuelven tanto likes como comentarios (S3-18): se llama una vez por cada uno.
