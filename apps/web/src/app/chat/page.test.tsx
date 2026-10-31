@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
   ConversationDto,
@@ -376,5 +376,103 @@ describe("ChatPage (S3-06)", () => {
     await waitFor(() => {
       expect(screen.getByText("No tienes permiso.")).toBeInTheDocument();
     });
+  });
+});
+
+describe("ChatPage: selector de emojis (S4-10)", () => {
+  beforeEach(() => {
+    searchParams.value = new URLSearchParams();
+    apiFetchClient.mockReset();
+    emitConversationTyping.mockClear();
+  });
+
+  async function openChat() {
+    const emptyPage: MessagePageDto = { items: [], nextCursor: null };
+    apiFetchClient
+      .mockResolvedValueOnce(ME)
+      .mockResolvedValueOnce([{ ...CONV_BETO, unread: 0 }])
+      .mockResolvedValueOnce(emptyPage);
+    const user = userEvent.setup();
+    render(<ChatPage />);
+    await user.click(await screen.findByRole("button", { name: /Beto Pérez/ }));
+    const input = await screen.findByPlaceholderText<HTMLInputElement>(
+      "Escribe un mensaje...",
+    );
+    return { user, input };
+  }
+
+  it("inserta el emoji donde está el cursor, deja el panel abierto y lo cierra al enviar", async () => {
+    const { user, input } = await openChat();
+    await user.type(input, "Hola mundo");
+    input.setSelectionRange(4, 4);
+
+    const toggle = screen.getByRole("button", { name: "Abrir emojis" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(screen.getByRole("dialog", { name: "Elegir emoji" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cerrar emojis" }),
+    ).toHaveAttribute("aria-expanded", "true");
+
+    emitConversationTyping.mockClear();
+    await user.click(screen.getByRole("button", { name: "Insertar sonrisa" }));
+    expect(input).toHaveValue("Hola😀 mundo");
+    expect(input.selectionStart).toBe(6);
+    expect(emitConversationTyping).toHaveBeenCalledWith("c1");
+
+    await user.click(screen.getByRole("button", { name: "Insertar fuego" }));
+    expect(input).toHaveValue("Hola😀🔥 mundo");
+    expect(screen.getByRole("dialog", { name: "Elegir emoji" })).toBeInTheDocument();
+
+    apiFetchClient.mockResolvedValueOnce({
+      id: "m9",
+      conversationId: "c1",
+      senderId: "u1",
+      content: "Hola😀🔥 mundo",
+      createdAt: "2026-10-30T10:10:00.000Z",
+    } satisfies MessageDto);
+    await user.click(screen.getByRole("button", { name: "Enviar" }));
+
+    await waitFor(() => {
+      expect(apiFetchClient).toHaveBeenCalledWith(
+        "/api/conversations/c1/messages",
+        expect.objectContaining({
+          body: JSON.stringify({ content: "Hola😀🔥 mundo" }),
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: "Elegir emoji" }),
+      ).not.toBeInTheDocument();
+    });
+    expect(input).toHaveValue("");
+  });
+
+  it("se cierra con Escape y con el mismo botón", async () => {
+    const { user } = await openChat();
+
+    await user.click(screen.getByRole("button", { name: "Abrir emojis" }));
+    await user.click(screen.getByRole("button", { name: "Insertar saludo" }));
+    await user.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("dialog", { name: "Elegir emoji" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Abrir emojis" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar emojis" }));
+    expect(
+      screen.queryByRole("dialog", { name: "Elegir emoji" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("no inserta un emoji que haría pasar el mensaje de 2000 caracteres (RN09)", async () => {
+    const { user, input } = await openChat();
+    fireEvent.change(input, { target: { value: "a".repeat(1999) } });
+
+    await user.click(screen.getByRole("button", { name: "Abrir emojis" }));
+    await user.click(screen.getByRole("button", { name: "Insertar sonrisa" }));
+
+    expect(input.value).toHaveLength(1999);
   });
 });

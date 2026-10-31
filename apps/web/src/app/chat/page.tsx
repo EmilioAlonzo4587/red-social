@@ -17,9 +17,11 @@ import type {
   MessagePageDto,
 } from "@red/api-types";
 import { Avatar } from "@/components/avatar";
+import { EmojiPicker, EmojiToggleButton } from "@/components/emoji-picker";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
 import { formatRelativeTime } from "@/lib/format";
+import { useEmojiInsert } from "@/lib/use-emoji-insert";
 import {
   emitConversationTyping,
   notifyConversationRead,
@@ -106,6 +108,10 @@ function ChatView() {
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const pendingScrollRef = useRef<PendingScroll>(null);
+  // Selector de emojis (S4-10)
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const { ref: inputRef, insert: insertIntoDraft } =
+    useEmojiInsert<HTMLInputElement>(draft, setDraft, MESSAGE_MAX);
 
   function isNearBottom(): boolean {
     const el = messagesRef.current;
@@ -306,8 +312,14 @@ function ChatView() {
     };
   }, [selectedId]);
 
+  // En la posición del cursor; si pasaría de MESSAGE_MAX (RN09) no se inserta.
+  function insertEmoji(emoji: string) {
+    if (insertIntoDraft(emoji) && selectedId) emitConversationTyping(selectedId);
+  }
+
   function openConversation(id: string, list = conversations) {
     setSelectedId(id);
+    setEmojiOpen(false);
     selectedIdRef.current = id;
     setMessages([]);
     setNextCursor(null);
@@ -381,6 +393,7 @@ function ChatView() {
         },
       );
       setDraft("");
+      setEmojiOpen(false);
       pendingScrollRef.current = { kind: "bottom" };
       setMessages((prev) => appendUniqueMessage(prev, created));
       setConversations((prev) => {
@@ -503,7 +516,10 @@ function ChatView() {
             <div className="flex items-center gap-3 border-b border-border px-4 py-3">
               <button
                 type="button"
-                onClick={() => setSelectedId(null)}
+                onClick={() => {
+                  setSelectedId(null);
+                  setEmojiOpen(false);
+                }}
                 aria-label="Volver a la bandeja"
                 className="text-muted md:hidden"
               >
@@ -651,15 +667,32 @@ function ChatView() {
             <form
               noValidate
               onSubmit={handleSend}
-              className="flex items-center gap-2 border-t border-border p-3"
+              className="relative flex items-center gap-2 border-t border-border p-3"
             >
+              {emojiOpen && (
+                <EmojiPicker
+                  id="chat-emoji-picker"
+                  onPick={insertEmoji}
+                  onClose={() => setEmojiOpen(false)}
+                  className="absolute bottom-full left-0 right-0 z-10 mb-2 border-y border-border p-3 shadow-[0_-8px_24px_rgba(15,26,20,0.08)] sm:left-3 sm:right-auto sm:w-[328px] sm:rounded-xl sm:border sm:p-2.5 sm:shadow-[0_10px_30px_rgba(15,26,20,0.14)]"
+                />
+              )}
+              <EmojiToggleButton
+                open={emojiOpen}
+                onToggle={() => setEmojiOpen((open) => !open)}
+                controls="chat-emoji-picker"
+              />
               <label htmlFor="chat-message-input" className="sr-only">
                 Escribe un mensaje
               </label>
               <input
+                ref={inputRef}
                 id="chat-message-input"
                 type="text"
                 value={draft}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setEmojiOpen(false);
+                }}
                 onChange={(e) => {
                   const next = e.target.value;
                   setDraft(next);
@@ -669,7 +702,7 @@ function ChatView() {
                 }}
                 maxLength={MESSAGE_MAX}
                 placeholder="Escribe un mensaje..."
-                className="flex-1 rounded-lg border border-border px-3 py-2 text-sm outline-primary"
+                className="min-w-0 flex-1 rounded-lg border border-border px-3 py-2 text-sm outline-primary"
               />
               <button
                 type="submit"
