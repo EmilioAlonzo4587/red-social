@@ -47,7 +47,7 @@
 | RN05 | Un usuario da como máximo un like por publicación. Repetir la acción no cambia el contador. |
 | RN06 | Nadie puede seguirse a sí mismo. Seguir dos veces a la misma persona no crea un segundo registro. |
 | RN07 | Un comentario tiene entre 1 y 1000 caracteres sin contar espacios iniciales y finales. |
-| RN08 | Se notifica un like, un comentario, un seguimiento o un mensaje, nunca una acción sobre uno mismo. |
+| RN08 | Se notifica un like, un comentario, un seguimiento o un mensaje, nunca una acción sobre uno mismo. Una misma persona genera una única notificación de like por publicación (quitar y volver a dar like no crea otra) y hasta 10 notificaciones de comentario por publicación (el límite se reinicia en cada publicación nueva). |
 | RN09 | El chat es solo entre dos personas, con una única conversación por pareja. Solo sus participantes pueden leerla o escribir. Un mensaje tiene entre 1 y 2000 caracteres. |
 | RN10 | Siguiendo muestra las publicaciones propias y las de los seguidos; Explorar muestra todas. Ambas en orden cronológico inverso, 20 por página. |
 | RN11 | Sin sesión solo se accede a la portada, al login y al registro. |
