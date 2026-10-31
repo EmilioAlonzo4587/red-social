@@ -121,7 +121,7 @@ function CommentRow({
         <button
           type="button"
           onClick={() => setStage("confirming")}
-          className="text-xs text-muted hover:text-red-600"
+          className="tap-area text-xs text-muted hover:text-red-600"
         >
           Eliminar
         </button>

@@ -165,7 +165,7 @@ export function PostCard({
           <button
             type="button"
             onClick={() => setDeleteStage("confirming")}
-            className="ml-auto text-xs text-muted hover:text-red-600"
+            className="tap-area ml-auto text-xs text-muted hover:text-red-600"
           >
             Eliminar
           </button>
@@ -209,8 +209,8 @@ export function PostCard({
           aria-label={likedByMe ? "Quitar like" : "Dar like"}
           className={
             likedByMe
-              ? "font-semibold text-red-600"
-              : "text-muted hover:text-red-600"
+              ? "tap-area font-semibold text-red-600"
+              : "tap-area text-muted hover:text-red-600"
           }
         >
           ❤ {likeCount}
@@ -227,7 +227,9 @@ export function PostCard({
             aria-label={commentLabel}
             aria-expanded={commentBoxOpen}
             className={
-              commentBoxOpen ? "text-primary" : "text-muted hover:text-primary"
+              commentBoxOpen
+                ? "tap-area text-primary"
+                : "tap-area text-muted hover:text-primary"
             }
           >
             💬 {commentCount}
@@ -237,7 +239,7 @@ export function PostCard({
             type="button"
             onClick={focusCommentInput}
             aria-label={commentLabel}
-            className="text-muted hover:text-primary"
+            className="tap-area text-muted hover:text-primary"
           >
             💬 {commentCount}
           </button>

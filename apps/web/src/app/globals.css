@@ -20,6 +20,20 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Área táctil de al menos 44 px (S4-06): una zona invisible alrededor del botón
+   que también acepta el toque, sin ocupar espacio ni mover nada. Para controles
+   chicos como el ❤, el 💬 o "Eliminar", que medían unos 20 px de alto. 10px a los
+   lados para no pisar al vecino: el ❤ y el 💬 están separados por 22px. */
+@utility tap-area {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -14px -10px;
+  }
+}
+
 /* Foco visible en toda la app (S4-06): al navegar con Tab, cualquier botón, enlace
    o campo muestra el mismo contorno verde. :focus-visible no aparece al tocar o
    hacer clic en un botón, solo con teclado. En la capa base para que el contorno
