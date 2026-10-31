@@ -83,6 +83,25 @@ describe("PostCard", () => {
     ).toHaveAttribute("href", `/p/${BASE_POST.id}`);
   });
 
+  it("las imágenes quedan fuera del enlace al detalle y la hora enlaza al detalle (S4-15)", () => {
+    const post: PostDto = {
+      ...BASE_POST,
+      content: null,
+      media: [
+        { publicId: "users/u1/a", mediaType: "image", width: 10, height: 10 },
+      ],
+    };
+    render(<PostCard post={post} />);
+    const image = screen.getByRole("button", {
+      name: "Ver imagen de la publicación de Ana López",
+    });
+    expect(image.closest("a")).not.toBeInTheDocument();
+    const detailLinks = screen
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("href") === `/p/${BASE_POST.id}`);
+    expect(detailLinks).toHaveLength(1);
+  });
+
   it("linkToDetail=false (S3-08, ya estás en /p/[id]): no enlaza el contenido a sí misma", () => {
     render(<PostCard post={BASE_POST} linkToDetail={false} />);
     expect(

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type {
@@ -12,12 +11,12 @@ import type {
 } from "@red/api-types";
 import { Avatar } from "@/components/avatar";
 import { focusCommentInput } from "@/components/comment-section";
+import { PostMedia } from "@/components/post-media";
 import { QuickCommentBox } from "@/components/quick-comment-box";
 import { ReactionButton } from "@/components/reaction-button";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
 import { formatRelativeTime } from "@/lib/format";
-import { cloudinaryImageUrl } from "@/lib/media";
 import { reactionInfo } from "@/lib/reactions";
 import { subscribePostComments, subscribePostLikes } from "@/lib/socket";
 
@@ -32,12 +31,6 @@ function editErrorMessage(error: unknown): string {
     if (error.statusCode === 404) return "Esta publicación ya no existe.";
   }
   return "No se pudo guardar. Intenta de nuevo.";
-}
-
-function imageAlt(index: number, total: number, authorName: string): string {
-  return total === 1
-    ? `Imagen de la publicación de ${authorName}`
-    : `Imagen ${index + 1} de ${total} de la publicación de ${authorName}`;
 }
 
 export function PostCard({
@@ -225,39 +218,12 @@ export function PostCard({
     </form>
   );
 
-  const mediaGrid = post.media.length > 0 && (
-    <div
-      className={`mt-1 grid gap-1 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
-    >
-      {post.media.map((media, index) => (
-        <div
-          key={media.publicId}
-          className="relative aspect-video overflow-hidden rounded-xl bg-surface"
-        >
-          {/* Antes alt="": el lector de pantalla se saltaba las fotos (S4-06). No
-              se sabe qué muestran, pero sí que existen y de quién son. */}
-          <Image
-            src={cloudinaryImageUrl(media.publicId)}
-            alt={imageAlt(index, post.media.length, authorName)}
-            fill
-            sizes="(max-width: 640px) 100vw, 576px"
-            className="object-cover"
-          />
-        </div>
-      ))}
-    </div>
-  );
+  const media = <PostMedia media={post.media} authorName={authorName} />;
 
-  const postBody = (
-    <>
-      {content && (
-        <p className="whitespace-pre-line text-base leading-[1.55] [overflow-wrap:anywhere]">
-          {content}
-        </p>
-      )}
-
-      {mediaGrid}
-    </>
+  const contentText = content && (
+    <p className="whitespace-pre-line text-base leading-[1.55] [overflow-wrap:anywhere]">
+      {content}
+    </p>
   );
 
   const reactionsLabel = `${likeCount} ${likeCount === 1 ? "reacción" : "reacciones"}${
@@ -293,7 +259,16 @@ export function PostCard({
             {authorName}
           </Link>
           <span className="text-xs text-muted">
-            @{post.author.username} · {formatRelativeTime(post.createdAt)}
+            @{post.author.username} ·{" "}
+            {/* Con las imágenes fuera del enlace (abren el visor, S4-15), una publicación
+                sin texto llega a su detalle por la hora */}
+            {linkToDetail ? (
+              <Link href={`/p/${post.id}`} className="hover:underline">
+                {formatRelativeTime(post.createdAt)}
+              </Link>
+            ) : (
+              formatRelativeTime(post.createdAt)
+            )}
             {editedAt && " · editado"}
           </span>
         </div>
@@ -342,17 +317,17 @@ export function PostCard({
       )}
       {deleteError && <p className="text-sm text-danger">{deleteError}</p>}
 
-      {/* Editando, el texto es un cuadro: no puede ir dentro del enlace al detalle */}
-      {editing ? (
-        <>
-          {editForm}
-          {mediaGrid}
-        </>
-      ) : linkToDetail ? (
-        <Link href={`/p/${post.id}`}>{postBody}</Link>
-      ) : (
-        postBody
-      )}
+      {/* Editando, el texto es un cuadro: no puede ir dentro del enlace al detalle. Las
+          imágenes van fuera del enlace: tocarlas abre el visor (S4-15). */}
+      {editing
+        ? editForm
+        : contentText &&
+          (linkToDetail ? (
+            <Link href={`/p/${post.id}`}>{contentText}</Link>
+          ) : (
+            contentText
+          ))}
+      {media}
 
       <div className="flex flex-wrap items-center gap-x-[22px] gap-y-2 text-sm tabular-nums">
         <ReactionButton
