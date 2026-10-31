@@ -13,7 +13,7 @@ import { FollowingPanel } from "@/components/following-panel";
 import { HomeProfileCard } from "@/components/home-profile-card";
 import { NewPostsButton } from "@/components/new-posts-button";
 import { PostCard } from "@/components/post-card";
-import { PostComposer } from "@/components/post-composer";
+import { PostComposer, composerGreeting } from "@/components/post-composer";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
 import { subscribeExploreNew, subscribeFeedNew } from "@/lib/socket";
@@ -241,6 +241,7 @@ export default function FeedPage() {
           )}
           <div className="min-w-0 flex-1">
             <PostComposer
+              greeting={composerGreeting(me)}
               onPosted={() => {
                 // Vuelve a pedir el feed desde el principio: hay una publicación nueva.
                 setReloadToken((n) => n + 1);

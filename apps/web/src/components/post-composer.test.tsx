@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 import type { MediaDto, PostDto } from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api-error";
-import { MAX_CONTENT_LENGTH, PostComposer } from "./post-composer";
+import {
+  MAX_CONTENT_LENGTH,
+  PostComposer,
+  composerGreeting,
+} from "./post-composer";
 
 // Mockea solo uploadMedia: validateImageFile se usa de verdad, el componente depende
 // de su comportamiento real (RN03) para bloquear Publicar con una imagen inválida.
@@ -60,7 +64,7 @@ describe("PostComposer", () => {
   it("muestra el contador de caracteres al escribir", async () => {
     const user = userEvent.setup();
     render(<PostComposer />);
-    const textarea = screen.getByPlaceholderText("¿Qué estás pensando?");
+    const textarea = screen.getByPlaceholderText(/^¿Qué hay de nuevo/);
     await user.type(textarea, "hola");
     expect(
       screen.getByText(`4 / ${MAX_CONTENT_LENGTH}`),
@@ -114,7 +118,7 @@ describe("PostComposer", () => {
     const onPosted = vi.fn();
 
     render(<PostComposer onPosted={onPosted} />);
-    const textarea = screen.getByPlaceholderText("¿Qué estás pensando?");
+    const textarea = screen.getByPlaceholderText(/^¿Qué hay de nuevo/);
     await user.type(textarea, "hola");
     const input = screen.getByLabelText("Agregar imágenes", {
       selector: "input",
@@ -175,7 +179,7 @@ describe("PostComposer", () => {
     );
 
     render(<PostComposer />);
-    await user.type(screen.getByPlaceholderText("¿Qué estás pensando?"), "hola");
+    await user.type(screen.getByPlaceholderText(/^¿Qué hay de nuevo/), "hola");
     await user.click(screen.getByRole("button", { name: "Publicar" }));
 
     await waitFor(() => {
@@ -183,5 +187,32 @@ describe("PostComposer", () => {
         screen.getByText("Error interno del servidor"),
       ).toBeInTheDocument();
     });
+  });
+});
+
+describe("composerGreeting (S4-17)", () => {
+  it("usa la primera palabra del nombre visible", () => {
+    expect(
+      composerGreeting({ displayName: "  Maynor Pozo ", username: "maynorpoz" }),
+    ).toBe("¿Qué hay de nuevo, Maynor?");
+  });
+
+  it("sin nombre visible usa el username", () => {
+    expect(composerGreeting({ displayName: null, username: "maynorpoz" })).toBe(
+      "¿Qué hay de nuevo, maynorpoz?",
+    );
+    expect(composerGreeting({ displayName: "   ", username: "maynorpoz" })).toBe(
+      "¿Qué hay de nuevo, maynorpoz?",
+    );
+  });
+
+  it("sin usuario (cargando o si falló) no lleva nombre", () => {
+    expect(composerGreeting(null)).toBe("¿Qué hay de nuevo?");
+  });
+
+  it("el cuadro y su etiqueta muestran el saludo que recibe", () => {
+    render(<PostComposer greeting="¿Qué hay de nuevo, Maynor?" />);
+    const textarea = screen.getByLabelText("¿Qué hay de nuevo, Maynor?");
+    expect(textarea).toHaveAttribute("placeholder", "¿Qué hay de nuevo, Maynor?");
   });
 });
