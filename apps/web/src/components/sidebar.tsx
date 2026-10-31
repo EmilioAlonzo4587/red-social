@@ -50,6 +50,20 @@ const ICONS = {
   perfil: "M8 8a4 4 0 1 0 8 0a4 4 0 1 0-8 0M4 21a8 8 0 0 1 16 0",
 };
 
+const RECOUNT_DELAY_MS = 800;
+
+// null si falla: notification:new sigue actualizando el contador en vivo
+async function fetchUnreadNotifications(): Promise<number | null> {
+  try {
+    const res = await apiFetchClient<UnreadCountDto>(
+      "/api/notifications/unread-count",
+    );
+    return typeof res?.count === "number" ? res.count : null;
+  } catch {
+    return null;
+  }
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const isPublic = PUBLIC_PATHS.includes(pathname);
@@ -95,26 +109,22 @@ export function Sidebar() {
       }
     })();
 
-    void (async () => {
-      try {
-        const res = await apiFetchClient<UnreadCountDto>(
-          "/api/notifications/unread-count",
-        );
-        if (typeof res?.count === "number") {
-          setUnreadNotifications(res.count);
-        }
-      } catch {
-        // Silencioso: notification:new irá actualizando el contador en vivo.
-      }
-    })();
-
     const unsubUpdated = subscribeConversationUpdated((conv) => {
       setUnreadByConv((prev) => ({ ...prev, [conv.id]: conv.unread }));
     });
+    // Leer un chat también marca como leídas en la api sus notificaciones de mensaje
+    // (listener de conversation.read, después de responder): se vuelve a pedir el contador.
+    let recountTimer: ReturnType<typeof setTimeout> | undefined;
     const unsubRead = subscribeConversationRead((conversationId) => {
       setUnreadByConv((prev) =>
         prev[conversationId] ? { ...prev, [conversationId]: 0 } : prev,
       );
+      clearTimeout(recountTimer);
+      recountTimer = setTimeout(() => {
+        void fetchUnreadNotifications().then((count) => {
+          if (count !== null) setUnreadNotifications(count);
+        });
+      }, RECOUNT_DELAY_MS);
     });
     const unsubNotificationNew = subscribeNotificationNew((notification) => {
       if (!notification.read) {
@@ -130,12 +140,26 @@ export function Sidebar() {
     );
 
     return () => {
+      clearTimeout(recountTimer);
       unsubUpdated();
       unsubRead();
       unsubNotificationNew();
       unsubNotificationsRead();
     };
   }, [isPublic]);
+
+  // El contador se pide al montar y en cada navegación, así se corrige si algo lo
+  // marcó como leído fuera de este componente (por ejemplo, abrir un chat).
+  useEffect(() => {
+    if (isPublic) return;
+    let cancelled = false;
+    void fetchUnreadNotifications().then((count) => {
+      if (!cancelled && count !== null) setUnreadNotifications(count);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPublic, pathname]);
 
   if (isPublic) return null;
 
