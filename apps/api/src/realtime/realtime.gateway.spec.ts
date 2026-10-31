@@ -200,6 +200,7 @@ describe('RealtimeGateway (likes en vivo)', () => {
       commentId: 'c1',
       change: 'added',
       commentCount: 3,
+      replyToAuthorId: null,
     });
     expect(to).toHaveBeenCalledWith(postRoom(VALID_ID_1));
     expect(emit).toHaveBeenCalledWith('post:comments', {

@@ -26,13 +26,15 @@ const MESSAGES: Record<NotificationType, string> = {
   comment: "comentó tu publicación",
   follow: "empezó a seguirte",
   message: "te envió un mensaje",
+  reply: "respondió a tu comentario",
 };
 
 const TYPE_ACCENT_BADGE: Record<NotificationType, string> = {
   like: "bg-rose-500 text-white",
   comment: "bg-sky-500 text-white",
   follow: "bg-violet-500 text-white",
-  message: "bg-primary text-white",
+  message: "bg-action text-white",
+  reply: "bg-sky-500 text-white",
 };
 
 // Mismos trazos SVG de línea que usa Sidebar (strokeWidth 2).
@@ -43,6 +45,7 @@ const ICONS = {
   like: "M12 20.5s-7-4.35-7-10a4.2 4.2 0 0 1 7-3.1 4.2 4.2 0 0 1 7 3.1c0 5.65-7 10-7 10z",
   comment: "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z",
   follow: "M8 8a4 4 0 1 0 8 0a4 4 0 1 0-8 0M4 21a8 8 0 0 1 16 0",
+  reply: "M9 14L4 9l5-5M4 9h10a6 6 0 0 1 6 6v4",
   message:
     "M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zm0 2l8 5 8-5",
 };
@@ -52,6 +55,7 @@ const TYPE_ICON_PATH: Record<NotificationType, string> = {
   comment: ICONS.comment,
   follow: ICONS.follow,
   message: ICONS.message,
+  reply: ICONS.reply,
 };
 
 function Icon({
@@ -292,7 +296,7 @@ export function NotificationsPanel({
         )}
 
         {status === "error" && items.length === 0 && (
-          <p className="py-16 text-center text-sm text-red-600">{error}</p>
+          <p className="py-16 text-center text-sm text-danger">{error}</p>
         )}
 
         {status === "ready" && visibleItems.length === 0 && (
@@ -369,7 +373,7 @@ export function NotificationsPanel({
 
                     {!notification.read && (
                       <span
-                        className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-primary"
+                        className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-action"
                         aria-label="Sin leer"
                       />
                     )}
@@ -392,7 +396,7 @@ export function NotificationsPanel({
             )}
 
             {error && (
-              <p className="pb-5 text-center text-sm text-red-600">{error}</p>
+              <p className="pb-5 text-center text-sm text-danger">{error}</p>
             )}
           </>
         )}

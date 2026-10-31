@@ -49,7 +49,7 @@ export function PasswordInput({
         onChange={onChange}
         aria-invalid={ariaInvalid}
         placeholder={placeholder}
-        className={`w-full rounded-lg border border-border py-2 pr-10 outline-primary aria-[invalid=true]:border-red-500 ${
+        className={`w-full rounded-lg border border-border py-2 pr-10 outline-primary aria-[invalid=true]:border-danger ${
           leadingIcon ? "pl-10" : "pl-3"
         }`}
       />

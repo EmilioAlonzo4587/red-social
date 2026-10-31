@@ -51,7 +51,7 @@ describe('CommentsService', () => {
 
       await expect(
         service.create('p1', 'beto', { content: 'Hola' }),
-      ).resolves.toEqual(comment);
+      ).resolves.toEqual({ ...comment, replyCount: 0, deleted: false });
       expect(prisma.post.update).toHaveBeenCalledWith({
         where: { id: 'p1' },
         data: { commentCount: { increment: 1 } },
@@ -64,7 +64,74 @@ describe('CommentsService', () => {
         commentId: 'c1',
         change: 'added',
         commentCount: 3,
+        replyToAuthorId: null,
       });
+    });
+
+    it('respuesta (S4-14): va al hilo del comentario y avisa a su autor', async () => {
+      prisma.comment.findFirst.mockResolvedValueOnce({
+        id: 'c1',
+        parentId: null,
+        authorId: 'carla',
+      });
+      prisma.comment.create.mockResolvedValueOnce({ ...comment, id: 'c2' });
+      prisma.post.update.mockResolvedValueOnce({ commentCount: 4 });
+
+      await service.create('p1', 'beto', { content: 'Hola', parentId: 'c1' });
+
+      expect(prisma.comment.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'c1', postId: 'p1', deletedAt: null },
+        }),
+      );
+      expect(prisma.comment.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            postId: 'p1',
+            authorId: 'beto',
+            content: 'Hola',
+            parentId: 'c1',
+          },
+        }),
+      );
+      expect(events.emit).toHaveBeenCalledWith(
+        'comment.changed',
+        expect.objectContaining({ replyToAuthorId: 'carla', commentCount: 4 }),
+      );
+    });
+
+    it('responder a una respuesta la agrega al mismo hilo (un solo nivel)', async () => {
+      prisma.comment.findFirst.mockResolvedValueOnce({
+        id: 'r1',
+        parentId: 'c1',
+        authorId: 'dani',
+      });
+      prisma.comment.create.mockResolvedValueOnce({ ...comment, id: 'r2' });
+      prisma.post.update.mockResolvedValueOnce({ commentCount: 5 });
+
+      await service.create('p1', 'beto', {
+        content: '@dani sí',
+        parentId: 'r1',
+      });
+
+      expect(prisma.comment.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ parentId: 'c1' }) as unknown,
+        }),
+      );
+      expect(events.emit).toHaveBeenCalledWith(
+        'comment.changed',
+        expect.objectContaining({ replyToAuthorId: 'dani' }),
+      );
+    });
+
+    it('400 si el comentario respondido no existe, fue eliminado o es de otra publicación', async () => {
+      prisma.comment.findFirst.mockResolvedValueOnce(null);
+      await expect(
+        service.create('p1', 'beto', { content: 'Hola', parentId: 'cx' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.comment.create).not.toHaveBeenCalled();
+      expect(events.emit).not.toHaveBeenCalled();
     });
 
     it('404 si la publicación no existe, sin crear ni emitir', async () => {

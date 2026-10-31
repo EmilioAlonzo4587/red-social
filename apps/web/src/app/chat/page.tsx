@@ -449,7 +449,7 @@ function ChatView() {
         )}
 
         {inboxStatus === "error" && (
-          <p className="p-6 text-center text-red-600">{inboxError}</p>
+          <p className="p-6 text-center text-danger">{inboxError}</p>
         )}
 
         {inboxStatus === "ready" && conversations.length === 0 && (
@@ -504,7 +504,7 @@ function ChatView() {
                   </p>
                 </div>
                 {conversation.unread > 0 && (
-                  <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white">
+                  <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-action px-1.5 text-xs font-semibold text-white">
                     {conversation.unread}
                   </span>
                 )}
@@ -559,7 +559,7 @@ function ChatView() {
                   </span>
                   <span
                     className={`text-xs ${
-                      selectedOnline ? "text-emerald-600" : "text-muted"
+                      selectedOnline ? "text-primary" : "text-muted"
                     }`}
                   >
                     {selectedOnline ? "Activo ahora" : "Inactivo"}
@@ -593,7 +593,7 @@ function ChatView() {
               )}
 
               {messagesError && (
-                <p className="py-4 text-center text-sm text-red-600">
+                <p className="py-4 text-center text-sm text-danger">
                   {messagesError}
                 </p>
               )}
@@ -635,7 +635,7 @@ function ChatView() {
                       <div
                         className={`whitespace-pre-line rounded-2xl px-3 py-2 text-sm ${
                           fromMe
-                            ? "rounded-br-sm bg-primary text-white"
+                            ? "rounded-br-sm bg-action text-white"
                             : "rounded-bl-sm bg-surface text-foreground"
                         }`}
                       >
@@ -672,7 +672,7 @@ function ChatView() {
             </div>
 
             {sendError && (
-              <p className="px-4 pt-2 text-sm text-red-600">{sendError}</p>
+              <p className="px-4 pt-2 text-sm text-danger">{sendError}</p>
             )}
 
             <form
@@ -718,7 +718,7 @@ function ChatView() {
               <button
                 type="submit"
                 disabled={sending || draft.trim().length === 0}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-action px-4 py-2 text-sm font-medium text-white hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {sending ? "Enviando…" : "Enviar"}
               </button>

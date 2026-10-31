@@ -93,7 +93,7 @@ export default function RegistroPage() {
         </div>
 
         {errors.general && (
-          <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger">
             {errors.general}
           </p>
         )}
@@ -111,10 +111,10 @@ export default function RegistroPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               aria-invalid={Boolean(errors.username)}
-              className="rounded-lg border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-red-500"
+              className="rounded-lg border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-danger"
               placeholder="ana_garcia"
             />
-            <p className={`text-xs ${errors.username ? "text-red-600" : "text-muted"}`}>
+            <p className={`text-xs ${errors.username ? "text-danger" : "text-muted"}`}>
               {errors.username ?? "3 a 30 caracteres: letras, números y guion bajo."}
             </p>
           </div>
@@ -131,10 +131,10 @@ export default function RegistroPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               aria-invalid={Boolean(errors.email)}
-              className="rounded-lg border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-red-500"
+              className="rounded-lg border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-danger"
               placeholder="ana@correo.com"
             />
-            {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
+            {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
           </div>
 
           <div className="flex flex-col gap-1">
@@ -150,7 +150,7 @@ export default function RegistroPage() {
               ariaInvalid={Boolean(errors.password)}
               placeholder="••••••••"
             />
-            <p className={`text-xs ${errors.password ? "text-red-600" : "text-muted"}`}>
+            <p className={`text-xs ${errors.password ? "text-danger" : "text-muted"}`}>
               {errors.password ?? "Al menos 8 caracteres."}
             </p>
           </div>
@@ -158,7 +158,7 @@ export default function RegistroPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-primary px-4 py-3 font-semibold lg:py-2 lg:font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+            className="w-full rounded-lg bg-action px-4 py-3 font-semibold lg:py-2 lg:font-medium text-white transition-colors hover:bg-action-hover disabled:opacity-60"
           >
             {submitting ? "Creando cuenta..." : "Crear cuenta"}
           </button>

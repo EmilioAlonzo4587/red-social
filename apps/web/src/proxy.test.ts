@@ -47,4 +47,13 @@ describe("proxy", () => {
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
+
+  it("Ajustes exige sesión (S4-13)", () => {
+    const sinSesion = proxy(request("/ajustes", false));
+    expect(sinSesion.status).toBe(307);
+    expect(sinSesion.headers.get("location")).toBe("http://localhost:3001/");
+
+    const conSesion = proxy(request("/ajustes", true));
+    expect(conSesion.headers.get("location")).toBeNull();
+  });
 });

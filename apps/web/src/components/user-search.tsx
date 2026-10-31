@@ -107,7 +107,7 @@ export function UserSearch() {
           )}
 
           {status === "error" && (
-            <p className="px-4 py-3 text-sm text-red-600">
+            <p className="px-4 py-3 text-sm text-danger">
               No se pudo buscar. Intenta de nuevo.
             </p>
           )}

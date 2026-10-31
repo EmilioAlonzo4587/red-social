@@ -118,7 +118,7 @@ export function FollowListModal({
           )}
 
           {status === "error" && items.length === 0 && (
-            <p className="py-10 text-center text-red-600">{error}</p>
+            <p className="py-10 text-center text-danger">{error}</p>
           )}
 
           {status !== "loading" &&
@@ -167,7 +167,7 @@ export function FollowListModal({
           )}
 
           {status === "error" && items.length > 0 && (
-            <p className="px-4 pb-4 text-center text-sm text-red-600">
+            <p className="px-4 pb-4 text-center text-sm text-danger">
               {error}
             </p>
           )}

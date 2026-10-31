@@ -83,7 +83,7 @@ export default function LoginPage() {
         </div>
 
         {errors.general && (
-          <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger">
             {errors.general}
           </p>
         )}
@@ -117,11 +117,11 @@ export default function LoginPage() {
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 aria-invalid={Boolean(errors.identifier)}
-                className="w-full rounded-lg border border-border py-2 pl-10 pr-3 outline-primary aria-[invalid=true]:border-red-500"
+                className="w-full rounded-lg border border-border py-2 pl-10 pr-3 outline-primary aria-[invalid=true]:border-danger"
               />
             </div>
             {errors.identifier && (
-              <p className="text-xs text-red-600">{errors.identifier}</p>
+              <p className="text-xs text-danger">{errors.identifier}</p>
             )}
           </div>
 
@@ -139,14 +139,14 @@ export default function LoginPage() {
               leadingIcon
             />
             {errors.password && (
-              <p className="text-xs text-red-600">{errors.password}</p>
+              <p className="text-xs text-danger">{errors.password}</p>
             )}
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-primary px-4 py-3 font-semibold lg:py-2 lg:font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+            className="w-full rounded-lg bg-action px-4 py-3 font-semibold lg:py-2 lg:font-medium text-white transition-colors hover:bg-action-hover disabled:opacity-60"
           >
             {submitting ? "Iniciando sesión..." : "Iniciar sesión"}
           </button>

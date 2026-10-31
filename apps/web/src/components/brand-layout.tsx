@@ -14,19 +14,23 @@ function BrandBubble() {
   );
 }
 
+// Las tarjetas decorativas (like y mensaje) son blancas en los dos temas, así que su
+// texto usa los colores fijos del tema claro y no los tokens: en modo oscuro
+// (S4-13) text-foreground se vuelve claro y no se leería sobre blanco.
+
 /**
  * Panel verde de la izquierda (S4-08). Todo lo que no es la frase de marca es
  * decorativo (aria-hidden): las tarjetas imitan datos de la app, no son reales.
  */
 function BrandPanel() {
   return (
-    <div className="relative hidden grow basis-[520px] flex-col justify-center overflow-hidden bg-primary p-[72px] lg:flex">
+    <div className="relative hidden grow basis-[520px] flex-col justify-center overflow-hidden bg-action p-[72px] lg:flex">
       <div aria-hidden="true">
         <div className="brand-dots absolute -inset-[30px] opacity-55" />
 
-        <div className="brand-blob-a pointer-events-none absolute -left-[70px] -top-[70px] h-[280px] w-[280px] rounded-full bg-primary-hover blur-[44px]" />
+        <div className="brand-blob-a pointer-events-none absolute -left-[70px] -top-[70px] h-[280px] w-[280px] rounded-full bg-action-hover blur-[44px]" />
         <div className="brand-blob-b pointer-events-none absolute -bottom-[90px] -right-[50px] h-[240px] w-[240px] rounded-full bg-green-300 opacity-35 blur-[44px]" />
-        <div className="brand-blob-c pointer-events-none absolute bottom-[60px] left-[42%] h-[180px] w-[180px] rounded-full bg-primary-hover opacity-40 blur-[44px]" />
+        <div className="brand-blob-c pointer-events-none absolute bottom-[60px] left-[42%] h-[180px] w-[180px] rounded-full bg-action-hover opacity-40 blur-[44px]" />
         <div className="brand-blob-d pointer-events-none absolute right-[18%] top-[20%] h-[200px] w-[200px] rounded-full bg-green-400 opacity-30 blur-[44px]" />
         <div className="brand-blob-e pointer-events-none absolute left-[8%] top-[55%] h-[150px] w-[150px] rounded-full bg-green-200 opacity-25 blur-[44px]" />
       </div>
@@ -51,14 +55,14 @@ function BrandPanel() {
         aria-hidden="true"
         className="brand-card-a absolute right-[88px] top-24 flex w-[236px] items-center gap-2.5 rounded-xl bg-white px-4 py-3.5 shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
       >
-        <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+        <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-action text-xs font-bold text-white">
           AL
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-[13px] font-semibold text-foreground">
+          <span className="text-[13px] font-semibold text-[#0f1a14]">
             Ana López
           </span>
-          <span className="flex items-center gap-1 whitespace-nowrap text-xs text-muted">
+          <span className="flex items-center gap-1 whitespace-nowrap text-xs text-[#5b6b61]">
             <svg
               viewBox="0 0 24 24"
               className="h-3 w-3 shrink-0 fill-red-600"
@@ -78,7 +82,7 @@ function BrandPanel() {
           viewBox="0 0 24 24"
           fill="none"
           strokeWidth={1.6}
-          className="h-[22px] w-[22px] shrink-0 stroke-primary"
+          className="h-[22px] w-[22px] shrink-0 stroke-action"
         >
           <path
             strokeLinecap="round"
@@ -87,10 +91,10 @@ function BrandPanel() {
           />
         </svg>
         <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="text-[13px] font-semibold text-foreground">
+          <span className="text-[13px] font-semibold text-[#0f1a14]">
             Carlos
           </span>
-          <span className="text-xs text-muted">Nuevo mensaje</span>
+          <span className="text-xs text-[#5b6b61]">Nuevo mensaje</span>
         </div>
       </div>
     </div>
@@ -108,14 +112,14 @@ function MiniLikeCard({ className }: { className: string }) {
       aria-hidden="true"
       className={`brand-mini-card absolute flex w-[178px] items-center gap-2 rounded-xl bg-white px-[11px] py-[9px] shadow-[0_10px_24px_rgba(0,0,0,0.18)] ${className}`}
     >
-      <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
+      <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-action text-[10px] font-bold text-white">
         AL
       </div>
       <div className="flex min-w-0 flex-col">
-        <span className="text-[11px] font-semibold text-foreground">
+        <span className="text-[11px] font-semibold text-[#0f1a14]">
           Ana López
         </span>
-        <span className="flex items-center gap-[3px] whitespace-nowrap text-[10px] text-muted">
+        <span className="flex items-center gap-[3px] whitespace-nowrap text-[10px] text-[#5b6b61]">
           <svg viewBox="0 0 24 24" className="h-[9px] w-[9px] shrink-0 fill-red-600">
             <path d={LIKE_PATH} />
           </svg>
@@ -138,13 +142,13 @@ function MiniMessageCard({ className }: { className: string }) {
         strokeWidth={1.8}
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="h-[18px] w-[18px] shrink-0 stroke-primary"
+        className="h-[18px] w-[18px] shrink-0 stroke-action"
       >
         <path d={MESSAGE_PATH} />
       </svg>
       <div className="flex min-w-0 flex-col">
-        <span className="text-[11px] font-semibold text-foreground">Carlos</span>
-        <span className="text-[10px] text-muted">Nuevo mensaje</span>
+        <span className="text-[11px] font-semibold text-[#0f1a14]">Carlos</span>
+        <span className="text-[10px] text-[#5b6b61]">Nuevo mensaje</span>
       </div>
     </div>
   );
@@ -189,7 +193,7 @@ function MobileHero({ size }: { size: MobileHeroSize }) {
     >
       <div aria-hidden="true">
         <div className="brand-dots absolute -inset-[30px] opacity-55" />
-        <div className="brand-blob-a pointer-events-none absolute -left-[50px] -top-[60px] h-[200px] w-[200px] rounded-full bg-primary-hover blur-[36px]" />
+        <div className="brand-blob-a pointer-events-none absolute -left-[50px] -top-[60px] h-[200px] w-[200px] rounded-full bg-action-hover blur-[36px]" />
         <div className="brand-blob-b pointer-events-none absolute -right-[50px] top-[40%] h-[170px] w-[170px] rounded-full bg-green-300 opacity-35 blur-[36px]" />
         <div className="brand-blob-c pointer-events-none absolute left-[40%] top-[20%] h-[140px] w-[140px] rounded-full bg-green-400 opacity-30 blur-[36px]" />
       </div>
@@ -253,7 +257,7 @@ export function BrandLayout({
   mobileHero?: MobileHeroSize;
 }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-primary lg:min-h-screen lg:flex-row lg:bg-background">
+    <div className="flex min-h-dvh flex-col bg-action lg:min-h-screen lg:flex-row lg:bg-background">
       <BrandPanel />
       <MobileHero size={mobileHero} />
 

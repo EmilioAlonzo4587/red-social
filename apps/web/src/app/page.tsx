@@ -19,7 +19,7 @@ export default function Home() {
         <div className="flex w-full flex-col gap-3">
           <Link
             href="/login"
-            className="w-full rounded-lg bg-primary px-4 py-3 font-semibold lg:py-2 lg:font-medium text-white transition-colors hover:bg-primary-hover"
+            className="w-full rounded-lg bg-action px-4 py-3 font-semibold lg:py-2 lg:font-medium text-white transition-colors hover:bg-action-hover"
           >
             Iniciar sesión
           </Link>

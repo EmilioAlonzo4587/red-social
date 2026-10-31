@@ -153,7 +153,10 @@ export function ReactionButton({
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="sr-only focus:not-sr-only focus:ml-2 focus:text-primary focus:underline"
+        // Solo para teclado: se ve con focus-visible (Tab), no con focus. El código le
+        // devuelve el foco al elegir una reacción, y con focus el texto aparecía tras
+        // tocar con el dedo o el mouse.
+        className="sr-only focus-visible:not-sr-only focus-visible:ml-2 focus-visible:text-primary focus-visible:underline"
       >
         Elegir reacción
       </button>

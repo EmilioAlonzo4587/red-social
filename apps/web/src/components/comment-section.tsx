@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { CommentDto, CommentPageDto } from "@red/api-types";
 import { Avatar } from "@/components/avatar";
 import { EmojiPicker, EmojiToggleButton } from "@/components/emoji-picker";
+import { QuickCommentBox } from "@/components/quick-comment-box";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
 import { fieldErrorsFromDetails } from "@/lib/api-field-errors";
@@ -38,10 +39,12 @@ function CommentRow({
   comment,
   isMine,
   onDeleted,
+  onReply,
 }: {
   comment: CommentDto;
   isMine: boolean;
-  onDeleted: (id: string) => void;
+  onDeleted: (comment: CommentDto) => void;
+  onReply?: () => void;
 }) {
   const [stage, setStage] = useState<"idle" | "confirming" | "deleting">(
     "idle",
@@ -56,15 +59,28 @@ function CommentRow({
       await apiFetchClient<void>(`/api/comments/${comment.id}`, {
         method: "DELETE",
       });
-      onDeleted(comment.id);
+      onDeleted(comment);
     } catch (err) {
       setError(errorMessage(err, "No se pudo eliminar. Intenta de nuevo."));
       setStage("confirming");
     }
   }
 
+  // S4-14: un comentario eliminado que todavía tiene respuestas queda como cabeza del hilo
+  if (comment.deleted) {
+    return (
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden="true"
+          className="h-8 w-8 shrink-0 rounded-full border border-dashed border-border"
+        />
+        <p className="py-1.5 text-sm italic text-muted">Comentario eliminado</p>
+      </div>
+    );
+  }
+
   return (
-    <li className="flex items-start gap-3 py-4">
+    <div className="flex items-start gap-3">
       {/* Mismo destino que el nombre de al lado: fuera del Tab y del lector de
           pantalla para no repetirlo, pero se puede tocar (S4-06). */}
       <Link
@@ -79,7 +95,7 @@ function CommentRow({
           size="sm"
         />
       </Link>
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Link
             href={`/u/${comment.author.username}`}
@@ -91,7 +107,20 @@ function CommentRow({
             {formatRelativeTime(comment.createdAt)}
           </span>
         </div>
-        <p className="whitespace-pre-line text-sm">{comment.content}</p>
+        <p className="whitespace-pre-line text-sm [overflow-wrap:anywhere]">
+          {comment.content}
+        </p>
+
+        {onReply && stage === "idle" && (
+          <button
+            type="button"
+            onClick={onReply}
+            aria-label={`Responder a ${authorName}`}
+            className="tap-area mt-1 text-xs font-semibold text-muted hover:text-primary"
+          >
+            Responder
+          </button>
+        )}
 
         {stage !== "idle" && (
           <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2 text-sm">
@@ -100,7 +129,7 @@ function CommentRow({
               type="button"
               onClick={confirmDelete}
               disabled={stage === "deleting"}
-              className="font-semibold text-red-600 disabled:opacity-50"
+              className="font-semibold text-danger disabled:opacity-50"
             >
               {stage === "deleting" ? "Eliminando…" : "Sí, eliminar"}
             </button>
@@ -114,17 +143,174 @@ function CommentRow({
             </button>
           </div>
         )}
-        {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+        {error && <p className="mt-1 text-sm text-danger">{error}</p>}
       </div>
 
       {isMine && stage === "idle" && (
         <button
           type="button"
           onClick={() => setStage("confirming")}
-          className="tap-area text-xs text-muted hover:text-red-600"
+          className="tap-area text-xs text-muted hover:text-danger"
         >
           Eliminar
         </button>
+      )}
+    </div>
+  );
+}
+
+function repliesLabel(count: number): string {
+  return count === 1 ? "Ver 1 respuesta" : `Ver ${count} respuestas`;
+}
+
+/**
+ * Un comentario de primer nivel con sus respuestas (S4-14, un solo nivel). Las respuestas
+ * se piden al abrir el hilo (GET /api/comments/:id/replies) y se vuelven a pedir si su
+ * cantidad cambia mientras está abierto (el contador en vivo resincroniza la lista).
+ */
+function CommentThread({
+  postId,
+  comment,
+  currentUserId,
+  onChanged,
+}: {
+  postId: string;
+  comment: CommentDto;
+  currentUserId?: string;
+  onChanged: (comment: CommentDto | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [replies, setReplies] = useState<CommentDto[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [replyBox, setReplyBox] = useState<{ initial: string } | null>(null);
+  const loadedForRef = useRef<number | null>(null);
+
+  const loadReplies = useCallback(async (fromCursor: string | null) => {
+    setStatus("loading");
+    try {
+      const query = fromCursor ? `?cursor=${encodeURIComponent(fromCursor)}` : "";
+      const page = await apiFetchClient<CommentPageDto>(
+        `/api/comments/${comment.id}/replies${query}`,
+      );
+      setReplies((prev) => (fromCursor ? [...prev, ...page.items] : page.items));
+      setCursor(page.nextCursor);
+      setStatus("idle");
+    } catch {
+      setStatus("error");
+    }
+  }, [comment.id]);
+
+  // Abierto: si llegan respuestas nuevas de otros (replyCount cambia), se recargan
+  useEffect(() => {
+    if (!open || loadedForRef.current === comment.replyCount) return;
+    loadedForRef.current = comment.replyCount;
+    void loadReplies(null);
+  }, [open, comment.replyCount, loadReplies]);
+
+  function handleReplyPosted(reply: CommentDto) {
+    setReplyBox(null);
+    setOpen(true);
+    setReplies((prev) => [...prev, reply]);
+    loadedForRef.current = comment.replyCount + 1;
+    onChanged({ ...comment, replyCount: comment.replyCount + 1 });
+  }
+
+  function handleReplyDeleted(reply: CommentDto) {
+    setReplies((prev) => prev.filter((item) => item.id !== reply.id));
+    const replyCount = Math.max(0, comment.replyCount - 1);
+    loadedForRef.current = replyCount;
+    // Un comentario eliminado sin respuestas ya no tiene nada que mostrar
+    onChanged(comment.deleted && replyCount === 0 ? null : { ...comment, replyCount });
+  }
+
+  function handleDeleted() {
+    // Con respuestas, el hilo sigue con "Comentario eliminado"; sin ellas, desaparece
+    onChanged(
+      comment.replyCount > 0
+        ? { ...comment, deleted: true, content: null }
+        : null,
+    );
+  }
+
+  return (
+    <li className="flex flex-col gap-2 py-4">
+      <CommentRow
+        comment={comment}
+        isMine={currentUserId === comment.author.id}
+        onDeleted={handleDeleted}
+        onReply={() => setReplyBox({ initial: "" })}
+      />
+
+      {comment.replyCount > 0 && !open && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-expanded={false}
+          className="tap-area ml-11 self-start text-xs font-semibold text-primary hover:underline"
+        >
+          {repliesLabel(comment.replyCount)}
+        </button>
+      )}
+
+      {open && (
+        <div className="ml-11 flex flex-col gap-3 border-l-2 border-border pl-3">
+          <ul className="flex flex-col gap-3" aria-label="Respuestas">
+            {replies.map((reply) => (
+              <li key={reply.id}>
+                <CommentRow
+                  comment={reply}
+                  isMine={currentUserId === reply.author.id}
+                  onDeleted={handleReplyDeleted}
+                  onReply={() =>
+                    setReplyBox({ initial: `@${reply.author.username} ` })
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+          {status === "loading" && (
+            <p className="text-xs text-muted">Cargando respuestas…</p>
+          )}
+          {status === "error" && (
+            <p className="text-xs text-danger">
+              No se pudieron cargar las respuestas.
+            </p>
+          )}
+          <div className="flex gap-4">
+            {cursor && status !== "loading" && (
+              <button
+                type="button"
+                onClick={() => void loadReplies(cursor)}
+                className="tap-area text-xs font-semibold text-primary hover:underline"
+              >
+                Cargar más respuestas
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-expanded={true}
+              className="tap-area text-xs font-semibold text-muted hover:underline"
+            >
+              Ocultar respuestas
+            </button>
+          </div>
+        </div>
+      )}
+
+      {replyBox && (
+        <div className="ml-11">
+          <QuickCommentBox
+            key={replyBox.initial}
+            postId={postId}
+            parentId={comment.id}
+            initialContent={replyBox.initial}
+            label="Escribe una respuesta"
+            onPosted={handleReplyPosted}
+            onClose={() => setReplyBox(null)}
+          />
+        </div>
       )}
     </li>
   );
@@ -178,7 +364,12 @@ export function CommentSection({
   useEffect(() => {
     return subscribePostComments(postId, (commentCount) => {
       if (nextCursorRef.current !== null) return;
-      if (commentCount === itemsRef.current.length) return;
+      // commentCount cuenta también las respuestas (S4-14); los eliminados no cuentan
+      const shown = itemsRef.current.reduce(
+        (total, item) => total + (item.deleted ? 0 : 1) + item.replyCount,
+        0,
+      );
+      if (commentCount === shown) return;
       void resync();
     });
 
@@ -258,8 +449,13 @@ export function CommentSection({
     }
   }
 
-  function handleDeleted(id: string) {
-    setItems((prev) => prev.filter((comment) => comment.id !== id));
+  // Un hilo cambió (respuestas nuevas o borradas, o se eliminó su comentario); null lo quita
+  function handleThreadChanged(id: string, updated: CommentDto | null) {
+    setItems((prev) =>
+      updated
+        ? prev.map((comment) => (comment.id === id ? updated : comment))
+        : prev.filter((comment) => comment.id !== id),
+    );
   }
 
   return (
@@ -295,10 +491,10 @@ export function CommentSection({
           />
         )}
         {fieldErrors.content && (
-          <p className="text-sm text-red-600">{fieldErrors.content}</p>
+          <p className="text-sm text-danger">{fieldErrors.content}</p>
         )}
         {generalError && (
-          <p className="text-sm text-red-600">{generalError}</p>
+          <p className="text-sm text-danger">{generalError}</p>
         )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -315,7 +511,7 @@ export function CommentSection({
           <button
             type="submit"
             disabled={!canSubmit}
-            className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-action px-4 py-1.5 text-sm font-medium text-white hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Comentando…" : "Comentar"}
           </button>
@@ -329,11 +525,12 @@ export function CommentSection({
       ) : (
         <ul className="flex flex-col divide-y divide-border">
           {items.map((comment) => (
-            <CommentRow
+            <CommentThread
               key={comment.id}
+              postId={postId}
               comment={comment}
-              isMine={currentUserId === comment.author.id}
-              onDeleted={handleDeleted}
+              currentUserId={currentUserId}
+              onChanged={(updated) => handleThreadChanged(comment.id, updated)}
             />
           ))}
         </ul>
@@ -352,7 +549,7 @@ export function CommentSection({
         </div>
       )}
       {loadMoreError && (
-        <p className="pb-6 text-center text-sm text-red-600">
+        <p className="pb-6 text-center text-sm text-danger">
           {loadMoreError}
         </p>
       )}

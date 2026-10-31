@@ -1,17 +1,63 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #16a34a;
-  --color-primary-hover: #15803d;
+  /* primary: texto, íconos, bordes y contornos verdes. Cambia con el tema (S4-13):
+     #15803d en claro (contraste 5:1 sobre blanco) y #4ade80 en oscuro. */
+  --color-primary: #15803d;
+  --color-primary-hover: #166534;
+  /* action: rellenos verdes con texto blanco encima (botones, avatares con iniciales,
+     contadores, panel de marca). El mismo en los dos temas: si siguiera a primary,
+     en oscuro serían letras blancas sobre verde claro, ilegibles. */
+  --color-action: #16a34a;
+  --color-action-hover: #15803d;
   --color-background: #ffffff;
   --color-surface: #f3faf5;
   --color-foreground: #0f1a14;
   --color-muted: #5b6b61;
   --color-border: #d8ebdf;
+  /* Errores (textos, bordes de campos inválidos y avisos) */
+  --color-danger: #b91c1c;
+  --color-danger-surface: #fef2f2;
 
   /* S4-09: Inter en toda la app (antes, Geist se cargaba pero no se usaba en
      ningún font-family; la red se veía con el stack por defecto del navegador). */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Modo oscuro (S4-13). layout.tsx pone data-theme en <html> leyendo la cookie
+   chatinit_theme: "light", "dark" o "system" (Automático, por defecto). La paleta oscura
+   se repite en dos bloques porque CSS no deja reutilizar un grupo de variables: uno para
+   "Oscuro" elegido a mano y otro para "Automático" con el dispositivo en oscuro. */
+html {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --color-primary: #4ade80;
+  --color-primary-hover: #86efac;
+  --color-background: #0f1512;
+  --color-surface: #17211b;
+  --color-foreground: #e7efe9;
+  --color-muted: #9fb2a6;
+  --color-border: #26342c;
+  --color-danger: #f87171;
+  --color-danger-surface: #321d1b;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"] {
+    color-scheme: dark;
+    --color-primary: #4ade80;
+    --color-primary-hover: #86efac;
+    --color-background: #0f1512;
+    --color-surface: #17211b;
+    --color-foreground: #e7efe9;
+    --color-muted: #9fb2a6;
+    --color-border: #26342c;
+    --color-danger: #f87171;
+    --color-danger-surface: #321d1b;
+  }
 }
 
 body {

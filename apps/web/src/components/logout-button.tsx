@@ -5,12 +5,13 @@ import { useState } from "react";
 import { logout } from "@/lib/api-client";
 import { PUBLIC_PATHS } from "@/lib/public-paths";
 
-// "floating": fijo en la esquina inferior izquierda (S3-13), solo desde `sm`; en el
+// "floating": fijo en la esquina inferior izquierda (S3-13), solo desde `sm`, en z-40 para
+// quedar sobre la barra lateral (z-30 y con fondo desde S4-11, que lo tapaba); en el
 // celular estorbaba sobre el contenido. "icon": ícono en la esquina superior derecha
 // del Navbar, solo en el celular (S4-06), donde abajo va la barra de navegación.
 const VARIANT_CLASSES = {
   floating:
-    "fixed bottom-4 left-4 z-20 hidden items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50 sm:flex",
+    "fixed bottom-4 left-4 z-40 hidden items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50 sm:flex",
   icon: "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted outline-primary hover:bg-surface hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 sm:hidden",
 };
 

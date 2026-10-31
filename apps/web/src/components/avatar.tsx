@@ -45,7 +45,7 @@ export function Avatar({
 
   return (
     <div
-      className={`flex shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-white ${sizeClasses}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-action font-semibold text-white ${sizeClasses}`}
     >
       {getInitials(name)}
     </div>
