@@ -220,14 +220,8 @@ export function PostComposer({
           <span className="whitespace-nowrap text-xs text-muted tabular-nums">
             {content.length} / {MAX_CONTENT_LENGTH}
           </span>
-          <label
-            htmlFor="post-images"
-            className={`cursor-pointer whitespace-nowrap text-sm font-medium text-primary ${
-              !canAddMore || submitting ? "pointer-events-none opacity-50" : ""
-            }`}
-          >
-            Agregar imágenes
-          </label>
+          {/* El input va antes (peer) para que, con Tab, el contorno de foco se vea en
+              "Agregar imágenes": el input en sí está oculto (S4-06). */}
           <input
             ref={fileInputRef}
             id="post-images"
@@ -236,8 +230,16 @@ export function PostComposer({
             multiple
             disabled={!canAddMore || submitting}
             onChange={(event) => handleFilesSelected(event.target.files)}
-            className="sr-only"
+            className="peer sr-only"
           />
+          <label
+            htmlFor="post-images"
+            className={`cursor-pointer whitespace-nowrap rounded text-sm font-medium text-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary peer-focus-visible:[outline-style:solid] ${
+              !canAddMore || submitting ? "pointer-events-none opacity-50" : ""
+            }`}
+          >
+            Agregar imágenes
+          </label>
           {/* -ml-2: queda a 8px de "Agregar imágenes", como antes del gap-x-4 */}
           <span className="-ml-2 whitespace-nowrap text-xs text-muted">
             {images.length}/{MAX_IMAGES}

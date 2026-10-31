@@ -12,6 +12,12 @@ import { formatRelativeTime } from "@/lib/format";
 import { cloudinaryImageUrl } from "@/lib/media";
 import { subscribePostComments, subscribePostLikes } from "@/lib/socket";
 
+function imageAlt(index: number, total: number, authorName: string): string {
+  return total === 1
+    ? `Imagen de la publicación de ${authorName}`
+    : `Imagen ${index + 1} de ${total} de la publicación de ${authorName}`;
+}
+
 export function PostCard({
   post,
   currentUserId,
@@ -103,14 +109,16 @@ export function PostCard({
         <div
           className={`mt-1 grid gap-1 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
         >
-          {post.media.map((media) => (
+          {post.media.map((media, index) => (
             <div
               key={media.publicId}
               className="relative aspect-video overflow-hidden rounded-xl bg-surface"
             >
+              {/* Antes alt="": el lector de pantalla se saltaba las fotos (S4-06). No
+                  se sabe qué muestran, pero sí que existen y de quién son. */}
               <Image
                 src={cloudinaryImageUrl(media.publicId)}
-                alt=""
+                alt={imageAlt(index, post.media.length, authorName)}
                 fill
                 sizes="(max-width: 640px) 100vw, 576px"
                 className="object-cover"
@@ -127,7 +135,14 @@ export function PostCard({
   return (
     <article className="flex flex-col gap-2.5 border-b border-border py-4">
       <div className="flex items-center gap-3">
-        <Link href={`/u/${post.author.username}`} className="shrink-0">
+        {/* Mismo destino que el nombre de al lado: fuera del Tab y del lector de
+            pantalla para no repetirlo, pero se puede tocar (S4-06). */}
+        <Link
+          href={`/u/${post.author.username}`}
+          tabIndex={-1}
+          aria-hidden="true"
+          className="shrink-0"
+        >
           <Avatar
             name={authorName}
             avatarPublicId={post.author.avatarPublicId}

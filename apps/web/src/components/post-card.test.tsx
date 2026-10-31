@@ -76,10 +76,17 @@ describe("PostCard", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("el avatar del autor también enlaza a su perfil", () => {
-    render(<PostCard post={BASE_POST} />);
-    // Sin avatarPublicId, el avatar muestra las iniciales ("AL") como texto del enlace.
-    expect(screen.getByRole("link", { name: "AL" })).toHaveAttribute(
+  it("el avatar del autor también enlaza a su perfil, sin repetirse en Tab ni en el lector (S4-06)", () => {
+    const { container } = render(<PostCard post={BASE_POST} />);
+    // Se puede tocar, pero el enlace accesible al perfil es el del nombre de al lado
+    const avatarLink = container.querySelector('a[aria-hidden="true"]');
+    expect(avatarLink).toHaveAttribute("href", "/u/ana_lopez");
+    expect(avatarLink).toHaveAttribute("tabindex", "-1");
+    expect(avatarLink).toHaveTextContent("AL");
+    expect(
+      screen.getAllByRole("link").filter((l) => l.getAttribute("href") === "/u/ana_lopez"),
+    ).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Ana López" })).toHaveAttribute(
       "href",
       "/u/ana_lopez",
     );
@@ -120,10 +127,34 @@ describe("PostCard", () => {
         { publicId: "users/u1/b", mediaType: "image", width: 10, height: 10 },
       ],
     };
-    const { container } = render(<PostCard post={post} />);
-    // alt="" es a propósito (imagen decorativa sin descripción propia): no tiene
-    // rol "img" accesible, así que se consulta directo en el DOM.
-    expect(container.querySelectorAll("img")).toHaveLength(2);
+    render(<PostCard post={post} />);
+    // Cada imagen dice cuál es y de quién (S4-06): el lector de pantalla ya no se las salta
+    expect(
+      screen.getByRole("img", {
+        name: "Imagen 1 de 2 de la publicación de Ana López",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", {
+        name: "Imagen 2 de 2 de la publicación de Ana López",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("con una sola imagen, el texto alternativo no la numera", () => {
+    const post: PostDto = {
+      ...BASE_POST,
+      author: { ...BASE_POST.author, displayName: null },
+      media: [
+        { publicId: "users/u1/a", mediaType: "image", width: 10, height: 10 },
+      ],
+    };
+    render(<PostCard post={post} />);
+    expect(
+      screen.getByRole("img", {
+        name: "Imagen de la publicación de ana_lopez",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("dar like: sube el contador al toque y confirma con la respuesta de la api", async () => {

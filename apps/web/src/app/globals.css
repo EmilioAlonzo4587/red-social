@@ -20,6 +20,24 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Foco visible en toda la app (S4-06): al navegar con Tab, cualquier botón, enlace
+   o campo muestra el mismo contorno verde. :focus-visible no aparece al tocar o
+   hacer clic en un botón, solo con teclado. En la capa base para que el contorno
+   propio de un componente (outline-white sobre el panel verde, outline-none del
+   compositor, que marca el foco con el borde de su caja) siga ganando. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline-offset: 0;
+  }
+}
+
 /* Safari en iPhone hace zoom al enfocar un campo con letra de menos de 16px, y la
    página queda corrida (S4-06). En pantallas de celular todos los campos usan
    16px. Va fuera de las capas de Tailwind a propósito, para ganarle a text-sm sin
