@@ -225,3 +225,25 @@ body {
     animation: none;
   }
 }
+
+/* Tarjetas chicas de la franja de marca en el celular (S4-06): flotan inclinadas. */
+@keyframes brand-mini-card-idle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(3deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(3deg);
+  }
+}
+
+.brand-mini-card {
+  animation: brand-mini-card-idle 6.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-mini-card {
+    animation: none;
+    transform: rotate(3deg);
+  }
+}

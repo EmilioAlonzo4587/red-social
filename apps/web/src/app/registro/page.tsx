@@ -85,10 +85,10 @@ export default function RegistroPage() {
   }
 
   return (
-    <BrandLayout>
+    <BrandLayout mobileHero="compact">
       <main className="flex w-full max-w-[380px] flex-col gap-6">
         <div className="flex flex-col gap-1.5">
-          <h1 className="text-[28px] font-bold">Crear cuenta</h1>
+          <h1 className="text-[26px] font-bold lg:text-[28px]">Crear cuenta</h1>
           <p className="text-sm text-muted">Únete para publicar, seguir y chatear con tu gente.</p>
         </div>
 
@@ -158,7 +158,7 @@ export default function RegistroPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+            className="w-full rounded-lg bg-primary px-4 py-3 font-semibold lg:py-2 lg:font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
           >
             {submitting ? "Creando cuenta..." : "Crear cuenta"}
           </button>
