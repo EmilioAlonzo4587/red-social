@@ -429,7 +429,7 @@ function ChatView() {
     null;
 
   return (
-    <main className="flex h-[calc(100vh-64px)]">
+    <main className="flex h-[calc(100dvh-128px)] sm:h-[calc(100vh-64px)]">
       <aside
         className={`w-full shrink-0 overflow-y-auto border-r border-border md:flex md:w-80 md:flex-col ${
           selectedId ? "hidden" : "flex flex-col"

@@ -24,7 +24,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <BfcacheReload />
         <Navbar />
-        <div className="flex">
+        {/* Con sesión y bajo `sm`, Sidebar pinta la barra inferior (#mobile-nav, 64px):
+            se reserva ese alto para que no tape el final de la página. */}
+        <div className="flex has-[#mobile-nav]:pb-16 sm:has-[#mobile-nav]:pb-0">
           <Sidebar />
           <div className="min-w-0 flex-1">{children}</div>
         </div>

@@ -62,4 +62,24 @@ describe("LogoutButton", () => {
     resolveLogout();
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
   });
+
+  it("flotante: solo desde sm, para no estorbar en el celular (S4-06)", () => {
+    render(<LogoutButton />);
+    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toHaveClass(
+      "hidden",
+      "sm:flex",
+    );
+  });
+
+  it("variante ícono (Navbar del celular): mismo nombre accesible y llama a logout()", async () => {
+    const user = userEvent.setup();
+    logout.mockResolvedValueOnce(undefined);
+    render(<LogoutButton variant="icon" />);
+
+    const button = screen.getByRole("button", { name: "Cerrar sesión" });
+    expect(button).toHaveClass("sm:hidden");
+    expect(button).not.toHaveTextContent("Cerrar sesión");
+    await user.click(button);
+    expect(logout).toHaveBeenCalledTimes(1);
+  });
 });

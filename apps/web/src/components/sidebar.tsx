@@ -17,7 +17,14 @@ function linkClass(active: boolean): string {
     : "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold text-foreground hover:bg-surface";
 }
 
-function Icon({ path }: { path: string }) {
+// Barra inferior del celular (S4-06): ícono arriba y texto chico abajo.
+function mobileLinkClass(active: boolean): string {
+  return `flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-semibold ${
+    active ? "text-primary" : "text-muted"
+  }`;
+}
+
+function Icon({ path, className = "h-[18px] w-[18px]" }: { path: string; className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -25,7 +32,7 @@ function Icon({ path }: { path: string }) {
       stroke="currentColor"
       strokeWidth={2}
       aria-hidden="true"
-      className="h-[18px] w-[18px] shrink-0"
+      className={`shrink-0 ${className}`}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d={path} />
     </svg>
@@ -94,7 +101,10 @@ export function Sidebar() {
     0,
   );
 
+  const profileHref = username ? `/u/${username}` : null;
+
   return (
+    <>
     <nav
       aria-label="Navegación principal"
       className="sticky top-16 hidden h-[calc(100vh-64px)] w-[190px] shrink-0 flex-col gap-0.5 border-r border-border px-2.5 py-4 sm:flex"
@@ -133,5 +143,59 @@ export function Sidebar() {
         </Link>
       )}
     </nav>
-  );
-}
+
+    {/* Celular (S4-06): la barra lateral se oculta bajo `sm`, así que la navegación
+        pasa a una barra fija abajo. El padre en layout.tsx reserva su alto con
+        has-[#mobile-nav] para que no tape el final del contenido. */}
+    <nav
+      id="mobile-nav"
+      aria-label="Navegación inferior"
+      className="fixed inset-x-0 bottom-0 z-20 flex h-16 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] sm:hidden"
+    >
+      <Link
+        href="/feed"
+        aria-current={pathname === "/feed" ? "page" : undefined}
+        className={mobileLinkClass(pathname === "/feed")}
+      >
+        <Icon path={ICONS.inicio} className="h-[22px] w-[22px]" />
+        Inicio
+      </Link>
+      <Link
+        href="/notificaciones"
+        aria-current={pathname === "/notificaciones" ? "page" : undefined}
+        className={mobileLinkClass(pathname === "/notificaciones")}
+      >
+        <Icon path={ICONS.notificaciones} className="h-[22px] w-[22px]" />
+        Notificaciones
+      </Link>
+      <Link
+        href="/chat"
+        aria-current={pathname === "/chat" ? "page" : undefined}
+        className={mobileLinkClass(pathname === "/chat")}
+      >
+        <span className="relative">
+          <Icon path={ICONS.mensajes} className="h-[22px] w-[22px]" />
+          {unreadMessages > 0 && (
+            <span
+              aria-label={`${unreadMessages} sin leer`}
+              className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white"
+            >
+              {unreadMessages}
+            </span>
+          )}
+        </span>
+        Mensajes
+      </Link>
+      {profileHref && (
+        <Link
+          href={profileHref}
+          aria-current={pathname === profileHref ? "page" : undefined}
+          className={mobileLinkClass(pathname === profileHref)}
+        >
+          <Icon path={ICONS.perfil} className="h-[22px] w-[22px]" />
+          Mi perfil
+        </Link>
+      )}
+    </nav>
+    </>
+  );}
