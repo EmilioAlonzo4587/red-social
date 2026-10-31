@@ -29,10 +29,21 @@ function uploadErrorMessage(error: unknown): string {
   return "No se pudo subir la imagen.";
 }
 
+// Saludo del cuadro (S4-17): con la primera palabra del nombre visible o, si no tiene,
+// el username; sin usuario (cargando o si falló), sin nombre.
+export function composerGreeting(
+  user: { displayName: string | null; username: string } | null,
+): string {
+  const name = user?.displayName?.trim().split(/\s+/)[0] || user?.username;
+  return name ? `¿Qué hay de nuevo, ${name}?` : "¿Qué hay de nuevo?";
+}
+
 export function PostComposer({
   onPosted,
+  greeting = composerGreeting(null),
 }: {
   onPosted?: (post: PostDto) => void;
+  greeting?: string;
 }) {
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ComposerImage[]>([]);
@@ -152,7 +163,7 @@ export function PostComposer({
       className="flex flex-col gap-2.5 rounded-xl border border-border p-3 focus-within:border-primary"
     >
       <label htmlFor="post-content" className="sr-only">
-        ¿Qué estás pensando?
+        {greeting}
       </label>
       <textarea
         id="post-content"
@@ -162,7 +173,7 @@ export function PostComposer({
           setSuccess(false);
         }}
         maxLength={MAX_CONTENT_LENGTH}
-        placeholder="¿Qué estás pensando?"
+        placeholder={greeting}
         rows={3}
         className="min-h-11 w-full resize-none bg-background text-base leading-relaxed outline-none placeholder:text-muted"
       />
