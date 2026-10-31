@@ -505,7 +505,9 @@ function ChatView() {
       </aside>
 
       <section
-        className={`flex-1 flex-col ${selected ? "flex" : "hidden md:flex"}`}
+        // min-w-0: sin esto, el ancho natural del campo de mensaje empujaba la
+        // conversación 16px fuera de la pantalla en 375px y "Enviar" quedaba cortado (S4-06)
+        className={`min-w-0 flex-1 flex-col ${selected ? "flex" : "hidden md:flex"}`}
       >
         {!selected ? (
           <div className="flex h-full items-center justify-center text-muted">

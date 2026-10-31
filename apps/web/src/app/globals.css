@@ -20,6 +20,19 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Safari en iPhone hace zoom al enfocar un campo con letra de menos de 16px, y la
+   página queda corrida (S4-06). En pantallas de celular todos los campos usan
+   16px. Va fuera de las capas de Tailwind a propósito, para ganarle a text-sm sin
+   tocar cada componente; desde sm (640px) cada campo vuelve a su tamaño. No se
+   bloquea el zoom con maximum-scale: quien lo necesite para leer debe poder usarlo. */
+@media (max-width: 639px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* Panel de marca de portada, login y registro (S4-08): todo en movimiento lento y
    continuo, y quieto si el usuario pidió reducir el movimiento. */
 @keyframes brand-card-in {
