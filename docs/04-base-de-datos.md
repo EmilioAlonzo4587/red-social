@@ -96,7 +96,7 @@ erDiagram
     uuid id PK
     uuid recipient_id FK
     uuid actor_id FK
-    varchar type "like comment follow message"
+    varchar type "like comment follow reply"
     uuid post_id FK
     uuid comment_id FK
     timestamptz read_at
@@ -209,7 +209,7 @@ erDiagram
 |---|---|---|---|
 | recipient_id | uuid | FK users | Quién recibe. |
 | actor_id | uuid | FK users; CHECK distinto de recipient_id | Quién la provocó (RN08). |
-| type | varchar(20) | CHECK `like`, `comment`, `follow`, `message`, `reply` | `reply` desde S4-14. |
+| type | varchar(20) | CHECK `like`, `comment`, `follow`, `reply` | `reply` desde S4-14. `message` existió hasta S4-15: la migración `remove_message_notifications` borró esas filas y lo quitó del CHECK (los mensajes ya no se guardan como notificación, RN08). |
 | post_id, comment_id | uuid | FK opcionales, ON DELETE CASCADE | Destino del enlace. |
 | read_at | timestamptz | | Nula si no se ha leído. |
 

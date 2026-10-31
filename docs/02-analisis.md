@@ -16,7 +16,7 @@
 | RF10 | Buscar usuarios por nombre de usuario o nombre visible. | HU10 |
 | RF11 | Dar y quitar me gusta con contador actualizado en vivo. | HU11 |
 | RF12 | Ver el detalle de una publicación, comentar, borrar comentarios propios y ver el contador de comentarios en vivo. | HU12 |
-| RF13 | Notificar al instante likes, comentarios, seguimientos y mensajes, y conservarlas para consultarlas después. | HU13 |
+| RF13 | Notificar al instante likes, comentarios, respuestas y seguimientos, y conservarlas para consultarlas después. Los mensajes también se avisan al instante, pero se consultan en la bandeja del chat. | HU13 |
 | RF14 | Chatear 1 a 1 en tiempo real, con bandeja de conversaciones y mensajes no leídos. | HU14 |
 | RF15 | Exponer la documentación interactiva de la API en `/api/docs`. | — |
 | RF16 | Ver la lista de seguidores y de seguidos de un perfil. | HU15 |
@@ -47,7 +47,7 @@
 | RN05 | Un usuario da como máximo un like por publicación. Repetir la acción no cambia el contador. |
 | RN06 | Nadie puede seguirse a sí mismo. Seguir dos veces a la misma persona no crea un segundo registro. |
 | RN07 | Un comentario tiene entre 1 y 1000 caracteres sin contar espacios iniciales y finales. |
-| RN08 | Se notifica un like, un comentario, un seguimiento o un mensaje, nunca una acción sobre uno mismo. Una misma persona genera una única notificación de like por publicación (quitar y volver a dar like no crea otra) y hasta 10 notificaciones de comentario por publicación (el límite se reinicia en cada publicación nueva). |
+| RN08 | Se notifica un like, un comentario, una respuesta o un seguimiento, nunca una acción sobre uno mismo. Un mensaje muestra un aviso en pantalla pero no se guarda como notificación: ya cuenta en los no leídos del chat (S4-15). Una misma persona genera una única notificación de like por publicación (quitar y volver a dar like no crea otra) y hasta 10 notificaciones de comentario por publicación (el límite se reinicia en cada publicación nueva). |
 | RN09 | El chat es solo entre dos personas, con una única conversación por pareja. Solo sus participantes pueden leerla o escribir. Un mensaje tiene entre 1 y 2000 caracteres. |
 | RN10 | Siguiendo muestra las publicaciones propias y las de los seguidos; Explorar muestra todas. Ambas en orden cronológico inverso, 20 por página. |
 | RN11 | Sin sesión solo se accede a la portada, al login y al registro. |

@@ -64,10 +64,10 @@ Comment      { id: string; postId: string; author: UserSummary;
                deleted: boolean;               // eliminado que sigue en la lista porque tiene respuestas
                createdAt: string }
 
-Notification { id: string; type: "like" | "comment" | "follow" | "message" | "reply"; actor: UserSummary;
-               postId: string | null;          // like y comment
-               commentId: string | null;       // comment
-               preview: string | null;         // primeros ~80 caracteres en comment y message; null en like y follow
+Notification { id: string; type: "like" | "comment" | "follow" | "reply"; actor: UserSummary;
+               postId: string | null;          // like, comment y reply
+               commentId: string | null;       // comment y reply
+               preview: string | null;         // primeros ~80 caracteres en comment y reply; null en like y follow
                reaction: Reaction | null;      // en like: la reacción actual; null si ya la quitó o en otros tipos
                read: boolean; createdAt: string }
 
@@ -83,7 +83,8 @@ Page<T>      { items: T[]; nextCursor: string | null }
 Lo que la web deduce sola y por eso no viaja en la respuesta:
 
 - "¿Es mío?" (borrar publicación o comentario, burbuja propia en el chat): comparar `author.id` o `senderId` con el `id` de `Me`.
-- El enlace de una notificación: `like` y `comment` llevan a `/p/{postId}`, `follow` a `/u/{actor.username}` y `message` abre el chat con `POST /api/conversations { username: actor.username }`.
+- El enlace de una notificación: `like`, `comment` y `reply` llevan a `/p/{postId}` y `follow` a `/u/{actor.username}`.
+- El aviso emergente de un mensaje (S4-15): sale de `conversation:updated` cuando `lastMessage.senderId` es el de `otherUser`, y abre el chat con `/chat?username={otherUser.username}`.
 
 ## Endpoints
 
@@ -173,11 +174,11 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 | GET | `/api/notifications/unread-count` 🔒 | | `{ count }` | |
 | POST | `/api/notifications/read` 🔒 | `{ ids: string[] }` o `{ all: true }` | 204 | 400 |
 
-- Se crean solas al dar like, comentar, seguir o escribir (RN08), nunca por una acción sobre uno mismo. Quitar el like o borrar el comentario no borra la notificación ya creada.
+- Se crean solas al dar like, comentar, responder o seguir (RN08), nunca por una acción sobre uno mismo. Quitar el like o borrar el comentario no borra la notificación ya creada.
 - Una misma persona genera una única notificación de `like` por publicación (quitar el like y volver a darlo no crea otra) y como máximo 10 notificaciones de `comment` por publicación (`MAX_COMMENT_NOTIFICATIONS_PER_POST = 10`, el contador se reinicia en cada publicación nueva; S4-11, RN08).
-- Se crea una notificación de `message` solo si no hay otra sin leer del mismo remitente, para no llenar la campana con cada mensaje de una conversación.
+- Un mensaje no crea notificación (S4-15): llenaba la bandeja con algo que ya cuenta el `unread` del chat. La web avisa en pantalla con `conversation:updated`. La migración `remove_message_notifications` borró las que existían.
 - `reply` (S4-14): "respondió a tu comentario", para el autor del comentario respondido; si esa persona es también la autora de la publicación no recibe además la de `comment`. Tiene su propio tope de 10 por persona y publicación, y enlaza a `/p/{postId}`.
-- `preview` trae los primeros ~80 caracteres del comentario (`comment` y `reply`) o del último mensaje de ese remitente (`message`), y `null` en `like` y `follow`. Se calcula al leer (sin columna nueva en la base) y viaja tanto en `GET /api/notifications` como en `notification:new` (S4-11).
+- `preview` trae los primeros ~80 caracteres del comentario (`comment` y `reply`) y `null` en `like` y `follow`. Se calcula al leer (sin columna nueva en la base) y viaja tanto en `GET /api/notifications` como en `notification:new` (S4-11).
 - La lista y `unread-count` no incluyen las de una publicación o un comentario eliminados: su enlace llevaría a un 404.
 - `POST /api/notifications/read` lleva exactamente uno de los dos campos: `ids` (de 1 a 100 UUID) o `all: true`. Sin ninguno, con los dos (`details: [{ field: "all", rule: "notWith" }]`) o con otro valor responde 400. Las ids ajenas o inexistentes se ignoran sin error, y una ya leída conserva su fecha de lectura.
 
@@ -195,7 +196,7 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 - Las rutas con `:id` responden 400 si `id` no es un UUID, 404 si la conversación no existe y 403 si existe pero no participo (RN09).
 - La bandeja solo muestra conversaciones con al menos un mensaje.
 - `unread` cuenta los mensajes del otro posteriores a mi "leído hasta". Enviar un mensaje también marca como leído lo anterior para quien escribe. `POST /conversations/:id/read` marca hasta el último mensaje que existe en ese momento; uno que llegue después vuelve a contar.
-- Enviar un mensaje emite `message.created`: crea la notificación de `message` (S3-03) y, desde S3-05, se distribuye por Socket.io.
+- Enviar un mensaje emite `message.created`, que se distribuye por Socket.io (S3-05). Desde S4-15 no crea notificación.
 - El contador del menú es la suma de `unread` de la bandeja; después lo mantiene `conversation:updated`.
 - Los mensajes llegan del más reciente al más antiguo para cargar el historial al subir; la web los invierte para mostrarlos.
 
@@ -235,7 +236,8 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
 | Servidor → cliente | `conversation:read` | `{ conversationId, userId, readAt }` | Marca como "Visto" los mensajes propios hasta `readAt` |
 | Servidor → cliente | `user:presence` | `{ userId, online }` | Actualiza el estado conectado/desconectado del usuario en vivo |
 | Servidor → cliente | `notification:new` | `Notification` | Suma uno a la campana y la agrega a la lista |
-| Servidor → cliente | `feed:new` | `{ postId, authorId }` | En la pestaña Siguiendo, muestra el aviso "Hay N publicaciones nuevas · Ver" |
+| Servidor → cliente | `feed:new` | `{ postId, authorId, author: UserSummary }` | En la pestaña Siguiendo, suma al botón "Ver N publicaciones nuevas" |
+| Servidor → cliente | `explore:new` | `{ postId, authorId, author: UserSummary }` | En la pestaña Explorar, suma al botón "Ver N publicaciones nuevas" (S4-15) |
 
 **Publicaciones en vivo (S2-03).**
 
@@ -245,6 +247,7 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
 - `post:likes` sale cuando el contador cambia de verdad (`like.changed`) y también al cambiar de reacción: repetir un `PUT` idempotente no emite nada (RN05).
 - `post:comments` sale al crear o borrar un comentario (`comment.changed`), a la misma sala `post:{id}` (S3-18).
 - `feed:new` sale a la sala `user:{id}` de cada seguidor cuando alguien crea una publicación (`post.created`, S4-11), sin guardar notificaciones en la base (D11).
+- `explore:new` (S4-15) sale con la misma publicación a todos los sockets conectados menos a los del autor, para la pestaña Explorar. Alguien que sigue al autor recibe los dos eventos, uno por pestaña. Los dos traen `author` para que la web muestre quién publicó sin pedir la publicación.
 
 **Chat en vivo (S3-05).**
 
