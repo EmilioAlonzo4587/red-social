@@ -54,7 +54,9 @@ export default function FeedPage() {
   const [newPostIds, setNewPostIds] = useState<string[]>([]);
   const currentUserId = me?.id;
   const currentUserIdRef = useRef<string | undefined>(undefined);
-  currentUserIdRef.current = currentUserId;
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId;
+  }, [currentUserId]);
   const current = tabs[tab];
 
   // Qué pestaña ya se pidió para cada reloadToken: evita volver a pedirla solo por

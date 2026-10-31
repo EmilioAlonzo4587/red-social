@@ -75,16 +75,17 @@ function playTone(
   osc.stop(startTime + duration);
 }
 
-// Campanita: me gusta y seguidores
+// Mismas notas que la muestra aprobada en la issue S4-11 (#125).
+// Campanita: me gusta y seguidores (E6 con su octava, que se apaga antes)
 function playBellChime(ctx: AudioContext, now: number): void {
-  playTone(ctx, 880, now, 0.35, 0.14, "sine");
-  playTone(ctx, 1760, now, 0.25, 0.06, "triangle");
+  playTone(ctx, 1318.5, now, 0.42, 0.1, "sine");
+  playTone(ctx, 2637, now, 0.22, 0.03, "sine");
 }
 
-// Doble nota ascendente: comentarios y mensajes
+// Doble nota ascendente (G5 y D6): comentarios y mensajes
 function playDoubleNote(ctx: AudioContext, now: number): void {
-  playTone(ctx, 587.33, now, 0.12, 0.12, "sine");
-  playTone(ctx, 880, now + 0.11, 0.22, 0.14, "sine");
+  playTone(ctx, 784, now, 0.14, 0.12, "sine");
+  playTone(ctx, 1174.7, now + 0.11, 0.22, 0.12, "sine");
 }
 
 /**
