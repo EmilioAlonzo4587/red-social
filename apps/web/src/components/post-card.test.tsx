@@ -1,7 +1,8 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { LikeStatusDto, PostDto } from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/lib/api-error";
 import { PostCard } from "./post-card";
 
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
@@ -443,5 +444,142 @@ describe("PostCard", () => {
     );
     expect(input).toHaveFocus();
     expect(input.scrollIntoView).toHaveBeenCalled();
+  });
+
+  describe("editar el texto", () => {
+    const owner = BASE_POST.author.id;
+    const apiError = (statusCode: number) =>
+      new ApiError(
+        { statusCode, error: "Error", message: "Error", details: [] },
+        statusCode,
+      );
+
+    it("solo el autor ve Editar", () => {
+      const { rerender } = render(
+        <PostCard post={BASE_POST} currentUserId="otro-usuario" />,
+      );
+      expect(
+        screen.queryByRole("button", { name: "Editar" }),
+      ).not.toBeInTheDocument();
+      rerender(<PostCard post={BASE_POST} currentUserId={owner} />);
+      expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
+    });
+
+    it("caso feliz: guarda el texto nuevo con PATCH y muestra · editado", async () => {
+      const user = userEvent.setup();
+      render(<PostCard post={BASE_POST} currentUserId={owner} />);
+      expect(screen.queryByText(/editado/)).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+      const box = screen.getByLabelText("Editar el texto de la publicación");
+      expect(box).toHaveValue("Primer atardecer del semestre");
+      expect(box).toHaveFocus();
+      // Mientras edita, no se puede editar ni eliminar otra vez
+      expect(
+        screen.queryByRole("button", { name: "Eliminar" }),
+      ).not.toBeInTheDocument();
+
+      await user.clear(box);
+      await user.type(box, "Segundo atardecer");
+      apiFetchClient.mockResolvedValueOnce({
+        ...BASE_POST,
+        content: "Segundo atardecer",
+        editedAt: new Date().toISOString(),
+      } satisfies PostDto);
+      await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+      expect(apiFetchClient).toHaveBeenCalledWith(`/api/posts/${BASE_POST.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Segundo atardecer" }),
+      });
+      expect(await screen.findByText("Segundo atardecer")).toBeInTheDocument();
+      expect(screen.getByText(/· editado/)).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Editar el texto de la publicación"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("una publicación ya editada muestra · editado al cargar", () => {
+      render(
+        <PostCard
+          post={{ ...BASE_POST, editedAt: new Date().toISOString() }}
+        />,
+      );
+      expect(screen.getByText(/· editado/)).toBeInTheDocument();
+    });
+
+    it("Cancelar y Escape descartan los cambios sin llamar a la api", async () => {
+      const user = userEvent.setup();
+      render(<PostCard post={BASE_POST} currentUserId={owner} />);
+
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+      await user.type(
+        screen.getByLabelText("Editar el texto de la publicación"),
+        " cambio",
+      );
+      await user.click(screen.getByRole("button", { name: "Cancelar" }));
+      expect(
+        screen.getByText("Primer atardecer del semestre"),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+      const box = screen.getByLabelText("Editar el texto de la publicación");
+      expect(box).toHaveValue("Primer atardecer del semestre");
+      fireEvent.keyDown(box, { key: "Escape" });
+      expect(
+        screen.queryByLabelText("Editar el texto de la publicación"),
+      ).not.toBeInTheDocument();
+      expect(apiFetchClient).not.toHaveBeenCalled();
+    });
+
+    it("sin imágenes no deja guardar vacío (RN03), ni guardar sin cambios", async () => {
+      const user = userEvent.setup();
+      render(<PostCard post={BASE_POST} currentUserId={owner} />);
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+
+      const save = screen.getByRole("button", { name: "Guardar" });
+      expect(save).toBeDisabled(); // sin cambios
+      await user.clear(screen.getByLabelText("Editar el texto de la publicación"));
+      expect(save).toBeDisabled(); // vacía y sin imágenes
+    });
+
+    it("con imágenes sí se puede quitar todo el texto", async () => {
+      const user = userEvent.setup();
+      const post: PostDto = {
+        ...BASE_POST,
+        media: [
+          { publicId: "users/u1/a", mediaType: "image", width: 10, height: 10 },
+        ],
+      };
+      render(<PostCard post={post} currentUserId={owner} />);
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+      await user.clear(screen.getByLabelText("Editar el texto de la publicación"));
+      expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
+      // La imagen se sigue viendo mientras edita
+      expect(
+        screen.getByRole("img", { name: /Imagen de la publicación/ }),
+      ).toBeInTheDocument();
+    });
+
+    it.each([
+      [403, "No tienes permiso."],
+      [404, "Esta publicación ya no existe."],
+    ])("si la api responde %i, avisa y sigue editando", async (status, text) => {
+      const user = userEvent.setup();
+      render(<PostCard post={BASE_POST} currentUserId={owner} />);
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+      await user.type(
+        screen.getByLabelText("Editar el texto de la publicación"),
+        "!",
+      );
+      apiFetchClient.mockRejectedValueOnce(apiError(status));
+      await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+      expect(await screen.findByText(text)).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Editar el texto de la publicación"),
+      ).toHaveValue("Primer atardecer del semestre!");
+    });
   });
 });

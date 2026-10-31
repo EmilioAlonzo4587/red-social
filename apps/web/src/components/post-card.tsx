@@ -3,14 +3,28 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { LikeStatusDto, PostDto } from "@red/api-types";
+import type { LikeStatusDto, PostDto, UpdatePostDto } from "@red/api-types";
 import { Avatar } from "@/components/avatar";
 import { focusCommentInput } from "@/components/comment-section";
 import { QuickCommentBox } from "@/components/quick-comment-box";
 import { apiFetchClient } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-error";
 import { formatRelativeTime } from "@/lib/format";
 import { cloudinaryImageUrl } from "@/lib/media";
 import { subscribePostComments, subscribePostLikes } from "@/lib/socket";
+
+// Mismo límite que POST/PATCH /api/posts (RN03)
+const MAX_CONTENT_LENGTH = 2000;
+
+function editErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.statusCode === 400)
+      return "El texto puede tener hasta 2000 caracteres y no puede quedar vacío si la publicación no tiene imágenes.";
+    if (error.statusCode === 403) return "No tienes permiso.";
+    if (error.statusCode === 404) return "Esta publicación ya no existe.";
+  }
+  return "No se pudo guardar. Intenta de nuevo.";
+}
 
 function imageAlt(index: number, total: number, authorName: string): string {
   return total === 1
@@ -42,6 +56,13 @@ export function PostCard({
   >("idle");
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleted, setDeleted] = useState(false);
+  // Editar el texto (S4-06): content y editedAt cambian sin recargar la lista
+  const [content, setContent] = useState(post.content);
+  const [editedAt, setEditedAt] = useState(post.editedAt);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const isOwner = currentUserId !== undefined && post.author.id === currentUserId;
 
@@ -71,6 +92,33 @@ export function PostCard({
     }
   }
 
+  function startEditing() {
+    setDraft(content ?? "");
+    setEditError(null);
+    setEditing(true);
+  }
+
+  async function saveEdit(event: React.FormEvent) {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setEditError(null);
+    try {
+      const updated = await apiFetchClient<PostDto>(`/api/posts/${post.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: draft } satisfies UpdatePostDto),
+      });
+      setContent(updated.content);
+      setEditedAt(updated.editedAt);
+      setEditing(false);
+    } catch (error) {
+      setEditError(editErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function toggleLike() {
     if (liking) return;
     const next = !likedByMe;
@@ -97,36 +145,96 @@ export function PostCard({
 
   if (deleted) return null;
 
+  const draftTrimmed = draft.trim();
+  // Sin imágenes no puede quedar vacía (RN03); sin cambios no hace falta guardar
+  const canSave =
+    !saving &&
+    (draftTrimmed.length > 0 || post.media.length > 0) &&
+    draftTrimmed !== (content ?? "");
+
+  const editForm = (
+    <form
+      noValidate
+      onSubmit={saveEdit}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && !saving) setEditing(false);
+      }}
+      className="flex flex-col gap-2"
+    >
+      <label htmlFor={`edit-post-${post.id}`} className="sr-only">
+        Editar el texto de la publicación
+      </label>
+      <textarea
+        id={`edit-post-${post.id}`}
+        value={draft}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          setEditError(null);
+        }}
+        maxLength={MAX_CONTENT_LENGTH}
+        rows={3}
+        autoFocus
+        aria-invalid={editError !== null}
+        className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-base leading-[1.55] outline-primary"
+      />
+      {editError && <p className="text-sm text-red-600">{editError}</p>}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted tabular-nums">
+          {draft.length} / {MAX_CONTENT_LENGTH}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            disabled={saving}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-surface disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={!canSave}
+            className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? "Guardando…" : "Guardar"}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+
+  const mediaGrid = post.media.length > 0 && (
+    <div
+      className={`mt-1 grid gap-1 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+    >
+      {post.media.map((media, index) => (
+        <div
+          key={media.publicId}
+          className="relative aspect-video overflow-hidden rounded-xl bg-surface"
+        >
+          {/* Antes alt="": el lector de pantalla se saltaba las fotos (S4-06). No
+              se sabe qué muestran, pero sí que existen y de quién son. */}
+          <Image
+            src={cloudinaryImageUrl(media.publicId)}
+            alt={imageAlt(index, post.media.length, authorName)}
+            fill
+            sizes="(max-width: 640px) 100vw, 576px"
+            className="object-cover"
+          />
+        </div>
+      ))}
+    </div>
+  );
+
   const postBody = (
     <>
-      {post.content && (
+      {content && (
         <p className="whitespace-pre-line text-base leading-[1.55] [overflow-wrap:anywhere]">
-          {post.content}
+          {content}
         </p>
       )}
 
-      {post.media.length > 0 && (
-        <div
-          className={`mt-1 grid gap-1 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
-        >
-          {post.media.map((media, index) => (
-            <div
-              key={media.publicId}
-              className="relative aspect-video overflow-hidden rounded-xl bg-surface"
-            >
-              {/* Antes alt="": el lector de pantalla se saltaba las fotos (S4-06). No
-                  se sabe qué muestran, pero sí que existen y de quién son. */}
-              <Image
-                src={cloudinaryImageUrl(media.publicId)}
-                alt={imageAlt(index, post.media.length, authorName)}
-                fill
-                sizes="(max-width: 640px) 100vw, 576px"
-                className="object-cover"
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      {mediaGrid}
     </>
   );
 
@@ -158,17 +266,28 @@ export function PostCard({
           </Link>
           <span className="text-xs text-muted">
             @{post.author.username} · {formatRelativeTime(post.createdAt)}
+            {editedAt && " · editado"}
           </span>
         </div>
 
-        {isOwner && deleteStage === "idle" && (
-          <button
-            type="button"
-            onClick={() => setDeleteStage("confirming")}
-            className="tap-area ml-auto text-xs text-muted hover:text-red-600"
-          >
-            Eliminar
-          </button>
+        {/* gap-5: las zonas táctiles (tap-area) crecen 10px a cada lado y no se pisan */}
+        {isOwner && deleteStage === "idle" && !editing && (
+          <div className="ml-auto flex shrink-0 items-center gap-5">
+            <button
+              type="button"
+              onClick={startEditing}
+              className="tap-area text-xs text-muted hover:text-primary"
+            >
+              Editar
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeleteStage("confirming")}
+              className="tap-area text-xs text-muted hover:text-red-600"
+            >
+              Eliminar
+            </button>
+          </div>
         )}
       </div>
 
@@ -195,7 +314,13 @@ export function PostCard({
       )}
       {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
 
-      {linkToDetail ? (
+      {/* Editando, el texto es un cuadro: no puede ir dentro del enlace al detalle */}
+      {editing ? (
+        <>
+          {editForm}
+          {mediaGrid}
+        </>
+      ) : linkToDetail ? (
         <Link href={`/p/${post.id}`}>{postBody}</Link>
       ) : (
         postBody
