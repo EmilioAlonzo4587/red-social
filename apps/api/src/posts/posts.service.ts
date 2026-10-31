@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DomainEvents } from '../events/domain-events.service';
+import { loadTopReactions } from '../likes/reactions';
 import { CloudinaryService } from '../media/cloudinary.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -74,7 +75,8 @@ export class PostsService {
       select: postSelect(viewerId),
     });
     if (!post) throw new NotFoundException('Publicación no encontrada');
-    return toPostDto(post);
+    const top = await loadTopReactions(this.prisma, [id]);
+    return toPostDto(post, top.get(id));
   }
 
   // RN04: solo el autor edita, y solo el texto. Sin texto tiene que quedar al menos una
@@ -106,7 +108,8 @@ export class PostsService {
       data: { content, editedAt: new Date() },
       select: postSelect(userId),
     });
-    return toPostDto(updated);
+    const top = await loadTopReactions(this.prisma, [id]);
+    return toPostDto(updated, top.get(id));
   }
 
   // RN04: solo el autor, con borrado lógico. Las imágenes se borran de Cloudinary después

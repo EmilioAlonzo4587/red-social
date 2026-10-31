@@ -24,12 +24,13 @@ import {
   notifyNotificationsRead,
   subscribeNotificationNew,
 } from "@/lib/socket";
+import { reactionActionText } from "@/lib/reactions";
 
 export const TOAST_DURATION_MS = 5000;
 export const MAX_TOASTS = 3;
 
 export const NOTIFICATION_ACTION: Record<NotificationDto["type"], string> = {
-  like: "le dio me gusta a tu publicación",
+  like: "reaccionó a tu publicación",
   comment: "comentó tu publicación",
   follow: "empezó a seguirte",
   message: "te envió un mensaje",
@@ -265,7 +266,8 @@ export function NotificationToaster() {
               <div className="min-w-0 flex-1 text-sm">
                 <p className="text-foreground">
                   <span className="font-semibold">{actorName}</span>{" "}
-                  {NOTIFICATION_ACTION[notification.type]}
+                  {reactionActionText(notification.reaction) ??
+                    NOTIFICATION_ACTION[notification.type]}
                 </p>
                 {notification.preview && (
                   <p className="mt-0.5 truncate text-xs text-muted">

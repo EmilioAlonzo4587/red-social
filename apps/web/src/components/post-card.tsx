@@ -3,14 +3,22 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { LikeStatusDto, PostDto, UpdatePostDto } from "@red/api-types";
+import type {
+  LikeStatusDto,
+  PostDto,
+  ReactionType,
+  ReactToPostDto,
+  UpdatePostDto,
+} from "@red/api-types";
 import { Avatar } from "@/components/avatar";
 import { focusCommentInput } from "@/components/comment-section";
 import { QuickCommentBox } from "@/components/quick-comment-box";
+import { ReactionButton } from "@/components/reaction-button";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
 import { formatRelativeTime } from "@/lib/format";
 import { cloudinaryImageUrl } from "@/lib/media";
+import { reactionInfo } from "@/lib/reactions";
 import { subscribePostComments, subscribePostLikes } from "@/lib/socket";
 
 // Mismo límite que POST/PATCH /api/posts (RN03)
@@ -45,7 +53,8 @@ export function PostCard({
   onDeleted?: () => void;
 }) {
   const authorName = post.author.displayName ?? post.author.username;
-  const [likedByMe, setLikedByMe] = useState(post.likedByMe);
+  const [myReaction, setMyReaction] = useState(post.myReaction);
+  const [topReactions, setTopReactions] = useState(post.topReactions);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [commentBoxOpen, setCommentBoxOpen] = useState(false);
@@ -69,7 +78,10 @@ export function PostCard({
   // S2-03/S3-18: se suscribe a post:{id} mientras la tarjeta está en pantalla y hace unwatch al desmontar
   useEffect(() => {
     if (deleted) return;
-    return subscribePostLikes(post.id, setLikeCount);
+    return subscribePostLikes(post.id, (count, top) => {
+      setLikeCount(count);
+      setTopReactions(top);
+    });
   }, [post.id, deleted]);
 
   useEffect(() => {
@@ -119,25 +131,35 @@ export function PostCard({
     }
   }
 
-  async function toggleLike() {
+  async function changeReaction(next: ReactionType | null) {
     if (liking) return;
-    const next = !likedByMe;
-    const previous = { likedByMe, likeCount };
+    const previous = { myReaction, likeCount, topReactions };
 
-    // Optimista (S2-10): se ve al toque, se corrige si la api falla.
-    setLikedByMe(next);
-    setLikeCount((count) => count + (next ? 1 : -1));
+    // Optimista (S2-10): se ve al toque, se corrige si la api falla. Cambiar de reacción no
+    // mueve el total; los emojis más usados llegan con la respuesta.
+    setMyReaction(next);
+    if (previous.myReaction === null) setLikeCount((count) => count + 1);
+    if (next === null) setLikeCount((count) => count - 1);
+    if (next && topReactions.length === 0) setTopReactions([next]);
     setLiking(true);
     try {
       const result = await apiFetchClient<LikeStatusDto>(
         `/api/posts/${post.id}/like`,
-        { method: next ? "PUT" : "DELETE" },
+        next
+          ? {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reaction: next } satisfies ReactToPostDto),
+            }
+          : { method: "DELETE" },
       );
-      setLikedByMe(result.likedByMe);
+      setMyReaction(result.myReaction);
       setLikeCount(result.likeCount);
+      setTopReactions(result.topReactions);
     } catch {
-      setLikedByMe(previous.likedByMe);
+      setMyReaction(previous.myReaction);
       setLikeCount(previous.likeCount);
+      setTopReactions(previous.topReactions);
     } finally {
       setLiking(false);
     }
@@ -238,6 +260,12 @@ export function PostCard({
     </>
   );
 
+  const reactionsLabel = `${likeCount} ${likeCount === 1 ? "reacción" : "reacciones"}${
+    topReactions.length > 0
+      ? `: ${topReactions.map((type) => reactionInfo(type).label).join(", ")}`
+      : ""
+  }`;
+
   const commentLabel = `Comentar (${commentCount} ${commentCount === 1 ? "comentario" : "comentarios"})`;
 
   return (
@@ -326,20 +354,19 @@ export function PostCard({
         postBody
       )}
 
-      <div className="flex gap-[22px] text-sm tabular-nums">
-        <button
-          type="button"
-          onClick={toggleLike}
-          aria-pressed={likedByMe}
-          aria-label={likedByMe ? "Quitar like" : "Dar like"}
-          className={
-            likedByMe
-              ? "tap-area font-semibold text-red-600"
-              : "tap-area text-muted hover:text-red-600"
-          }
-        >
-          ❤ {likeCount}
-        </button>
+      <div className="flex flex-wrap items-center gap-x-[22px] gap-y-2 text-sm tabular-nums">
+        <ReactionButton
+          myReaction={myReaction}
+          onSelect={changeReaction}
+          onRemove={() => changeReaction(null)}
+        />
+        <span className="text-muted">
+          <span aria-hidden="true">
+            {topReactions.map((type) => reactionInfo(type).emoji).join("")}{" "}
+            {likeCount}
+          </span>
+          <span className="sr-only">{reactionsLabel}</span>
+        </span>
         {/* En el feed abre el recuadro para comentar debajo de la publicación; ya en
             el detalle, enfoca el formulario de CommentSection, que está justo abajo. */}
         {linkToDetail ? (

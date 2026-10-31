@@ -41,6 +41,7 @@ describe('NotificationsService', () => {
     postId: 'p1',
     commentId: null,
     preview: null,
+    reaction: null,
     read: false,
     createdAt: row.createdAt,
   };

@@ -1,6 +1,7 @@
 // Eventos de Socket.io de docs/05-api.md. Socket.io usa estas interfaces para revisar el nombre
 // y los datos de cada emit: un evento que no está aquí no compila.
 import type { UserSummaryData } from '../events/domain-events';
+import type { ReactionType } from '../likes/reactions';
 
 export interface PostWatchPayload {
   postIds: string[];
@@ -9,6 +10,7 @@ export interface PostWatchPayload {
 export interface PostLikesEvent {
   postId: string;
   likeCount: number;
+  topReactions: ReactionType[];
 }
 
 export interface PostCommentsEvent {
@@ -68,6 +70,7 @@ export interface NotificationNewEvent {
   postId: string | null;
   commentId: string | null;
   preview: string | null;
+  reaction: ReactionType | null;
   read: boolean;
   createdAt: string;
 }

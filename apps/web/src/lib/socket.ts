@@ -10,6 +10,7 @@ import type {
   NotificationNewEvent,
   PostCommentsEvent,
   PostLikesEvent,
+  ReactionType,
   ServerToClientEvents,
   UserPresenceEvent,
 } from "@red/api-types";
@@ -20,7 +21,10 @@ export type AppClientSocket = Socket<
   ClientToServerEvents
 >;
 
-type LikeCountListener = (likeCount: number) => void;
+type LikeCountListener = (
+  likeCount: number,
+  topReactions: ReactionType[],
+) => void;
 type CommentCountListener = (commentCount: number) => void;
 type MessageListener = (message: MessageNewEvent) => void;
 type ConversationJoinResultListener = (ack: ConversationJoinAck) => void;
@@ -161,11 +165,11 @@ function getSocket(): AppClientSocket {
   socket = instance;
   needsResubscribe = false;
 
-  instance.on("post:likes", ({ postId, likeCount }: PostLikesEvent) => {
+  instance.on("post:likes", ({ postId, likeCount, topReactions }: PostLikesEvent) => {
     const set = likeListenersByPost.get(postId);
     if (!set) return;
     for (const listener of set) {
-      listener(likeCount);
+      listener(likeCount, topReactions);
     }
   });
 

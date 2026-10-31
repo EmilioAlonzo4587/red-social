@@ -1,4 +1,4 @@
-import { Controller, Delete, Param, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Param, Put } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiCookieAuth,
@@ -12,6 +12,7 @@ import type { SessionUser } from '../auth/session.guard';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { postIdPipe } from '../posts/post-id.pipe';
 import { LikeStatusDto } from './dto/like-status.dto';
+import { ReactToPostDto } from './dto/react-to-post.dto';
 import { LikesService } from './likes.service';
 
 // Rutas bajo /posts/:id, junto a las de PostsController
@@ -20,7 +21,7 @@ import { LikesService } from './likes.service';
 @ApiUnauthorizedResponse({ type: ErrorResponseDto })
 @ApiBadRequestResponse({
   type: ErrorResponseDto,
-  description: 'id no es un UUID',
+  description: 'id no es un UUID o la reacción no es válida',
 })
 @ApiNotFoundResponse({
   type: ErrorResponseDto,
@@ -33,24 +34,26 @@ export class LikesController {
   @Put()
   @ApiOkResponse({
     type: LikeStatusDto,
-    description: 'Repetirlo responde lo mismo y no cuenta otro like (RN05)',
+    description:
+      'Sin reaction cuenta como Me gusta. Repetirla responde lo mismo y elegir otra la reemplaza sin sumar al total (RN05)',
   })
-  like(
+  react(
     @Param('id', postIdPipe) id: string,
     @CurrentUser() user: SessionUser,
+    @Body() dto: ReactToPostDto,
   ): Promise<LikeStatusDto> {
-    return this.likes.like(id, user.id);
+    return this.likes.react(id, user.id, dto.reaction);
   }
 
   @Delete()
   @ApiOkResponse({
     type: LikeStatusDto,
-    description: 'Quitar un like que no existe responde lo mismo',
+    description: 'Quitar una reacción que no existe responde lo mismo',
   })
-  unlike(
+  unreact(
     @Param('id', postIdPipe) id: string,
     @CurrentUser() user: SessionUser,
   ): Promise<LikeStatusDto> {
-    return this.likes.unlike(id, user.id);
+    return this.likes.unreact(id, user.id);
   }
 }

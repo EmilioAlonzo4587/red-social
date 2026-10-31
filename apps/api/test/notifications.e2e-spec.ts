@@ -141,6 +141,7 @@ describe('Notificaciones (e2e)', () => {
           'postId',
           'commentId',
           'preview',
+          'reaction',
           'read',
           'createdAt',
         ].sort(),
@@ -189,6 +190,51 @@ describe('Notificaciones (e2e)', () => {
       expect(
         pageOf(await listOf(ana.cookie)).items.filter((n) => n.type === 'like'),
       ).toHaveLength(1);
+    });
+
+    it('like: la lista muestra la reacción actual y cambiarla no crea otra notificación', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+      const postId = await postBy(ana.id);
+      const react = (reaction: string) =>
+        request(server)
+          .put(`/api/posts/${postId}/like`)
+          .set('Cookie', beto.cookie)
+          .send({ reaction })
+          .expect(200);
+
+      await react('love');
+      await waitForNotifications(ana.id, 1);
+      expect(emit).toHaveBeenCalledWith('notification.created', {
+        recipientId: ana.id,
+        notification: expect.objectContaining({
+          type: 'like',
+          reaction: 'love',
+        }) as unknown,
+      });
+      expect(pageOf(await listOf(ana.cookie)).items[0].reaction).toBe('love');
+
+      await react('sad');
+      // Un follow final confirma que los listeners anteriores ya terminaron
+      await request(server)
+        .put('/api/users/ana_lopez/follow')
+        .set('Cookie', beto.cookie)
+        .expect(200);
+      await waitForNotifications(ana.id, 2);
+      const likes = pageOf(await listOf(ana.cookie)).items.filter(
+        (n) => n.type === 'like',
+      );
+      expect(likes).toHaveLength(1);
+      expect(likes[0].reaction).toBe('sad');
+
+      await request(server)
+        .delete(`/api/posts/${postId}/like`)
+        .set('Cookie', beto.cookie)
+        .expect(200);
+      const afterRemove = pageOf(await listOf(ana.cookie)).items.filter(
+        (n) => n.type === 'like',
+      );
+      expect(afterRemove[0].reaction).toBeNull();
     });
 
     it('comment: lleva la publicación, el comentario y su preview (~80 caracteres)', async () => {

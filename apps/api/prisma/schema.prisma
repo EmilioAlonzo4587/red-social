@@ -114,6 +114,8 @@ model Comment {
 model PostLike {
   userId    String   @map("user_id") @db.Uuid
   postId    String   @map("post_id") @db.Uuid
+  // CHECK en la migración: like, love, haha, wow, sad o angry
+  reaction  String   @default("like") @db.VarChar(10)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)

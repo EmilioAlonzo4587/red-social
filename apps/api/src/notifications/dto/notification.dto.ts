@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { REACTIONS, type ReactionType } from '../../likes/reactions';
 import { UserSummaryDto } from '../../users/dto/user-summary.dto';
 
 export const NOTIFICATION_TYPES = [
@@ -44,6 +45,15 @@ export class NotificationDto {
       'Primeros ~80 caracteres del comentario o del último mensaje del remitente',
   })
   preview!: string | null;
+
+  @ApiProperty({
+    enum: REACTIONS,
+    nullable: true,
+    example: 'love',
+    description:
+      'En like: la reacción actual de actor; null si ya la quitó o si es de otro tipo',
+  })
+  reaction!: ReactionType | null;
 
   @ApiProperty({ example: false })
   read!: boolean;

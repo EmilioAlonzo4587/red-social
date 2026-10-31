@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type { CountChange } from '../events/domain-events';
+import type { LikeChange } from '../events/domain-events';
 import { DomainEvents } from '../events/domain-events.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LikeStatusDto } from './dto/like-status.dto';
+import { loadTopReactions, type ReactionType } from './reactions';
 
 @Injectable()
 export class LikesService {
@@ -12,35 +13,45 @@ export class LikesService {
     private readonly events: DomainEvents,
   ) {}
 
-  // Idempotente (RN05): si ya le di like no crea otra fila, no cambia el contador y no
-  // emite like.changed. ON CONFLICT DO NOTHING: dos PUT al mismo tiempo tampoco duplican.
-  like(postId: string, userId: string): Promise<LikeStatusDto> {
-    return this.change(postId, userId, 'added', async (tx) => {
+  // Una sola reacción por persona (RN05). Repetir la misma no cambia nada ni emite
+  // like.changed; elegir otra la reemplaza sin sumar al total. ON CONFLICT DO NOTHING:
+  // dos PUT al mismo tiempo tampoco duplican.
+  react(
+    postId: string,
+    userId: string,
+    reaction: ReactionType = 'like',
+  ): Promise<LikeStatusDto> {
+    return this.change(postId, userId, reaction, async (tx) => {
       const { count } = await tx.postLike.createMany({
-        data: [{ userId, postId }],
+        data: [{ userId, postId, reaction }],
         skipDuplicates: true,
       });
-      return count === 1;
+      if (count === 1) return 'added';
+      const updated = await tx.postLike.updateMany({
+        where: { userId, postId, reaction: { not: reaction } },
+        data: { reaction },
+      });
+      return updated.count === 1 ? 'changed' : null;
     });
   }
 
-  // Quitar un like que no existe responde igual, con el contador sin cambios
-  unlike(postId: string, userId: string): Promise<LikeStatusDto> {
-    return this.change(postId, userId, 'removed', async (tx) => {
+  // Quitar una reacción que no existe responde igual, con el contador sin cambios
+  unreact(postId: string, userId: string): Promise<LikeStatusDto> {
+    return this.change(postId, userId, null, async (tx) => {
       const { count } = await tx.postLike.deleteMany({
         where: { userId, postId },
       });
-      return count === 1;
+      return count === 1 ? 'removed' : null;
     });
   }
 
-  // La fila del like y like_count cambian en la misma transacción (D05). El evento sale
-  // después de confirmarla, solo si el contador cambió.
+  // La fila de la reacción y like_count cambian en la misma transacción (D05). El evento
+  // sale después de confirmarla, solo si algo cambió.
   private async change(
     postId: string,
     userId: string,
-    change: CountChange,
-    write: (tx: Prisma.TransactionClient) => Promise<boolean>,
+    myReaction: ReactionType | null,
+    write: (tx: Prisma.TransactionClient) => Promise<LikeChange | null>,
   ): Promise<LikeStatusDto> {
     const result = await this.prisma.$transaction(async (tx) => {
       const post = await tx.post.findFirst({
@@ -49,32 +60,43 @@ export class LikesService {
       });
       if (!post) throw new NotFoundException('Publicación no encontrada');
 
-      if (!(await write(tx))) {
-        return {
-          changed: false,
-          authorId: post.authorId,
-          likeCount: post.likeCount,
-        };
+      const change = await write(tx);
+      let likeCount = post.likeCount;
+      if (change === 'added' || change === 'removed') {
+        const updated = await tx.post.update({
+          where: { id: postId },
+          data: {
+            likeCount: change === 'added' ? { increment: 1 } : { decrement: 1 },
+          },
+          select: { likeCount: true },
+        });
+        likeCount = updated.likeCount;
       }
-      const { likeCount } = await tx.post.update({
-        where: { id: postId },
-        data: {
-          likeCount: change === 'added' ? { increment: 1 } : { decrement: 1 },
-        },
-        select: { likeCount: true },
-      });
-      return { changed: true, authorId: post.authorId, likeCount };
+      const top = await loadTopReactions(tx, [postId]);
+      return {
+        change,
+        authorId: post.authorId,
+        likeCount,
+        topReactions: top.get(postId) ?? [],
+      };
     });
 
-    if (result.changed) {
+    if (result.change) {
       this.events.emit('like.changed', {
         postId,
         postAuthorId: result.authorId,
         actorId: userId,
-        change,
+        change: result.change,
         likeCount: result.likeCount,
+        topReactions: result.topReactions,
+        reaction: myReaction,
       });
     }
-    return { likeCount: result.likeCount, likedByMe: change === 'added' };
+    return {
+      likeCount: result.likeCount,
+      likedByMe: myReaction !== null,
+      myReaction,
+      topReactions: result.topReactions,
+    };
   }
 }

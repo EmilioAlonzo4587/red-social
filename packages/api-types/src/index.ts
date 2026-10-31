@@ -20,6 +20,8 @@ export type UpdatePostDto = components["schemas"]["UpdatePostDto"];
 export type PostMediaInputDto = components["schemas"]["PostMediaInputDto"];
 export type PostPageDto = components["schemas"]["PostPageDto"];
 export type LikeStatusDto = components["schemas"]["LikeStatusDto"];
+export type ReactToPostDto = components["schemas"]["ReactToPostDto"];
+export type ReactionType = NonNullable<PostDto["myReaction"]>;
 export type CommentDto = components["schemas"]["CommentDto"];
 export type CommentPageDto = components["schemas"]["CommentPageDto"];
 export type CreateCommentDto = components["schemas"]["CreateCommentDto"];
@@ -45,6 +47,7 @@ export interface PostWatchPayload {
 export interface PostLikesEvent {
   postId: string;
   likeCount: number;
+  topReactions: ReactionType[];
 }
 
 export interface PostCommentsEvent {
