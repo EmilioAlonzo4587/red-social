@@ -305,6 +305,16 @@ describe("FeedPage", () => {
     expect(screen.queryByText("@ana_lopez")).not.toBeInTheDocument();
   });
 
+  it("muestra tu foto a la izquierda del compositor solo en el celular (S4-16)", async () => {
+    apiFetchClient.mockResolvedValueOnce(page([])); // explorar inicial
+    render(<FeedPage />);
+    const composer = screen.getByPlaceholderText("¿Qué estás pensando?");
+    const row = composer.closest("form")?.parentElement?.parentElement;
+    await waitFor(() => expect(row).toHaveTextContent(/^AL/));
+    // Oculta desde sm: ahí ya está la tarjeta de perfil de la columna derecha
+    expect(row?.firstElementChild).toHaveClass("sm:hidden");
+  });
+
   it("en Explorar muestra 'Ver N publicaciones nuevas' con las caras al recibir explore:new y recarga al tocarlo (S4-15)", async () => {
     const user = userEvent.setup();
     const scrollTo = vi.fn();

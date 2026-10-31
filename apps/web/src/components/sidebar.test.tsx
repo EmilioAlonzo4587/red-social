@@ -248,6 +248,13 @@ describe("Sidebar", () => {
         "href",
         `/u/${ME.username}`,
       );
+      // S4-16: en el celular, tu foto (aquí sin foto: tus iniciales) en vez del ícono
+      expect(
+        mobile().getByRole("link", { name: "Mi perfil" }).querySelector("svg"),
+      ).toBeNull();
+      expect(
+        mobile().getByRole("link", { name: "Mi perfil" }),
+      ).toHaveTextContent(/^[A-Z]{1,2}Mi perfil$/);
     });
     expect(mobile().getByLabelText("2 sin leer")).toHaveTextContent("2");
   });
