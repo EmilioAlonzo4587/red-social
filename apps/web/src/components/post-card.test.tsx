@@ -83,7 +83,8 @@ describe("PostCard", () => {
     ).toHaveAttribute("href", `/p/${BASE_POST.id}`);
   });
 
-  it("las imágenes quedan fuera del enlace al detalle y la hora enlaza al detalle (S4-15)", () => {
+  it("en el feed la imagen y la hora llevan al detalle; en el detalle la imagen abre el visor (S4-16)", async () => {
+    const user = userEvent.setup();
     const post: PostDto = {
       ...BASE_POST,
       content: null,
@@ -91,15 +92,30 @@ describe("PostCard", () => {
         { publicId: "users/u1/a", mediaType: "image", width: 10, height: 10 },
       ],
     };
-    render(<PostCard post={post} />);
-    const image = screen.getByRole("button", {
-      name: "Ver imagen de la publicación de Ana López",
-    });
-    expect(image.closest("a")).not.toBeInTheDocument();
-    const detailLinks = screen
-      .getAllByRole("link")
-      .filter((link) => link.getAttribute("href") === `/p/${BASE_POST.id}`);
-    expect(detailLinks).toHaveLength(1);
+    const { unmount } = render(<PostCard post={post} />);
+    expect(
+      screen.getByRole("link", {
+        name: "Abrir la publicación (imagen de la publicación de Ana López)",
+      }),
+    ).toHaveAttribute("href", `/p/${BASE_POST.id}`);
+    expect(
+      screen.queryByRole("button", { name: /^Ver imagen/ }),
+    ).not.toBeInTheDocument();
+    // La hora también enlaza al detalle
+    expect(
+      screen
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("href") === `/p/${BASE_POST.id}`),
+    ).toHaveLength(2);
+    unmount();
+
+    render(<PostCard post={post} linkToDetail={false} />);
+    await user.click(
+      screen.getByRole("button", {
+        name: "Ver imagen de la publicación de Ana López",
+      }),
+    );
+    expect(screen.getByRole("dialog", { name: "Imagen ampliada" })).toBeInTheDocument();
   });
 
   it("linkToDetail=false (S3-08, ya estás en /p/[id]): no enlaza el contenido a sí misma", () => {

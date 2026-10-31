@@ -218,7 +218,14 @@ export function PostCard({
     </form>
   );
 
-  const media = <PostMedia media={post.media} authorName={authorName} />;
+  // En el feed y los perfiles, la imagen lleva al detalle; ya ahí, abre el visor (S4-16)
+  const media = (
+    <PostMedia
+      media={post.media}
+      authorName={authorName}
+      detailHref={linkToDetail ? `/p/${post.id}` : undefined}
+    />
+  );
 
   const contentText = content && (
     <p className="whitespace-pre-line text-base leading-[1.55] [overflow-wrap:anywhere]">

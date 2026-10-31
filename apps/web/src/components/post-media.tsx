@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRef, useState } from "react";
 import type { MediaDto } from "@red/api-types";
 import { ImageViewer } from "@/components/image-viewer";
@@ -18,14 +19,17 @@ function imageAlt(index: number, total: number, authorName: string): string {
 
 /**
  * Imágenes de una publicación (S4-15): cada una se ve completa, con su proporción real
- * y sin estirarse; el sobrante queda con el fondo surface. Al tocarla se abre el visor.
+ * y sin estirarse; el sobrante queda con el fondo surface. Con detailHref (feed y
+ * perfiles) tocarla lleva a la publicación; sin él (ya en /p/[id]) abre el visor (S4-16).
  */
 export function PostMedia({
   media,
   authorName,
+  detailHref,
 }: {
   media: MediaDto[];
   authorName: string;
+  detailHref?: string;
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -52,19 +56,11 @@ export function PostMedia({
       <div
         className={`mt-1 grid gap-1 ${single ? "grid-cols-1" : "grid-cols-2"}`}
       >
-        {images.map((image, index) => (
-          <button
-            key={image.publicId}
-            ref={(element) => {
-              buttonsRef.current[index] = element;
-            }}
-            type="button"
-            onClick={() => setOpenIndex(index)}
-            aria-label={`Ver ${image.alt.charAt(0).toLowerCase()}${image.alt.slice(1)}`}
-            className={`flex cursor-zoom-in items-center justify-center overflow-hidden rounded-xl bg-surface ${
-              single ? "" : "aspect-[4/3] [container-type:size]"
-            }`}
-          >
+        {images.map((image, index) => {
+          const frameClass = `flex items-center justify-center overflow-hidden rounded-xl bg-surface ${
+            single ? "" : "aspect-[4/3] [container-type:size]"
+          }`;
+          const picture = (
             <span
               className="relative block"
               style={
@@ -85,8 +81,33 @@ export function PostMedia({
                 className="object-contain"
               />
             </span>
-          </button>
-        ))}
+          );
+          const lowerAlt = `${image.alt.charAt(0).toLowerCase()}${image.alt.slice(1)}`;
+
+          return detailHref ? (
+            <Link
+              key={image.publicId}
+              href={detailHref}
+              aria-label={`Abrir la publicación (${lowerAlt})`}
+              className={frameClass}
+            >
+              {picture}
+            </Link>
+          ) : (
+            <button
+              key={image.publicId}
+              ref={(element) => {
+                buttonsRef.current[index] = element;
+              }}
+              type="button"
+              onClick={() => setOpenIndex(index)}
+              aria-label={`Ver ${lowerAlt}`}
+              className={`${frameClass} cursor-zoom-in`}
+            >
+              {picture}
+            </button>
+          );
+        })}
       </div>
 
       {openIndex !== null && (
