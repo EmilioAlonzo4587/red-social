@@ -9,7 +9,13 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type { MeDto, NotificationDto } from "@red/api-types";
+import type {
+  ConversationDto,
+  MeDto,
+  MessageDto,
+  NotificationDto,
+  UserSummaryDto,
+} from "@red/api-types";
 import { Avatar } from "@/components/avatar";
 import { apiFetchClient } from "@/lib/api-client";
 import {
@@ -22,14 +28,29 @@ import { PUBLIC_PATHS } from "@/lib/public-paths";
 import {
   getActiveChatUser,
   notifyNotificationsRead,
+  subscribeConversationUpdated,
   subscribeNotificationNew,
 } from "@/lib/socket";
 import { reactionActionText } from "@/lib/reactions";
 
 export const TOAST_DURATION_MS = 5000;
-export const MAX_TOASTS = 3;
 
-export const NOTIFICATION_ACTION: Record<NotificationDto["type"], string> = {
+// Los mensajes ya no son notificaciones guardadas (S4-15): su aviso sale de
+// conversation:updated, pero se ve igual que los demás.
+export type ToastType = NotificationDto["type"] | "message";
+
+interface Toast {
+  id: string;
+  type: ToastType;
+  actor: UserSummaryDto;
+  actionText: string;
+  preview: string | null;
+  href: string;
+  // La notificación sin leer que se marca al abrir el aviso; null en los de mensaje
+  unreadNotificationId: string | null;
+}
+
+export const NOTIFICATION_ACTION: Record<ToastType, string> = {
   like: "reaccionó a tu publicación",
   comment: "comentó tu publicación",
   follow: "empezó a seguirte",
@@ -38,7 +59,7 @@ export const NOTIFICATION_ACTION: Record<NotificationDto["type"], string> = {
 };
 
 export const NOTIFICATION_ACCENT: Record<
-  NotificationDto["type"],
+  ToastType,
   { border: string; badge: string }
 > = {
   like: { border: "border-l-rose-500", badge: "bg-rose-500 text-white" },
@@ -60,7 +81,7 @@ const ICONS = {
     "M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zm0 2l8 5 8-5",
 };
 
-const TYPE_ICON_PATH: Record<NotificationDto["type"], string> = {
+const TYPE_ICON_PATH: Record<ToastType, string> = {
   like: ICONS.like,
   comment: ICONS.comment,
   follow: ICONS.follow,
@@ -97,15 +118,44 @@ export function notificationHref(notification: NotificationDto): string {
       return `/p/${notification.postId ?? ""}`;
     case "follow":
       return `/u/${encodeURIComponent(notification.actor.username)}`;
-    case "message":
-      return `/chat?username=${encodeURIComponent(notification.actor.username)}`;
   }
+}
+
+function notificationToast(notification: NotificationDto): Toast {
+  return {
+    id: notification.id,
+    type: notification.type,
+    actor: notification.actor,
+    actionText:
+      reactionActionText(notification.reaction) ??
+      NOTIFICATION_ACTION[notification.type],
+    preview: notification.preview,
+    href: notificationHref(notification),
+    unreadNotificationId: notification.read ? null : notification.id,
+  };
+}
+
+// Un aviso por mensaje (S4-15): varios seguidos se apilan
+function messageToast(
+  conversation: ConversationDto,
+  message: MessageDto,
+): Toast {
+  const sender = conversation.otherUser;
+  return {
+    id: `message:${message.id}`,
+    type: "message",
+    actor: sender,
+    actionText: NOTIFICATION_ACTION.message,
+    preview: message.content,
+    href: `/chat?username=${encodeURIComponent(sender.username)}`,
+    unreadNotificationId: null,
+  };
 }
 
 export function NotificationToaster() {
   const pathname = usePathname();
   const isPublic = PUBLIC_PATHS.includes(pathname);
-  const [toasts, setToasts] = useState<NotificationDto[]>([]);
+  const [toasts, setToasts] = useState<Toast[]>([]);
   const muted = useSyncExternalStore(
     subscribeSoundMuted,
     isNotificationSoundMuted,
@@ -157,58 +207,43 @@ export function NotificationToaster() {
       }
     })();
 
+    function showToast(toast: Toast) {
+      playNotificationSound();
+      setToasts((prev) => {
+        const withoutDuplicate = prev.filter((item) => {
+          if (item.id !== toast.id) return true;
+          clearToastTimer(item.id);
+          return false;
+        });
+        // Sin tope desde S4-15: cada uno se va solo a los 5 s
+        return [toast, ...withoutDuplicate];
+      });
+      startToastTimer(toast.id);
+    }
+
     const timers = timersRef.current;
-    const unsub = subscribeNotificationNew((notification) => {
+    const unsubNotification = subscribeNotificationNew((notification) => {
       if (
         currentUserIdRef.current &&
         notification.actor.id === currentUserIdRef.current
       ) {
         return;
       }
+      showToast(notificationToast(notification));
+    });
 
-      // El aviso de mensaje no aparece si esa conversación ya está abierta (S4-11)
-      if (
-        notification.type === "message" &&
-        getActiveChatUser() === notification.actor.id
-      ) {
-        notifyNotificationsRead({ decrement: 1 });
-        void apiFetchClient<void>("/api/notifications/read", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids: [notification.id] }),
-        }).catch(() => {});
-        return;
-      }
-
-      playNotificationSound(notification.type);
-
-      setToasts((prev) => {
-        // En mensajes se muestra como máximo una ventana emergente por remitente
-        const withoutDuplicate = prev.filter((item) => {
-          const sameId = item.id === notification.id;
-          const sameMessageSender =
-            notification.type === "message" &&
-            item.type === "message" &&
-            item.actor.id === notification.actor.id;
-          if (sameId || sameMessageSender) {
-            clearToastTimer(item.id);
-            return false;
-          }
-          return true;
-        });
-        const next = [notification, ...withoutDuplicate];
-        if (next.length > MAX_TOASTS) {
-          for (const evicted of next.slice(MAX_TOASTS)) {
-            clearToastTimer(evicted.id);
-          }
-        }
-        return next.slice(0, MAX_TOASTS);
-      });
-      startToastTimer(notification.id);
+    // conversation:updated llega a los dos participantes con cada mensaje: solo avisa a
+    // quien lo recibe, y no si esa conversación ya está abierta en /chat (S4-11).
+    const unsubConversation = subscribeConversationUpdated((conversation) => {
+      const message = conversation.lastMessage;
+      if (!message || message.senderId !== conversation.otherUser.id) return;
+      if (getActiveChatUser() === conversation.otherUser.id) return;
+      showToast(messageToast(conversation, message));
     });
 
     return () => {
-      unsub();
+      unsubNotification();
+      unsubConversation();
       for (const timer of timers.values()) {
         clearTimeout(timer);
       }
@@ -218,44 +253,45 @@ export function NotificationToaster() {
 
   if (isPublic || toasts.length === 0) return null;
 
-  function handleOpen(notification: NotificationDto) {
-    dismissToast(notification.id);
-    if (!notification.read) {
+  function handleOpen(toast: Toast) {
+    dismissToast(toast.id);
+    if (toast.unreadNotificationId) {
       notifyNotificationsRead({ decrement: 1 });
       void apiFetchClient<void>("/api/notifications/read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [notification.id] }),
+        body: JSON.stringify({ ids: [toast.unreadNotificationId] }),
       }).catch(() => {});
     }
   }
 
+  // El más reciente va arriba; si no caben todos, los más viejos quedan cortados abajo
+  // hasta que se cierran solos (shrink-0: no se aplastan)
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed top-20 left-1/2 z-40 flex w-full max-w-md -translate-x-1/2 flex-col gap-2 px-4"
+      className="pointer-events-none fixed top-20 left-1/2 z-40 flex max-h-[calc(100dvh-6rem)] w-full max-w-md -translate-x-1/2 flex-col gap-2 overflow-hidden px-4"
     >
-      {toasts.map((notification) => {
-        const actorName =
-          notification.actor.displayName ?? notification.actor.username;
-        const accent = NOTIFICATION_ACCENT[notification.type];
+      {toasts.map((toast) => {
+        const actorName = toast.actor.displayName ?? toast.actor.username;
+        const accent = NOTIFICATION_ACCENT[toast.type];
         return (
           <div
-            key={notification.id}
+            key={toast.id}
             role="status"
-            onMouseEnter={() => clearToastTimer(notification.id)}
-            onMouseLeave={() => startToastTimer(notification.id)}
-            className={`notification-toast pointer-events-auto flex items-start gap-3 rounded-xl border border-border border-l-4 ${accent.border} bg-background p-3 shadow-md`}
+            onMouseEnter={() => clearToastTimer(toast.id)}
+            onMouseLeave={() => startToastTimer(toast.id)}
+            className={`notification-toast pointer-events-auto flex shrink-0 items-start gap-3 rounded-xl border border-border border-l-4 ${accent.border} bg-background p-3 shadow-md`}
           >
             <Link
-              href={notificationHref(notification)}
-              onClick={() => handleOpen(notification)}
+              href={toast.href}
+              onClick={() => handleOpen(toast)}
               className="flex min-w-0 flex-1 items-start gap-3"
             >
               <div className="relative shrink-0">
                 <Avatar
                   name={actorName}
-                  avatarPublicId={notification.actor.avatarPublicId}
+                  avatarPublicId={toast.actor.avatarPublicId}
                   size="sm"
                 />
                 <span
@@ -263,7 +299,7 @@ export function NotificationToaster() {
                   className={`absolute -right-1 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full ring-2 ring-background ${accent.badge}`}
                 >
                   <Icon
-                    path={TYPE_ICON_PATH[notification.type]}
+                    path={TYPE_ICON_PATH[toast.type]}
                     className="h-2.5 w-2.5"
                   />
                 </span>
@@ -271,12 +307,11 @@ export function NotificationToaster() {
               <div className="min-w-0 flex-1 text-sm">
                 <p className="text-foreground">
                   <span className="font-semibold">{actorName}</span>{" "}
-                  {reactionActionText(notification.reaction) ??
-                    NOTIFICATION_ACTION[notification.type]}
+                  {toast.actionText}
                 </p>
-                {notification.preview && (
+                {toast.preview && (
                   <p className="mt-0.5 truncate text-xs text-muted">
-                    {notification.preview}
+                    {toast.preview}
                   </p>
                 )}
               </div>
@@ -302,7 +337,7 @@ export function NotificationToaster() {
               <button
                 type="button"
                 aria-label="Cerrar notificación"
-                onClick={() => dismissToast(notification.id)}
+                onClick={() => dismissToast(toast.id)}
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-foreground"
               >
                 <Icon path={ICONS.close} className="h-3.5 w-3.5" />

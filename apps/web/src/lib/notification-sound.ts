@@ -1,12 +1,8 @@
-import type { NotificationDto } from "@red/api-types";
-
 export const SOUND_MUTE_STORAGE_KEY = "chatinit:notifications-muted";
-export const SOUND_THROTTLE_MS = 2000;
 
 type MuteListener = (muted: boolean) => void;
 const muteListeners = new Set<MuteListener>();
 
-let lastSoundAt = -Infinity;
 let sharedAudioContext: AudioContext | null = null;
 
 export function isNotificationSoundMuted(): boolean {
@@ -36,7 +32,6 @@ export function subscribeSoundMuted(listener: MuteListener): () => void {
 }
 
 export function resetNotificationSoundState(): void {
-  lastSoundAt = -Infinity;
   sharedAudioContext = null;
 }
 
@@ -75,31 +70,20 @@ function playTone(
   osc.stop(startTime + duration);
 }
 
-// Mismas notas que la muestra aprobada en la issue S4-11 (#125).
-// Campanita: me gusta y seguidores (E6 con su octava, que se apaga antes)
+// Campanita de la muestra aprobada en la issue S4-11 (#125): Mi6 con su octava, que se
+// apaga antes. Desde S4-15 es el único sonido, para todas las notificaciones y los mensajes.
 function playBellChime(ctx: AudioContext, now: number): void {
   playTone(ctx, 1318.5, now, 0.42, 0.1, "sine");
   playTone(ctx, 2637, now, 0.22, 0.03, "sine");
 }
 
-// Doble nota ascendente (G5 y D6): comentarios y mensajes
-function playDoubleNote(ctx: AudioContext, now: number): void {
-  playTone(ctx, 784, now, 0.14, 0.12, "sine");
-  playTone(ctx, 1174.7, now + 0.11, 0.22, 0.12, "sine");
-}
-
 /**
- * Reproduce el sonido de la notificación con Web Audio (S4-11, D11):
- * - Campanita para like y follow
- * - Doble nota para comment y message
- * Máximo uno cada 2 s. Devuelve true si sonó y false si estaba silenciado, bloqueado o en espera.
+ * Reproduce el sonido de notificación con Web Audio (S4-11, D11), el mismo para todo
+ * tipo de aviso (S4-15). Suena con cada aviso, sin espera entre uno y otro (S4-15).
+ * Devuelve true si sonó y false si estaba silenciado o bloqueado.
  */
-export function playNotificationSound(
-  type: NotificationDto["type"],
-  now = Date.now(),
-): boolean {
+export function playNotificationSound(): boolean {
   if (isNotificationSoundMuted()) return false;
-  if (now - lastSoundAt < SOUND_THROTTLE_MS) return false;
 
   try {
     const ctx = getAudioContext();
@@ -108,12 +92,7 @@ export function playNotificationSound(
       void ctx.resume().catch(() => {});
     }
     const startAt = ctx.currentTime;
-    if (type === "like" || type === "follow") {
-      playBellChime(ctx, startAt);
-    } else {
-      playDoubleNote(ctx, startAt);
-    }
-    lastSoundAt = now;
+    playBellChime(ctx, startAt);
     return true;
   } catch {
     return false;

@@ -85,7 +85,7 @@ interface ListRow extends CursorKey {
 }
 
 // Una notificación de una publicación o un comentario que se borró ya no se muestra ni se
-// cuenta: su enlace llevaría a un 404. Las de follow y message no tienen post ni comentario.
+// cuenta: su enlace llevaría a un 404. Las de follow no tienen post ni comentario.
 const VISIBLE_FROM = Prisma.sql`
   FROM notifications n
   LEFT JOIN posts p ON p.id = n.post_id
@@ -102,8 +102,8 @@ export class NotificationsService {
 
   // La llaman los listeners. Nunca para uno mismo (RN08; la base también lo impide con un
   // CHECK). De like solo una por persona y publicación; de comment hasta 10 por persona y
-  // publicación (S4-11), y otras 10 de reply (S4-14); de message solo una sin leer por remitente (docs/05-api.md). Emite
-  // notification.created para que el Gateway la mande a user:{recipientId}.
+  // publicación (S4-11), y otras 10 de reply (S4-14). Emite notification.created para que el
+  // Gateway la mande a user:{recipientId}.
   async notify(input: NewNotification): Promise<NotificationDto | null> {
     if (input.recipientId === input.actorId) return null;
     if (input.type === 'like') {
@@ -130,42 +130,6 @@ export class NotificationsService {
       });
       if (count >= MAX_COMMENT_NOTIFICATIONS_PER_POST) return null;
     }
-    if (input.type === 'message') {
-      // Si el destinatario ya leyó la conversación en /chat (o respondió) después de la
-      // notificación anterior, esa notificación ya quedó atendida y el nuevo mensaje sí debe
-      // disparar una ventana emergente nueva. Si sigue sin leer los mensajes, se limita a una.
-      await this.prisma.$executeRaw`
-        UPDATE notifications n
-        SET read_at = CASE
-          WHEN c.user_a_id = ${input.recipientId}::uuid THEN c.user_a_last_read_at
-          ELSE c.user_b_last_read_at
-        END
-        FROM conversations c
-        WHERE c.user_a_id = LEAST(${input.recipientId}::uuid, ${input.actorId}::uuid)
-          AND c.user_b_id = GREATEST(${input.recipientId}::uuid, ${input.actorId}::uuid)
-          AND n.type = 'message'
-          AND n.recipient_id = ${input.recipientId}::uuid
-          AND n.actor_id = ${input.actorId}::uuid
-          AND n.read_at IS NULL
-          AND (
-            CASE
-              WHEN c.user_a_id = ${input.recipientId}::uuid THEN c.user_a_last_read_at
-              ELSE c.user_b_last_read_at
-            END
-          ) >= n.created_at
-      `;
-      const pending = await this.prisma.notification.findFirst({
-        where: {
-          type: 'message',
-          recipientId: input.recipientId,
-          actorId: input.actorId,
-          readAt: null,
-        },
-        select: { id: true },
-      });
-      if (pending) return null;
-    }
-
     const row = await this.prisma.notification.create({
       data: {
         type: input.type,
@@ -201,16 +165,6 @@ export class NotificationsService {
              n.comment_id AS "commentId",
              CASE
                WHEN n.type IN ('comment', 'reply') THEN c.content
-               WHEN n.type = 'message' THEN (
-                 SELECT m.content
-                 FROM conversations cv
-                 JOIN messages m ON m.conversation_id = cv.id
-                 WHERE cv.user_a_id = LEAST(n.recipient_id, n.actor_id)
-                   AND cv.user_b_id = GREATEST(n.recipient_id, n.actor_id)
-                   AND m.sender_id = n.actor_id
-                 ORDER BY m.created_at DESC, m.id DESC
-                 LIMIT 1
-               )
                ELSE NULL
              END AS "rawPreview",
              CASE
@@ -256,28 +210,6 @@ export class NotificationsService {
       },
       data: { readAt: new Date() },
     });
-  }
-
-  // Al leer una conversación en /chat, marca también como leídas las notificaciones de
-  // mensaje pendientes de ese remitente para que futuros mensajes vuelvan a notificar.
-  async markConversationMessagesRead(
-    conversationId: string,
-    userId: string,
-    readAt: Date,
-  ): Promise<void> {
-    await this.prisma.$executeRaw`
-      UPDATE notifications n
-      SET read_at = ${readAt}::timestamptz
-      FROM conversations c
-      WHERE c.id = ${conversationId}::uuid
-        AND n.type = 'message'
-        AND n.recipient_id = ${userId}::uuid
-        AND n.actor_id = CASE
-          WHEN c.user_a_id = ${userId}::uuid THEN c.user_b_id
-          ELSE c.user_a_id
-        END
-        AND n.read_at IS NULL
-    `;
   }
 }
 

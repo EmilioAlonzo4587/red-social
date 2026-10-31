@@ -52,8 +52,6 @@ const ICONS = {
   ajustes: SETTINGS_ICON_PATH,
 };
 
-const RECOUNT_DELAY_MS = 800;
-
 // null si falla: notification:new sigue actualizando el contador en vivo
 async function fetchUnreadNotifications(): Promise<number | null> {
   try {
@@ -114,19 +112,10 @@ export function Sidebar() {
     const unsubUpdated = subscribeConversationUpdated((conv) => {
       setUnreadByConv((prev) => ({ ...prev, [conv.id]: conv.unread }));
     });
-    // Leer un chat también marca como leídas en la api sus notificaciones de mensaje
-    // (listener de conversation.read, después de responder): se vuelve a pedir el contador.
-    let recountTimer: ReturnType<typeof setTimeout> | undefined;
     const unsubRead = subscribeConversationRead((conversationId) => {
       setUnreadByConv((prev) =>
         prev[conversationId] ? { ...prev, [conversationId]: 0 } : prev,
       );
-      clearTimeout(recountTimer);
-      recountTimer = setTimeout(() => {
-        void fetchUnreadNotifications().then((count) => {
-          if (count !== null) setUnreadNotifications(count);
-        });
-      }, RECOUNT_DELAY_MS);
     });
     const unsubNotificationNew = subscribeNotificationNew((notification) => {
       if (!notification.read) {
@@ -142,7 +131,6 @@ export function Sidebar() {
     );
 
     return () => {
-      clearTimeout(recountTimer);
       unsubUpdated();
       unsubRead();
       unsubNotificationNew();
@@ -151,7 +139,7 @@ export function Sidebar() {
   }, [isPublic]);
 
   // El contador se pide al montar y en cada navegación, así se corrige si algo lo
-  // marcó como leído fuera de este componente (por ejemplo, abrir un chat).
+  // marcó como leído fuera de este componente.
   useEffect(() => {
     if (isPublic) return;
     let cancelled = false;

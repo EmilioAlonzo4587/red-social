@@ -1,14 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { MeDto, PostDto, PostPageDto, ProfileDto } from "@red/api-types";
+import type {
+  FeedNewEvent,
+  MeDto,
+  PostDto,
+  PostPageDto,
+  ProfileDto,
+} from "@red/api-types";
 import { FollowingPanel } from "@/components/following-panel";
 import { HomeProfileCard } from "@/components/home-profile-card";
+import { NewPostsButton } from "@/components/new-posts-button";
 import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
-import { subscribeFeedNew } from "@/lib/socket";
+import { subscribeExploreNew, subscribeFeedNew } from "@/lib/socket";
 
 type Tab = "siguiendo" | "explorar";
 
@@ -40,6 +47,10 @@ function fetchPage(tab: Tab, cursor: string | null): Promise<PostPageDto> {
   return apiFetchClient<PostPageDto>(`${pathFor(tab)}${query}`);
 }
 
+// Cuánto tiempo quedan marcadas las que se acaban de mostrar; la animación (.feed-fresh-post)
+// dura 2 s, el resto es margen por si la lista tarda en cargar (S4-15)
+const FRESH_HIGHLIGHT_MS = 4000;
+
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
@@ -51,7 +62,13 @@ export default function FeedPage() {
   const [me, setMe] = useState<MeDto | null>(null);
   const [profile, setProfile] = useState<ProfileDto | null>(null);
   const [meLoading, setMeLoading] = useState(true);
-  const [newPostIds, setNewPostIds] = useState<string[]>([]);
+  // Publicaciones nuevas que llegaron por socket y todavía no se muestran, por
+  // pestaña y de la más reciente a la más antigua (S4-15)
+  const [pending, setPending] = useState<Record<Tab, FeedNewEvent[]>>({
+    siguiendo: [],
+    explorar: [],
+  });
+  const [freshIds, setFreshIds] = useState<string[]>([]);
   const currentUserId = me?.id;
   const currentUserIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -85,6 +102,12 @@ export default function FeedPage() {
       .then((page) => {
         done = true;
         if (cancelled) return;
+        // Lo que ya vino en esta carga deja de contar como nuevo
+        const loaded = new Set(page.items.map((item) => item.id));
+        setPending((prev) => ({
+          ...prev,
+          [tab]: prev[tab].filter((event) => !loaded.has(event.postId)),
+        }));
         setTabs((prev) => ({
           ...prev,
           [tab]: {
@@ -134,16 +157,40 @@ export default function FeedPage() {
       .finally(() => setMeLoading(false));
   }, []);
 
+  // feed:new llega por cada publicación de alguien que sigues (Siguiendo) y explore:new
+  // por cualquiera (Explorar). Las propias no cuentan: publicar ya recarga la lista.
   useEffect(() => {
-    return subscribeFeedNew((event) => {
-      if (currentUserIdRef.current && event.authorId === currentUserIdRef.current) {
-        return;
-      }
-      setNewPostIds((prev) =>
-        prev.includes(event.postId) ? prev : [...prev, event.postId],
-      );
-    });
+    function addTo(target: Tab) {
+      return (event: FeedNewEvent) => {
+        if (event.authorId === currentUserIdRef.current) return;
+        setPending((prev) =>
+          prev[target].some((other) => other.postId === event.postId)
+            ? prev
+            : { ...prev, [target]: [event, ...prev[target]] },
+        );
+      };
+    }
+    const unsubFeed = subscribeFeedNew(addTo("siguiendo"));
+    const unsubExplore = subscribeExploreNew(addTo("explorar"));
+    return () => {
+      unsubFeed();
+      unsubExplore();
+    };
   }, []);
+
+  // Muestra las nuevas de la pestaña activa: vuelve a pedir la lista desde el principio,
+  // sube al inicio y resalta un momento las que acaban de entrar.
+  function showPending() {
+    const ids = pending[tab].map((event) => event.postId);
+    setFreshIds(ids);
+    fetchedRef.current[tab] = -1;
+    setReloadToken((n) => n + 1);
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    window.setTimeout(() => setFreshIds([]), FRESH_HIGHLIGHT_MS);
+  }
 
   async function loadMore() {
     if (!current.nextCursor || current.status === "loading-more") return;
@@ -182,12 +229,13 @@ export default function FeedPage() {
         <PostComposer
           onPosted={() => {
             // Vuelve a pedir el feed desde el principio: hay una publicación nueva.
-            setNewPostIds([]);
             setReloadToken((n) => n + 1);
           }}
         />
 
-        <div className="sticky top-16 z-10 mt-4 flex gap-[22px] border-b border-border bg-background">
+        {/* El aviso de nuevas va en la misma fila fija que las pestañas, a la par de
+            ellas (S4-15): sigue a la vista al bajar por el feed. */}
+        <div className="sticky top-16 z-10 mt-4 flex flex-wrap items-center gap-x-[22px] border-b border-border bg-background">
           <button
             type="button"
             onClick={() => setTab("siguiendo")}
@@ -210,24 +258,12 @@ export default function FeedPage() {
           >
             Explorar
           </button>
-        </div>
-
-        {tab === "siguiendo" && newPostIds.length > 0 && (
-          <div className="mt-3 flex justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                setNewPostIds([]);
-                setReloadToken((n) => n + 1);
-              }}
-              className="rounded-full border border-primary/30 bg-surface px-4 py-1.5 text-xs font-semibold text-primary shadow-sm hover:bg-action hover:text-white"
-            >
-              {newPostIds.length === 1
-                ? "Hay 1 publicación nueva · Ver"
-                : `Hay ${newPostIds.length} publicaciones nuevas · Ver`}
-            </button>
+          <div aria-live="polite" className="flex">
+            {pending[tab].length > 0 && (
+              <NewPostsButton events={pending[tab]} onShow={showPending} />
+            )}
           </div>
-        )}
+        </div>
 
         {current.status === "loading" && (
           <p className="py-10 text-center text-muted">Cargando…</p>
@@ -263,11 +299,12 @@ export default function FeedPage() {
           <>
             <div className="flex flex-col">
               {current.items.map((post) => (
-                <PostCard
+                <div
                   key={post.id}
-                  post={post}
-                  currentUserId={currentUserId}
-                />
+                  className={freshIds.includes(post.id) ? "feed-fresh-post" : undefined}
+                >
+                  <PostCard post={post} currentUserId={currentUserId} />
+                </div>
               ))}
             </div>
 

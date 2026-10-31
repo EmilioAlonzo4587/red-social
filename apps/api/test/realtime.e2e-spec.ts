@@ -364,7 +364,7 @@ describe('Socket.io autenticado (e2e)', () => {
       });
     }
 
-    it('conversation:join une a quien participa y enviar mensaje emite message:new, conversation:updated y notification:new', async () => {
+    it('conversation:join une a quien participa y enviar mensaje emite message:new y conversation:updated, sin notification:new (S4-15)', async () => {
       const ana = await registerUser('ana');
       const beto = await registerUser('beto');
       const conversationId = await openConversation(ana.access, 'beto');
@@ -389,7 +389,10 @@ describe('Socket.io autenticado (e2e)', () => {
         waitFor(anaSocket, ['conversation:updated']),
         waitFor(betoSocket, ['conversation:updated']),
       ]);
-      const onBetoNotification = waitFor(betoSocket, ['notification:new']);
+      const betoNotifications: { type: string }[] = [];
+      betoSocket.on('notification:new', (data: { type: string }) => {
+        betoNotifications.push(data);
+      });
 
       const sent = await request(app.getHttpServer())
         .post(`/api/conversations/${conversationId}/messages`)
@@ -441,26 +444,19 @@ describe('Socket.io autenticado (e2e)', () => {
         },
       });
 
-      // Beto también recibe notification:new en su sala personal user:{id}
-      expect(await onBetoNotification).toEqual({
-        event: 'notification:new',
-        data: expect.objectContaining({
-          type: 'message',
-          actor: {
-            id: ana.id,
-            username: 'ana',
-            displayName: null,
-            avatarPublicId: null,
-          },
-          postId: null,
-          commentId: null,
-          preview: 'Hola en vivo',
-          read: false,
-        }) as unknown,
-      });
+      // El mensaje no crea notificación (S4-15): el aviso emergente de la web sale de
+      // conversation:updated. Un follow de Ana después confirma que el listener ya procesó el
+      // mensaje: la primera notification:new que llega a Beto es la del follow.
+      const onBetoNotification = waitFor(betoSocket, ['notification:new']);
+      await request(app.getHttpServer())
+        .put('/api/users/beto/follow')
+        .set('Cookie', `access_token=${ana.access}`)
+        .expect(200);
+      await onBetoNotification;
+      expect(betoNotifications.map((n) => n.type)).toEqual(['follow']);
     });
 
-    it('crear publicación emite feed:new al seguidor y no a quien no sigue (S4-11)', async () => {
+    it('crear publicación emite feed:new al seguidor y explore:new a todos menos al autor (S4-11, S4-15)', async () => {
       const ana = await registerUser('ana');
       const beto = await registerUser('beto');
       const carla = await registerUser('carla');
@@ -471,13 +467,18 @@ describe('Socket.io autenticado (e2e)', () => {
         .set('Cookie', `access_token=${beto.access}`)
         .expect(200);
 
+      const anaSocket = connect(withCookie(ana.access));
       const betoSocket = connect(withCookie(beto.access));
       const carlaSocket = connect(withCookie(carla.access));
+      await waitFor(anaSocket, ['session:ready']);
       await waitFor(betoSocket, ['session:ready']);
       await waitFor(carlaSocket, ['session:ready']);
 
       const onBetoFeed = waitFor(betoSocket, ['feed:new']);
       const carlaNoFeed = expectNothing(carlaSocket, 'feed:new');
+      const onBetoExplore = waitFor(betoSocket, ['explore:new']);
+      const onCarlaExplore = waitFor(carlaSocket, ['explore:new']);
+      const anaNoExplore = expectNothing(anaSocket, 'explore:new');
 
       const created = await request(app.getHttpServer())
         .post('/api/posts')
@@ -486,11 +487,21 @@ describe('Socket.io autenticado (e2e)', () => {
         .expect(201);
       const postId = (created.body as { id: string }).id;
 
-      expect(await onBetoFeed).toEqual({
-        event: 'feed:new',
-        data: { postId, authorId: ana.id },
-      });
+      const data = {
+        postId,
+        authorId: ana.id,
+        author: {
+          id: ana.id,
+          username: 'ana',
+          displayName: null,
+          avatarPublicId: null,
+        },
+      };
+      expect(await onBetoFeed).toEqual({ event: 'feed:new', data });
+      expect(await onBetoExplore).toEqual({ event: 'explore:new', data });
+      expect(await onCarlaExplore).toEqual({ event: 'explore:new', data });
       await carlaNoFeed;
+      await anaNoExplore;
     });
 
     it('conversation:join rechaza con "forbidden" a quien no participa, una conversación inexistente o un UUID inválido (RN09)', async () => {

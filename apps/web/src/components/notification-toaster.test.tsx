@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import type { NotificationDto } from "@red/api-types";
+import type { ConversationDto, NotificationDto } from "@red/api-types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   SOUND_MUTE_STORAGE_KEY,
@@ -18,20 +18,33 @@ vi.mock("next/navigation", () => ({
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
-const { onNotificationNew, activeChatUser, notifyNotificationsRead } =
-  vi.hoisted(() => ({
-    onNotificationNew: {
-      current: null as ((n: NotificationDto) => void) | null,
-    },
-    activeChatUser: { current: null as string | null },
-    notifyNotificationsRead: vi.fn(),
-  }));
+const {
+  onNotificationNew,
+  onConversationUpdated,
+  activeChatUser,
+  notifyNotificationsRead,
+} = vi.hoisted(() => ({
+  onNotificationNew: {
+    current: null as ((n: NotificationDto) => void) | null,
+  },
+  onConversationUpdated: {
+    current: null as ((c: ConversationDto) => void) | null,
+  },
+  activeChatUser: { current: null as string | null },
+  notifyNotificationsRead: vi.fn(),
+}));
 
 vi.mock("@/lib/socket", () => ({
   subscribeNotificationNew: vi.fn((cb: (n: NotificationDto) => void) => {
     onNotificationNew.current = cb;
     return () => {
       onNotificationNew.current = null;
+    };
+  }),
+  subscribeConversationUpdated: vi.fn((cb: (c: ConversationDto) => void) => {
+    onConversationUpdated.current = cb;
+    return () => {
+      onConversationUpdated.current = null;
     };
   }),
   getActiveChatUser: vi.fn(() => activeChatUser.current),
@@ -62,6 +75,62 @@ function makeNotification(
   };
 }
 
+// conversation:updated tal como lo recibe Ana (u1): otherUser es quien escribe si senderId coincide
+function makeConversation(
+  sender: { id: string; username: string; displayName: string },
+  senderId: string,
+  content: string,
+): ConversationDto {
+  return {
+    id: `conv-${sender.id}`,
+    otherUser: { ...sender, avatarPublicId: null },
+    lastMessage: {
+      id: `m-${content}`,
+      conversationId: `conv-${sender.id}`,
+      senderId,
+      content,
+      createdAt: "2026-10-31T15:00:00.000Z",
+    },
+    unread: 1,
+  };
+}
+
+const BETO = { id: "u2", username: "beto", displayName: "Beto" };
+const CARLA = { id: "u3", username: "carla", displayName: "Carla" };
+
+class FakeAudioContext {
+  static frequencies: number[] = [];
+  currentTime = 0;
+  state = "running";
+  destination = {};
+  createOscillator() {
+    return {
+      type: "sine",
+      frequency: {
+        setValueAtTime: (value: number) => {
+          FakeAudioContext.frequencies.push(value);
+        },
+      },
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+  }
+  createGain() {
+    return {
+      gain: {
+        setValueAtTime: vi.fn(),
+        linearRampToValueAtTime: vi.fn(),
+        exponentialRampToValueAtTime: vi.fn(),
+      },
+      connect: vi.fn(),
+    };
+  }
+  resume() {
+    return Promise.resolve();
+  }
+}
+
 describe("NotificationToaster y sonido (S4-11)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -72,6 +141,7 @@ describe("NotificationToaster y sonido (S4-11)", () => {
     notifyNotificationsRead.mockReset();
     window.localStorage.clear();
     resetNotificationSoundState();
+    FakeAudioContext.frequencies = [];
   });
 
   afterEach(() => {
@@ -150,7 +220,7 @@ describe("NotificationToaster y sonido (S4-11)", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("apila como máximo 3 avisos a la vez", () => {
+  it("apila todos los avisos, sin tope, y cada uno se cierra solo (S4-15)", () => {
     render(<NotificationToaster />);
 
     act(() => {
@@ -168,96 +238,123 @@ describe("NotificationToaster y sonido (S4-11)", () => {
       );
     });
 
-    expect(screen.queryByText(/Primero/)).not.toBeInTheDocument();
-    expect(screen.getByText(/Segundo/)).toBeInTheDocument();
-    expect(screen.getByText(/Tercero/)).toBeInTheDocument();
-    expect(screen.getByText(/Cuarto/)).toBeInTheDocument();
+    expect(screen.getAllByRole("status")).toHaveLength(4);
+    for (const text of [/Primero/, /Segundo/, /Tercero/, /Cuarto/]) {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    }
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("no muestra el aviso de mensaje si esa conversación ya está abierta en /chat, y en caso contrario enlaza a /chat?username=", () => {
+  it("muestra un aviso por cada mensaje desde conversation:updated, enlazando a /chat?username= (S4-15)", () => {
+    render(<NotificationToaster />);
+
+    act(() => {
+      onConversationUpdated.current?.(makeConversation(BETO, "u2", "Hola"));
+    });
+    act(() => {
+      onConversationUpdated.current?.(
+        makeConversation(BETO, "u2", "¿Estás ahí?"),
+      );
+    });
+
+    // Cada mensaje tiene su aviso, aunque sean de la misma persona
+    expect(screen.getAllByRole("status")).toHaveLength(2);
+    expect(screen.getAllByText(/te envió un mensaje/)).toHaveLength(2);
+    expect(screen.getByText("Hola")).toBeInTheDocument();
+    expect(screen.getByText("¿Estás ahí?")).toBeInTheDocument();
+
+    // Sin tope: con 5 mensajes seguidos se ven los 5
+    act(() => {
+      onConversationUpdated.current?.(makeConversation(BETO, "u2", "Tercero"));
+      onConversationUpdated.current?.(makeConversation(BETO, "u2", "Cuarto"));
+      onConversationUpdated.current?.(makeConversation(BETO, "u2", "Quinto"));
+    });
+    expect(screen.getAllByRole("status")).toHaveLength(5);
+    expect(screen.getByText("Hola")).toBeInTheDocument();
+
+    const link = screen.getAllByRole("link", { name: /Beto/ })[0];
+    expect(link).toHaveAttribute("href", "/chat?username=beto");
+
+    // Abrirlo no marca ninguna notificación: los mensajes no se guardan como notificación
+    fireEvent.click(link);
+    expect(notifyNotificationsRead).not.toHaveBeenCalled();
+    expect(apiFetchClient).not.toHaveBeenCalledWith(
+      "/api/notifications/read",
+      expect.anything(),
+    );
+  });
+
+  it("no avisa de un mensaje propio ni de uno de la conversación abierta en /chat", () => {
     pathname.value = "/chat";
     activeChatUser.current = "u2";
     render(<NotificationToaster />);
 
     act(() => {
-      onNotificationNew.current?.(
-        makeNotification({
-          id: "m-open",
-          type: "message",
-          postId: null,
-          commentId: null,
-          preview: "Hola desde el chat abierto",
-          reaction: null,
-        }),
-      );
+      // Mensaje que escribió Ana: conversation:updated también le llega a ella
+      onConversationUpdated.current?.(makeConversation(CARLA, "u1", "Mío"));
+      // Mensaje de Beto con su conversación abierta
+      onConversationUpdated.current?.(makeConversation(BETO, "u2", "Abierta"));
     });
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
 
-    // Si llega un mensaje de otra persona cuya conversación NO está abierta, sí sale el aviso
     act(() => {
-      onNotificationNew.current?.(
-        makeNotification({
-          id: "m-other",
-          type: "message",
-          actor: {
-            id: "u3",
-            username: "carla",
-            displayName: "Carla",
-            avatarPublicId: null,
-          },
-          postId: null,
-          commentId: null,
-          preview: "¿Tienes un minuto?",
-          reaction: null,
-        }),
+      onConversationUpdated.current?.(
+        makeConversation(CARLA, "u3", "¿Tienes un minuto?"),
       );
     });
-
-    const link = screen.getByRole("link", { name: /Carla/ });
-    expect(link).toHaveAttribute("href", "/chat?username=carla");
+    expect(screen.getByText("¿Tienes un minuto?")).toBeInTheDocument();
   });
 
-  it("guarda el silencio en localStorage y limita el sonido a como máximo 1 cada 2 s", () => {
-    const startMock = vi.fn();
-    class FakeAudioContext {
-      currentTime = 0;
-      state = "running";
-      destination = {};
-      createOscillator() {
-        return {
-          type: "sine",
-          frequency: { setValueAtTime: vi.fn() },
-          connect: vi.fn(),
-          start: startMock,
-          stop: vi.fn(),
-        };
-      }
-      createGain() {
-        return {
-          gain: {
-            setValueAtTime: vi.fn(),
-            linearRampToValueAtTime: vi.fn(),
-            exponentialRampToValueAtTime: vi.fn(),
-          },
-          connect: vi.fn(),
-        };
-      }
-      resume() {
-        return Promise.resolve();
-      }
-    }
+  it("todas las notificaciones y los mensajes suenan igual (S4-15)", () => {
     vi.stubGlobal("AudioContext", FakeAudioContext);
+    render(<NotificationToaster />);
 
-    expect(playNotificationSound("like", 1000)).toBe(true);
-    // Dentro de los 2 s se descarta
-    expect(playNotificationSound("comment", 2500)).toBe(false);
+    const chimes: number[][] = [];
+    function expectChime(trigger: () => void) {
+      FakeAudioContext.frequencies = [];
+      act(trigger);
+      chimes.push([...FakeAudioContext.frequencies]);
+    }
 
-    expect(playNotificationSound("comment", 3000)).toBe(true);
+    for (const type of ["like", "comment", "follow", "reply"] as const) {
+      expectChime(() =>
+        onNotificationNew.current?.(makeNotification({ id: type, type })),
+      );
+    }
+    expectChime(() =>
+      onConversationUpdated.current?.(makeConversation(BETO, "u2", "Hola")),
+    );
+
+    expect(chimes).toHaveLength(5);
+    for (const chime of chimes) {
+      expect(chime).toEqual([1318.5, 2637]);
+    }
+  });
+
+  it("suena con cada aviso, aunque lleguen seguidos, y guarda el silencio en localStorage (S4-15)", () => {
+    vi.stubGlobal("AudioContext", FakeAudioContext);
+    render(<NotificationToaster />);
+
+    // Tres mensajes en el mismo instante: tres avisos y tres sonidos
+    act(() => {
+      for (const content of ["Uno", "Dos", "Tres"]) {
+        onConversationUpdated.current?.(makeConversation(BETO, "u2", content));
+      }
+    });
+    expect(screen.getAllByRole("status")).toHaveLength(3);
+    expect(FakeAudioContext.frequencies).toEqual([
+      1318.5, 2637, 1318.5, 2637, 1318.5, 2637,
+    ]);
+    expect(playNotificationSound()).toBe(true);
 
     // Silenciar persiste en localStorage e impide sonar
     setNotificationSoundMuted(true);
     expect(isNotificationSoundMuted()).toBe(true);
     expect(window.localStorage.getItem(SOUND_MUTE_STORAGE_KEY)).toBe("1");
-    expect(playNotificationSound("like", 6000)).toBe(false);
+    expect(playNotificationSound()).toBe(false);
   });
 });

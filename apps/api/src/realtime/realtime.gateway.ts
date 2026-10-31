@@ -339,17 +339,20 @@ export class RealtimeGateway
   }
 
   // S4-11: avisa a la sala personal user:{id} de cada seguidor que hay una publicación nueva (D11)
+  // feed:new a los seguidores (pestaña Siguiendo, S4-11) y explore:new a todos los conectados
+  // menos al autor (pestaña Explorar, S4-15). Ninguno guarda notificaciones (D11).
   @OnDomainEvent('post.created')
   async handlePostCreated({
     postId,
     authorId,
+    author,
   }: PostCreatedEvent): Promise<void> {
+    const event = { postId, authorId, author };
+    this.server.except(userRoom(authorId)).emit('explore:new', event);
     const followerIds = await this.follows.findFollowerIds(authorId);
     if (followerIds.length === 0) return;
     // Un solo emit a todas las salas: Socket.io no repite el envío a un socket en varias
-    this.server
-      .to(followerIds.map(userRoom))
-      .emit('feed:new', { postId, authorId });
+    this.server.to(followerIds.map(userRoom)).emit('feed:new', event);
   }
 
   // Devuelve el error con el que se rechaza la conexión, o undefined para aceptarla.

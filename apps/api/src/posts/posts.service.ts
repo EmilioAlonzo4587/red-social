@@ -65,7 +65,11 @@ export class PostsService {
       },
       select: postSelect(authorId),
     });
-    this.events.emit('post.created', { postId: post.id, authorId });
+    this.events.emit('post.created', {
+      postId: post.id,
+      authorId,
+      author: post.author,
+    });
     return toPostDto(post);
   }
 

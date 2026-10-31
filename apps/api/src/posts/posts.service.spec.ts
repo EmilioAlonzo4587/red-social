@@ -107,6 +107,7 @@ describe('PostsService', () => {
       expect(events.emit).toHaveBeenCalledWith('post.created', {
         postId: 'p1',
         authorId: 'u1',
+        author: row.author,
       });
     });
   });
