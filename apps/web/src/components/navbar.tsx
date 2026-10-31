@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogoutButton } from "@/components/logout-button";
 import { UserSearch } from "@/components/user-search";
 import { PUBLIC_PATHS } from "@/lib/public-paths";
 
@@ -16,7 +17,7 @@ export function Navbar() {
   // activa ya no va aquí (era NavProfile, S3-19): está en la tarjeta "Tu perfil" de /feed.
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-background">
-      <nav className="flex h-16 items-center gap-4 px-5">
+      <nav className="flex h-16 items-center gap-2 px-4 sm:gap-4 sm:px-5">
         <Link
           href="/feed"
           className="flex shrink-0 items-center gap-2 text-xl font-bold text-primary"
@@ -38,6 +39,7 @@ export function Navbar() {
         </Link>
 
         <UserSearch />
+        <LogoutButton variant="icon" />
       </nav>
     </header>
   );

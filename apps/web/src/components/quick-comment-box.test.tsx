@@ -111,4 +111,36 @@ describe("QuickCommentBox", () => {
     );
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  it("emojis: inserta en la posición del cursor y Escape cierra solo el panel", async () => {
+    const user = userEvent.setup();
+    const input = renderBox() as HTMLTextAreaElement;
+    await user.type(input, "Qué foto");
+    input.setSelectionRange(3, 3);
+
+    await user.click(screen.getByRole("button", { name: "Abrir emojis" }));
+    await user.click(screen.getByRole("button", { name: "Insertar enamorado" }));
+    expect(input).toHaveValue("Qué😍 foto");
+    expect(input.selectionStart).toBe(5);
+
+    await user.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("dialog", { name: "Elegir emoji" }),
+    ).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    // Sin el panel abierto, Escape sí cierra el recuadro
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("emojis: no pasa de 1000 caracteres (RN07)", async () => {
+    const user = userEvent.setup();
+    const input = renderBox();
+    fireEvent.change(input, { target: { value: "a".repeat(999) } });
+
+    await user.click(screen.getByRole("button", { name: "Abrir emojis" }));
+    await user.click(screen.getByRole("button", { name: "Insertar sonrisa" }));
+    expect((input as HTMLTextAreaElement).value).toHaveLength(999);
+  });
 });

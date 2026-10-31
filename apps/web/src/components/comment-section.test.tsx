@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CommentDto, CommentPageDto } from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -346,5 +346,65 @@ describe("CommentSection (S3-08)", () => {
     emitCommentCount(1);
 
     expect(apiFetchClient).not.toHaveBeenCalled();
+  });
+
+  it("emojis (S4-10): inserta donde está el cursor, envía el comentario y cierra el panel", async () => {
+    const user = userEvent.setup();
+    render(
+      <CommentSection
+        postId={POST_ID}
+        initialComments={page([])}
+        currentUserId="u1"
+      />,
+    );
+    const input = screen.getByPlaceholderText<HTMLTextAreaElement>(
+      "Escribe un comentario…",
+    );
+    await user.type(input, "Genial");
+
+    await user.click(screen.getByRole("button", { name: "Abrir emojis" }));
+    await user.click(screen.getByRole("button", { name: "Insertar aplausos" }));
+    expect(input).toHaveValue("Genial👏");
+
+    apiFetchClient.mockResolvedValueOnce(comment("c9", "u1", "Genial👏"));
+    await user.click(screen.getByRole("button", { name: "Comentar" }));
+
+    await waitFor(() => {
+      expect(apiFetchClient).toHaveBeenCalledWith(
+        `/api/posts/${POST_ID}/comments`,
+        expect.objectContaining({
+          body: JSON.stringify({ content: "Genial👏" }),
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: "Elegir emoji" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("emojis: Escape en el cuadro cierra el panel y no pasa de 1000 caracteres (RN07)", async () => {
+    const user = userEvent.setup();
+    render(
+      <CommentSection
+        postId={POST_ID}
+        initialComments={page([])}
+        currentUserId="u1"
+      />,
+    );
+    const input = screen.getByPlaceholderText<HTMLTextAreaElement>(
+      "Escribe un comentario…",
+    );
+    fireEvent.change(input, { target: { value: "a".repeat(999) } });
+
+    await user.click(screen.getByRole("button", { name: "Abrir emojis" }));
+    await user.click(screen.getByRole("button", { name: "Insertar sonrisa" }));
+    expect(input.value).toHaveLength(999);
+
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(
+      screen.queryByRole("dialog", { name: "Elegir emoji" }),
+    ).not.toBeInTheDocument();
   });
 });

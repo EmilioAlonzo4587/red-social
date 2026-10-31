@@ -214,13 +214,15 @@ export function PostComposer({
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-muted tabular-nums">
+        {/* flex-wrap + whitespace-nowrap: en 375px el contador y "Agregar imágenes"
+            bajan juntos de línea en vez de partirse a la mitad (S4-06). */}
+        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="whitespace-nowrap text-xs text-muted tabular-nums">
             {content.length} / {MAX_CONTENT_LENGTH}
           </span>
           <label
             htmlFor="post-images"
-            className={`cursor-pointer text-sm font-medium text-primary ${
+            className={`cursor-pointer whitespace-nowrap text-sm font-medium text-primary ${
               !canAddMore || submitting ? "pointer-events-none opacity-50" : ""
             }`}
           >
@@ -236,7 +238,8 @@ export function PostComposer({
             onChange={(event) => handleFilesSelected(event.target.files)}
             className="sr-only"
           />
-          <span className="ml-2 text-xs text-muted">
+          {/* -ml-2: queda a 8px de "Agregar imágenes", como antes del gap-x-4 */}
+          <span className="-ml-2 whitespace-nowrap text-xs text-muted">
             {images.length}/{MAX_IMAGES}
           </span>
         </div>
@@ -244,7 +247,7 @@ export function PostComposer({
         <button
           type="submit"
           disabled={!canSubmit}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+          className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? "Publicando…" : "Publicar"}
         </button>
