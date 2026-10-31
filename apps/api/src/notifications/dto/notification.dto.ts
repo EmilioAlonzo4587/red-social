@@ -37,6 +37,14 @@ export class NotificationDto {
   })
   commentId!: string | null;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
+      'Primeros ~80 caracteres del comentario o del último mensaje del remitente',
+  })
+  preview!: string | null;
+
   @ApiProperty({ example: false })
   read!: boolean;
 

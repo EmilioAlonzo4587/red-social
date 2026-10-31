@@ -1,7 +1,13 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
-import type { MeDto, PostDto, PostPageDto, ProfileDto } from "@red/api-types";
+import type {
+  FeedNewEvent,
+  MeDto,
+  PostDto,
+  PostPageDto,
+  ProfileDto,
+} from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api-error";
 import FeedPage from "./page";
@@ -19,9 +25,19 @@ vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 // llevarse una respuesta encolada para el feed y la prueba fallaba a veces.
 vi.mock("@/components/following-panel", () => ({ FollowingPanel: () => null }));
 
+const { onFeedNew } = vi.hoisted(() => ({
+  onFeedNew: { current: null as ((event: FeedNewEvent) => void) | null },
+}));
+
 vi.mock("@/lib/socket", () => ({
   subscribePostLikes: vi.fn(() => () => {}),
   subscribePostComments: vi.fn(() => () => {}),
+  subscribeFeedNew: vi.fn((cb: (event: FeedNewEvent) => void) => {
+    onFeedNew.current = cb;
+    return () => {
+      onFeedNew.current = null;
+    };
+  }),
 }));
 
 function post(id: string): PostDto {
@@ -264,5 +280,50 @@ describe("FeedPage", () => {
       expect(screen.getByText("Publicación 1")).toBeInTheDocument();
     });
     expect(screen.queryByText("@ana_lopez")).not.toBeInTheDocument();
+  });
+
+  it("en Siguiendo muestra 'Hay N publicaciones nuevas · Ver' al recibir feed:new y recarga al hacer clic (S4-11)", async () => {
+    const user = userEvent.setup();
+    apiFetchClient.mockResolvedValueOnce(page([post("1")])); // explorar inicial
+    render(<FeedPage />);
+    await waitFor(() =>
+      expect(screen.getByText("Publicación 1")).toBeInTheDocument(),
+    );
+
+    apiFetchClient.mockResolvedValueOnce(page([post("2")])); // siguiendo inicial
+    await user.click(screen.getByRole("button", { name: "Siguiendo" }));
+    await waitFor(() =>
+      expect(screen.getByText("Publicación 2")).toBeInTheDocument(),
+    );
+
+    // Llega feed:new de alguien seguido
+    act(() => {
+      onFeedNew.current?.({ postId: "p-new-1", authorId: "u2" });
+    });
+    expect(
+      screen.getByRole("button", { name: "Hay 1 publicación nueva · Ver" }),
+    ).toBeInTheDocument();
+
+    // Llega otra publicación nueva -> plural
+    act(() => {
+      onFeedNew.current?.({ postId: "p-new-2", authorId: "u3" });
+    });
+    const banner = screen.getByRole("button", {
+      name: "Hay 2 publicaciones nuevas · Ver",
+    });
+    expect(banner).toBeInTheDocument();
+
+    // Al hacer clic, limpia el aviso y recarga /api/feed
+    apiFetchClient.mockResolvedValueOnce(
+      page([post("p-new-2"), post("p-new-1"), post("2")]),
+    );
+    await user.click(banner);
+
+    await waitFor(() => {
+      expect(screen.getByText("Publicación p-new-2")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("button", { name: /publicac.*nueva/i }),
+    ).not.toBeInTheDocument();
   });
 });

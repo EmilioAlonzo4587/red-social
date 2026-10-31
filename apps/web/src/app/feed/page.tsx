@@ -8,6 +8,7 @@ import { PostCard } from "@/components/post-card";
 import { PostComposer } from "@/components/post-composer";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
+import { subscribeFeedNew } from "@/lib/socket";
 
 type Tab = "siguiendo" | "explorar";
 
@@ -50,7 +51,10 @@ export default function FeedPage() {
   const [me, setMe] = useState<MeDto | null>(null);
   const [profile, setProfile] = useState<ProfileDto | null>(null);
   const [meLoading, setMeLoading] = useState(true);
+  const [newPostIds, setNewPostIds] = useState<string[]>([]);
   const currentUserId = me?.id;
+  const currentUserIdRef = useRef<string | undefined>(undefined);
+  currentUserIdRef.current = currentUserId;
   const current = tabs[tab];
 
   // Qué pestaña ya se pidió para cada reloadToken: evita volver a pedirla solo por
@@ -128,6 +132,17 @@ export default function FeedPage() {
       .finally(() => setMeLoading(false));
   }, []);
 
+  useEffect(() => {
+    return subscribeFeedNew((event) => {
+      if (currentUserIdRef.current && event.authorId === currentUserIdRef.current) {
+        return;
+      }
+      setNewPostIds((prev) =>
+        prev.includes(event.postId) ? prev : [...prev, event.postId],
+      );
+    });
+  }, []);
+
   async function loadMore() {
     if (!current.nextCursor || current.status === "loading-more") return;
     setTabs((prev) => ({
@@ -165,6 +180,7 @@ export default function FeedPage() {
         <PostComposer
           onPosted={() => {
             // Vuelve a pedir el feed desde el principio: hay una publicación nueva.
+            setNewPostIds([]);
             setReloadToken((n) => n + 1);
           }}
         />
@@ -193,6 +209,23 @@ export default function FeedPage() {
             Explorar
           </button>
         </div>
+
+        {tab === "siguiendo" && newPostIds.length > 0 && (
+          <div className="mt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                setNewPostIds([]);
+                setReloadToken((n) => n + 1);
+              }}
+              className="rounded-full border border-primary/30 bg-surface px-4 py-1.5 text-xs font-semibold text-primary shadow-sm hover:bg-primary hover:text-white"
+            >
+              {newPostIds.length === 1
+                ? "Hay 1 publicación nueva · Ver"
+                : `Hay ${newPostIds.length} publicaciones nuevas · Ver`}
+            </button>
+          </div>
+        )}
 
         {current.status === "loading" && (
           <p className="py-10 text-center text-muted">Cargando…</p>

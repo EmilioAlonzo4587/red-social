@@ -23,8 +23,10 @@ import type {
   MessageData,
   NotificationCreatedEvent,
   NotificationData,
+  PostCreatedEvent,
 } from '../events/domain-events';
 import { OnDomainEvent } from '../events/on-domain-event.decorator';
+import { FollowsService } from '../follows/follows.service';
 import { ConversationJoinDto } from './dto/conversation-join.dto';
 import { PostWatchDto, parseWsDto } from './dto/post-watch.dto';
 import { PresenceWatchDto } from './dto/presence-watch.dto';
@@ -92,6 +94,7 @@ export class RealtimeGateway
     private readonly tokens: SessionTokenService,
     @Inject(ENV) private readonly env: Env,
     private readonly conversations: ConversationsService,
+    private readonly follows: FollowsService,
   ) {}
 
   // Corre una vez, cuando el servidor de Socket.io ya existe. El middleware se ejecuta en cada
@@ -334,6 +337,20 @@ export class RealtimeGateway
       .emit('notification:new', toNotificationEvent(notification));
   }
 
+  // S4-11: avisa a la sala personal user:{id} de cada seguidor que hay una publicación nueva (D11)
+  @OnDomainEvent('post.created')
+  async handlePostCreated({
+    postId,
+    authorId,
+  }: PostCreatedEvent): Promise<void> {
+    const followerIds = await this.follows.findFollowerIds(authorId);
+    if (followerIds.length === 0) return;
+    // Un solo emit a todas las salas: Socket.io no repite el envío a un socket en varias
+    this.server
+      .to(followerIds.map(userRoom))
+      .emit('feed:new', { postId, authorId });
+  }
+
   // Devuelve el error con el que se rechaza la conexión, o undefined para aceptarla.
   // Nunca registra la cookie ni el token.
   private async authenticate(socket: AppSocket): Promise<Error | undefined> {
@@ -389,6 +406,7 @@ function toNotificationEvent(
     actor: notification.actor,
     postId: notification.postId,
     commentId: notification.commentId,
+    preview: notification.preview,
     read: notification.read,
     createdAt: notification.createdAt.toISOString(),
   };

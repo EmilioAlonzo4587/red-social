@@ -67,8 +67,14 @@ export interface NotificationNewEvent {
   actor: UserSummaryData;
   postId: string | null;
   commentId: string | null;
+  preview: string | null;
   read: boolean;
   createdAt: string;
+}
+
+export interface FeedNewEvent {
+  postId: string;
+  authorId: string;
 }
 
 // Cliente → servidor
@@ -91,6 +97,7 @@ export interface ServerToClientEvents {
   'session:ready': (data: { userId: string }) => void;
   'post:likes': (data: PostLikesEvent) => void;
   'post:comments': (data: PostCommentsEvent) => void;
+  'feed:new': (data: FeedNewEvent) => void;
   'message:new': (data: MessageNewEvent) => void;
   'conversation:updated': (data: ConversationUpdatedEvent) => void;
   'conversation:typing': (data: ConversationTypingEvent) => void;

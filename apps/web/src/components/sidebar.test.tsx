@@ -1,5 +1,16 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
-import type { ConversationDto, MeDto } from "@red/api-types";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import type {
+  ConversationDto,
+  MeDto,
+  NotificationDto,
+} from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./sidebar";
 
@@ -18,10 +29,17 @@ vi.mock("next/navigation", () => ({
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
-const { onUpdated, onRead } = vi.hoisted(() => ({
-  onUpdated: { current: null as ((c: ConversationDto) => void) | null },
-  onRead: { current: null as ((id: string) => void) | null },
-}));
+const { onUpdated, onRead, onNotificationNew, onNotificationsRead } =
+  vi.hoisted(() => ({
+    onUpdated: { current: null as ((c: ConversationDto) => void) | null },
+    onRead: { current: null as ((id: string) => void) | null },
+    onNotificationNew: {
+      current: null as ((n: NotificationDto) => void) | null,
+    },
+    onNotificationsRead: {
+      current: null as ((p: { decrement?: number; all?: boolean }) => void) | null,
+    },
+  }));
 vi.mock("@/lib/socket", () => ({
   subscribeConversationUpdated: vi.fn((cb: (c: ConversationDto) => void) => {
     onUpdated.current = cb;
@@ -35,6 +53,21 @@ vi.mock("@/lib/socket", () => ({
       onRead.current = null;
     };
   }),
+  subscribeNotificationNew: vi.fn((cb: (n: NotificationDto) => void) => {
+    onNotificationNew.current = cb;
+    return () => {
+      onNotificationNew.current = null;
+    };
+  }),
+  subscribeNotificationsRead: vi.fn(
+    (cb: (p: { decrement?: number; all?: boolean }) => void) => {
+      onNotificationsRead.current = cb;
+      return () => {
+        onNotificationsRead.current = null;
+      };
+    },
+  ),
+  notifyNotificationsRead: vi.fn(),
 }));
 
 const ME: MeDto = {
@@ -219,5 +252,91 @@ describe("Sidebar", () => {
     pathname.value = "/login";
     render(<Sidebar />);
     expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+  });
+
+  it("muestra el contador de notificaciones sin leer y lo actualiza con notification:new y al leer (S4-11)", async () => {
+    apiFetchClient
+      .mockResolvedValueOnce(ME)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({ count: 2 });
+
+    render(<Sidebar />);
+
+    await waitFor(() => {
+      expect(
+        desktop().getByLabelText("2 notificaciones sin leer"),
+      ).toHaveTextContent("2");
+      expect(
+        mobile().getByLabelText("2 notificaciones sin leer"),
+      ).toHaveTextContent("2");
+    });
+
+    // Llega una notificación nueva por socket -> sube a 3
+    act(() => {
+      onNotificationNew.current?.({
+        id: "n1",
+        type: "like",
+        actor: {
+          id: "u2",
+          username: "beto",
+          displayName: "Beto",
+          avatarPublicId: null,
+        },
+        postId: "p1",
+        commentId: null,
+        preview: null,
+        read: false,
+        createdAt: "2026-10-30T15:00:00.000Z",
+      });
+    });
+    expect(
+      desktop().getByLabelText("3 notificaciones sin leer"),
+    ).toHaveTextContent("3");
+
+    // Se marca una como leída -> baja a 2
+    act(() => {
+      onNotificationsRead.current?.({ decrement: 1 });
+    });
+    expect(
+      desktop().getByLabelText("2 notificaciones sin leer"),
+    ).toHaveTextContent("2");
+
+    // Se marcan todas como leídas -> desaparece la insignia
+    act(() => {
+      onNotificationsRead.current?.({ all: true });
+    });
+    expect(
+      screen.queryByLabelText(/notificaciones sin leer/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("abre y cierra el panel deslizable de notificaciones sobre la pantalla actual al pulsar Notificaciones", async () => {
+    apiFetchClient
+      .mockResolvedValueOnce(ME)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValueOnce({ items: [], nextCursor: null });
+
+    render(<Sidebar />);
+
+    expect(
+      screen.queryByRole("dialog", { name: "Panel de notificaciones" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(desktop().getByRole("link", { name: "Notificaciones" }));
+
+    const drawer = await screen.findByRole("dialog", {
+      name: "Panel de notificaciones",
+    });
+    expect(drawer).toBeInTheDocument();
+
+    fireEvent.click(
+      within(drawer).getByRole("button", {
+        name: "Cerrar panel de notificaciones",
+      }),
+    );
+    expect(
+      screen.queryByRole("dialog", { name: "Panel de notificaciones" }),
+    ).not.toBeInTheDocument();
   });
 });

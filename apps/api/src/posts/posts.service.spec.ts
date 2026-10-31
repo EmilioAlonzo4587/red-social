@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import type { DomainEvents } from '../events/domain-events.service';
 import type { CloudinaryService } from '../media/cloudinary.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PostsService } from './posts.service';
@@ -17,6 +18,7 @@ describe('PostsService', () => {
     belongsToUser: jest.fn(),
     deleteByPublicId: jest.fn(),
   };
+  const events = { emit: jest.fn() };
   let service: PostsService;
 
   const row = {
@@ -45,6 +47,7 @@ describe('PostsService', () => {
     service = new PostsService(
       prisma as unknown as PrismaService,
       cloudinary as unknown as CloudinaryService,
+      events as unknown as DomainEvents,
     );
   });
 
@@ -98,6 +101,10 @@ describe('PostsService', () => {
         { data: { media: { create: { position: number }[] } } },
       ];
       expect(data.media.create.map((m) => m.position)).toEqual([0, 1]);
+      expect(events.emit).toHaveBeenCalledWith('post.created', {
+        postId: 'p1',
+        authorId: 'u1',
+      });
     });
   });
 

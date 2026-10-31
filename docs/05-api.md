@@ -61,6 +61,7 @@ Comment      { id: string; postId: string; author: UserSummary; content: string;
 Notification { id: string; type: "like" | "comment" | "follow" | "message"; actor: UserSummary;
                postId: string | null;          // like y comment
                commentId: string | null;       // comment
+               preview: string | null;         // primeros ~80 caracteres en comment y message; null en like y follow
                read: boolean; createdAt: string }
 
 // Una fila de la bandeja, vista por el usuario con sesión
@@ -161,7 +162,9 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 | POST | `/api/notifications/read` 🔒 | `{ ids: string[] }` o `{ all: true }` | 204 | 400 |
 
 - Se crean solas al dar like, comentar, seguir o escribir (RN08), nunca por una acción sobre uno mismo. Quitar el like o borrar el comentario no borra la notificación ya creada.
+- Una misma persona genera una única notificación de `like` por publicación (quitar el like y volver a darlo no crea otra) y como máximo 10 notificaciones de `comment` por publicación (`MAX_COMMENT_NOTIFICATIONS_PER_POST = 10`, el contador se reinicia en cada publicación nueva; S4-11, RN08).
 - Se crea una notificación de `message` solo si no hay otra sin leer del mismo remitente, para no llenar la campana con cada mensaje de una conversación.
+- `preview` trae los primeros ~80 caracteres del comentario (`comment`) o del último mensaje de ese remitente (`message`), y `null` en `like` y `follow`. Se calcula al leer (sin columna nueva en la base) y viaja tanto en `GET /api/notifications` como en `notification:new` (S4-11).
 - La lista y `unread-count` no incluyen las de una publicación o un comentario eliminados: su enlace llevaría a un 404.
 - `POST /api/notifications/read` lleva exactamente uno de los dos campos: `ids` (de 1 a 100 UUID) o `all: true`. Sin ninguno, con los dos (`details: [{ field: "all", rule: "notWith" }]`) o con otro valor responde 400. Las ids ajenas o inexistentes se ignoran sin error, y una ya leída conserva su fecha de lectura.
 
@@ -219,6 +222,7 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
 | Servidor → cliente | `conversation:read` | `{ conversationId, userId, readAt }` | Marca como "Visto" los mensajes propios hasta `readAt` |
 | Servidor → cliente | `user:presence` | `{ userId, online }` | Actualiza el estado conectado/desconectado del usuario en vivo |
 | Servidor → cliente | `notification:new` | `Notification` | Suma uno a la campana y la agrega a la lista |
+| Servidor → cliente | `feed:new` | `{ postId, authorId }` | En la pestaña Siguiendo, muestra el aviso "Hay N publicaciones nuevas · Ver" |
 
 **Publicaciones en vivo (S2-03).**
 
@@ -227,6 +231,7 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
 - Al reconectar, el socket ya no está en ninguna sala `post:{id}`: el cliente vuelve a mandar `post:watch` con las publicaciones que sigue mostrando.
 - `post:likes` sale cuando el contador cambia de verdad (`like.changed`): repetir un `PUT` idempotente no emite nada (RN05).
 - `post:comments` sale al crear o borrar un comentario (`comment.changed`), a la misma sala `post:{id}` (S3-18).
+- `feed:new` sale a la sala `user:{id}` de cada seguidor cuando alguien crea una publicación (`post.created`, S4-11), sin guardar notificaciones en la base (D11).
 
 **Chat en vivo (S3-05).**
 

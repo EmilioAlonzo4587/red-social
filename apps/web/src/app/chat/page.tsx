@@ -25,6 +25,7 @@ import { useEmojiInsert } from "@/lib/use-emoji-insert";
 import {
   emitConversationTyping,
   notifyConversationRead,
+  setActiveChatUser,
   subscribeConversationMessages,
   subscribeConversationUpdated,
   watchUsersPresence,
@@ -137,6 +138,14 @@ function ChatView() {
   }, [selectedId, currentUserId]);
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
+  const selectedOtherUserId = selected?.otherUser.id ?? null;
+
+  useEffect(() => {
+    setActiveChatUser(selectedOtherUserId);
+    return () => {
+      setActiveChatUser(null);
+    };
+  }, [selectedOtherUserId]);
 
   // openConversation lee el estado más reciente sin que la carga inicial dependa de él
   const openFromQuery = useEffectEvent((id: string, list: ConversationDto[]) =>
