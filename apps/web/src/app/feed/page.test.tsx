@@ -260,7 +260,7 @@ describe("FeedPage", () => {
     apiFetchClient.mockResolvedValueOnce(page([post("nueva")])); // recarga de explorar
 
     await user.type(
-      screen.getByPlaceholderText("¿Qué estás pensando?"),
+      screen.getByPlaceholderText(/^¿Qué hay de nuevo/),
       "hola",
     );
     await user.click(screen.getByRole("button", { name: "Publicar" }));
@@ -305,10 +305,21 @@ describe("FeedPage", () => {
     expect(screen.queryByText("@ana_lopez")).not.toBeInTheDocument();
   });
 
+  it("el compositor saluda con tu nombre al cargar el usuario (S4-17)", async () => {
+    apiFetchClient.mockResolvedValueOnce(page([])); // explorar inicial
+    render(<FeedPage />);
+    expect(
+      screen.getByPlaceholderText("¿Qué hay de nuevo?"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByPlaceholderText("¿Qué hay de nuevo, Ana?"),
+    ).toBeInTheDocument();
+  });
+
   it("muestra tu foto a la izquierda del compositor solo en el celular (S4-16)", async () => {
     apiFetchClient.mockResolvedValueOnce(page([])); // explorar inicial
     render(<FeedPage />);
-    const composer = screen.getByPlaceholderText("¿Qué estás pensando?");
+    const composer = screen.getByPlaceholderText(/^¿Qué hay de nuevo/);
     const row = composer.closest("form")?.parentElement?.parentElement;
     await waitFor(() => expect(row).toHaveTextContent(/^AL/));
     // Oculta desde sm: ahí ya está la tarjeta de perfil de la columna derecha
