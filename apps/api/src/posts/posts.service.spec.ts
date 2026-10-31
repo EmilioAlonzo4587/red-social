@@ -25,6 +25,7 @@ describe('PostsService', () => {
     likeCount: 3,
     commentCount: 1,
     createdAt: new Date('2026-10-01T00:00:00Z'),
+    editedAt: null as Date | null,
     author: {
       id: 'u1',
       username: 'ana_lopez',
@@ -90,6 +91,7 @@ describe('PostsService', () => {
         commentCount: 1,
         likedByMe: false,
         createdAt: row.createdAt,
+        editedAt: null,
       });
 
       const [{ data }] = prisma.post.create.mock.calls[0] as [
@@ -115,6 +117,76 @@ describe('PostsService', () => {
       await expect(service.findOne('p1', 'u2')).resolves.toMatchObject({
         likedByMe: true,
       });
+    });
+  });
+
+  describe('update', () => {
+    it('404 si no existe o fue eliminada', async () => {
+      prisma.post.findFirst.mockResolvedValueOnce(null);
+      await expect(
+        service.update('p1', 'u1', { content: 'Hola' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('403 si es de otro usuario, sin tocar la publicación (RN04)', async () => {
+      prisma.post.findFirst.mockResolvedValueOnce({
+        authorId: 'u1',
+        _count: { media: 0 },
+      });
+      await expect(
+        service.update('p1', 'u2', { content: 'Hola' }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.post.update).not.toHaveBeenCalled();
+    });
+
+    it('400 si quitar el texto la dejaría sin texto ni imágenes (RN03)', async () => {
+      prisma.post.findFirst.mockResolvedValueOnce({
+        authorId: 'u1',
+        _count: { media: 0 },
+      });
+      await expect(
+        service.update('p1', 'u1', { content: null }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.post.update).not.toHaveBeenCalled();
+    });
+
+    it('con imágenes, se puede dejar sin texto', async () => {
+      prisma.post.findFirst.mockResolvedValueOnce({
+        authorId: 'u1',
+        _count: { media: 1 },
+      });
+      prisma.post.update.mockResolvedValueOnce({
+        ...row,
+        content: null,
+        editedAt: new Date(),
+      });
+      const post = await service.update('p1', 'u1', { content: null });
+      expect(post.content).toBeNull();
+    });
+
+    it('guarda el texto nuevo y marca editedAt', async () => {
+      prisma.post.findFirst.mockResolvedValueOnce({
+        authorId: 'u1',
+        _count: { media: 0 },
+      });
+      const editedAt = new Date('2026-10-31T00:00:00Z');
+      prisma.post.update.mockResolvedValueOnce({
+        ...row,
+        content: 'Hola editado',
+        editedAt,
+      });
+
+      const post = await service.update('p1', 'u1', {
+        content: 'Hola editado',
+      });
+
+      expect(prisma.post.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'p1' },
+          data: { content: 'Hola editado', editedAt: expect.any(Date) as Date },
+        }),
+      );
+      expect(post).toMatchObject({ content: 'Hola editado', editedAt });
     });
   });
 

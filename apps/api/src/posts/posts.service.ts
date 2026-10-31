@@ -9,6 +9,7 @@ import { CloudinaryService } from '../media/cloudinary.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { PostDto } from './dto/post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 import { postSelect, toPostDto } from './post-select';
 
 @Injectable()
@@ -71,6 +72,38 @@ export class PostsService {
     });
     if (!post) throw new NotFoundException('Publicación no encontrada');
     return toPostDto(post);
+  }
+
+  // RN04: solo el autor edita, y solo el texto. Sin texto tiene que quedar al menos una
+  // imagen (RN03). editedAt marca la publicación como editada en el feed.
+  async update(
+    id: string,
+    userId: string,
+    dto: UpdatePostDto,
+  ): Promise<PostDto> {
+    const post = await this.prisma.post.findFirst({
+      where: { id, deletedAt: null },
+      select: { authorId: true, _count: { select: { media: true } } },
+    });
+    if (!post) throw new NotFoundException('Publicación no encontrada');
+    if (post.authorId !== userId) {
+      throw new ForbiddenException('Solo el autor puede editar su publicación');
+    }
+
+    const content = dto.content ?? null;
+    if (content === null && post._count.media === 0) {
+      throw new BadRequestException({
+        message: 'content: escribe un texto o agrega al menos una imagen',
+        details: [{ field: 'content', rule: 'contentOrMedia' }],
+      });
+    }
+
+    const updated = await this.prisma.post.update({
+      where: { id },
+      data: { content, editedAt: new Date() },
+      select: postSelect(userId),
+    });
+    return toPostDto(updated);
   }
 
   // RN04: solo el autor, con borrado lógico. Las imágenes se borran de Cloudinary después

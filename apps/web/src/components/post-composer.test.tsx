@@ -41,6 +41,7 @@ const SAMPLE_POST: PostDto = {
   commentCount: 0,
   likedByMe: false,
   createdAt: "2026-10-28T00:00:00.000Z",
+  editedAt: null,
 };
 
 describe("PostComposer", () => {

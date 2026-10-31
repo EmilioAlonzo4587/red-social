@@ -37,4 +37,13 @@ export class PostDto {
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    description:
+      'Última vez que el autor editó el texto; null si nunca se editó',
+  })
+  editedAt!: Date | null;
 }

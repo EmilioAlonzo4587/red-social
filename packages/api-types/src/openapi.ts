@@ -241,7 +241,7 @@ export interface paths {
         delete: operations["PostsController_remove"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["PostsController_update"];
         trace?: never;
     };
     "/api/feed": {
@@ -603,6 +603,15 @@ export interface components {
             likedByMe: boolean;
             /** Format: date-time */
             createdAt: string;
+            /**
+             * Format: date-time
+             * @description Última vez que el autor editó el texto; null si nunca se editó
+             */
+            editedAt: string | null;
+        };
+        UpdatePostDto: {
+            /** @example Primer atardecer del semestre (editado) */
+            content: string | null;
         };
         PostPageDto: {
             items: components["schemas"]["PostDto"][];
@@ -1410,6 +1419,66 @@ export interface operations {
                 };
             };
             /** @description No existe o ya fue eliminada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    PostsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePostDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostDto"];
+                };
+            };
+            /** @description id no es un UUID, content pasa de 2000 o quedaría sin texto ni imágenes (RN03) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description La publicación es de otro usuario (RN04) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description No existe o fue eliminada */
             404: {
                 headers: {
                     [name: string]: unknown;

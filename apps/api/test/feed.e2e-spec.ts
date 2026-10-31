@@ -150,6 +150,7 @@ describe('Feeds (e2e)', () => {
           'commentCount',
           'likedByMe',
           'createdAt',
+          'editedAt',
         ].sort(),
       );
       expect(betoPost).toMatchObject({

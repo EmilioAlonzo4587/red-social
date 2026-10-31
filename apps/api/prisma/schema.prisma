@@ -66,6 +66,9 @@ model Post {
   commentCount Int         @default(0) @map("comment_count")
   createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  // Última edición del texto (PATCH /posts/:id); null si nunca se editó. No sirve
+  // updatedAt: cambia con cada like o comentario por los contadores (D05).
+  editedAt     DateTime?   @map("edited_at") @db.Timestamptz
   deletedAt    DateTime?   @map("deleted_at") @db.Timestamptz
   author       User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   media        PostMedia[]
