@@ -300,9 +300,9 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put: operations["LikesController_like"];
+        put: operations["LikesController_react"];
         post?: never;
-        delete: operations["LikesController_unlike"];
+        delete: operations["LikesController_unreact"];
         options?: never;
         head?: never;
         patch?: never;
@@ -601,6 +601,20 @@ export interface components {
              * @example false
              */
             likedByMe: boolean;
+            /**
+             * @description La reacción del usuario con sesión; null si no reaccionó
+             * @example love
+             * @enum {string|null}
+             */
+            myReaction: "like" | "love" | "haha" | "wow" | "sad" | "angry" | null;
+            /**
+             * @description Hasta 3, de la más usada a la menos usada; un empate sigue el orden de la lista
+             * @example [
+             *       "like",
+             *       "love"
+             *     ]
+             */
+            topReactions: ("like" | "love" | "haha" | "wow" | "sad" | "angry")[];
             /** Format: date-time */
             createdAt: string;
             /**
@@ -618,11 +632,36 @@ export interface components {
             /** @description Se manda como ?cursor= para la siguiente página; null en la última */
             nextCursor: string | null;
         };
+        ReactToPostDto: {
+            /**
+             * @default like
+             * @example love
+             * @enum {string}
+             */
+            reaction: "like" | "love" | "haha" | "wow" | "sad" | "angry";
+        };
         LikeStatusDto: {
-            /** @example 25 */
+            /**
+             * @description Total de reacciones
+             * @example 25
+             */
             likeCount: number;
             /** @example true */
             likedByMe: boolean;
+            /**
+             * @description La reacción del usuario con sesión; null si no reaccionó
+             * @example love
+             * @enum {string|null}
+             */
+            myReaction: "like" | "love" | "haha" | "wow" | "sad" | "angry" | null;
+            /**
+             * @description Hasta 3, de la más usada a la menos usada; un empate sigue el orden de la lista
+             * @example [
+             *       "like",
+             *       "love"
+             *     ]
+             */
+            topReactions: ("like" | "love" | "haha" | "wow" | "sad" | "angry")[];
         };
         CommentDto: {
             /** Format: uuid */
@@ -1620,7 +1659,7 @@ export interface operations {
             };
         };
     };
-    LikesController_like: {
+    LikesController_react: {
         parameters: {
             query?: never;
             header?: never;
@@ -1629,9 +1668,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReactToPostDto"];
+            };
+        };
         responses: {
-            /** @description Repetirlo responde lo mismo y no cuenta otro like (RN05) */
+            /** @description Sin reaction cuenta como Me gusta. Repetirla responde lo mismo y elegir otra la reemplaza sin sumar al total (RN05) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1640,7 +1683,7 @@ export interface operations {
                     "application/json": components["schemas"]["LikeStatusDto"];
                 };
             };
-            /** @description id no es un UUID */
+            /** @description id no es un UUID o la reacción no es válida */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1668,7 +1711,7 @@ export interface operations {
             };
         };
     };
-    LikesController_unlike: {
+    LikesController_unreact: {
         parameters: {
             query?: never;
             header?: never;
@@ -1679,7 +1722,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Quitar un like que no existe responde lo mismo */
+            /** @description Quitar una reacción que no existe responde lo mismo */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1688,7 +1731,7 @@ export interface operations {
                     "application/json": components["schemas"]["LikeStatusDto"];
                 };
             };
-            /** @description id no es un UUID */
+            /** @description id no es un UUID o la reacción no es válida */
             400: {
                 headers: {
                     [name: string]: unknown;

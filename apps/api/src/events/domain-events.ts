@@ -3,6 +3,8 @@
 // @OnDomainEvent. Ningún servicio llama al Gateway directamente.
 // Se emiten después de que la transacción se confirmó, nunca dentro de ella.
 
+import type { ReactionType } from '../likes/reactions';
+
 // Vista mínima de un usuario, igual que UserSummary de docs/05-api.md
 export interface UserSummaryData {
   id: string;
@@ -14,14 +16,18 @@ export interface UserSummaryData {
 // Se agregó o se quitó una fila (un like o un comentario)
 export type CountChange = 'added' | 'removed';
 
-// Like o unlike que sí cambió el contador; repetir un PUT idempotente no emite nada (RN05).
-// El Gateway envía post:likes { postId, likeCount } a la sala post:{postId}.
+// Una reacción que se agregó o se quitó, o que se cambió por otra sin mover el total
+export type LikeChange = CountChange | 'changed';
+
+// Reacción que sí cambió algo; repetir un PUT idempotente no emite nada (RN05). El Gateway
+// envía post:likes { postId, likeCount, topReactions } a la sala post:{postId}.
 export interface LikeChangedEvent {
   postId: string;
   postAuthorId: string;
   actorId: string;
-  change: CountChange;
+  change: LikeChange;
   likeCount: number;
+  topReactions: ReactionType[];
 }
 
 // Comentario creado o borrado. El Gateway envía post:comments { postId, commentCount }.

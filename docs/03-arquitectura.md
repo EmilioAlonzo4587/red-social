@@ -61,7 +61,7 @@ Los tipos están en `apps/api/src/events/domain-events.ts`. Un servicio emite co
 
 | Evento | Lo emite | Datos | Quién lo escucha |
 |---|---|---|---|
-| `like.changed` | Likes (S2-07), solo si el contador cambió | `{ postId, postAuthorId, actorId, change: "added" \| "removed", likeCount }` | Gateway: `post:likes` a `post:{postId}`. Notificaciones: crea la de like si `change` es `added` |
+| `like.changed` | Likes (S2-07), solo si el contador cambió | `{ postId, postAuthorId, actorId, change: "added" \| "removed" \| "changed", likeCount, topReactions }` | Gateway: `post:likes` a `post:{postId}`. Notificaciones: crea la de like si `change` es `added` |
 | `comment.changed` | Comentarios (S3-01) | `{ postId, postAuthorId, actorId, commentId, change, commentCount }` | Gateway: `post:comments` a `post:{postId}`. Notificaciones: crea la de comentario si `change` es `added` |
 | `follow.created` | Seguimiento (S2-06), solo si se creó la fila | `{ followerId, followingId }` | Notificaciones |
 | `message.created` | Chat (S3-04) | `{ message: Message, recipientId }` | Gateway: `message:new` a `conv:{conversationId}` y `conversation:updated` a los dos participantes. Notificaciones |

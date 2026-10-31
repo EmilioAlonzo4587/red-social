@@ -21,6 +21,7 @@ describe('NotificationsListener', () => {
       actorId: 'beto',
       change: 'added',
       likeCount: 1,
+      topReactions: ['like'],
     });
     expect(notifications.notify).toHaveBeenCalledWith({
       type: 'like',
@@ -30,6 +31,18 @@ describe('NotificationsListener', () => {
     });
   });
 
+  it('like.changed changed: cambiar de reacción no vuelve a notificar', async () => {
+    await listener.onLike({
+      postId: 'p1',
+      postAuthorId: 'ana',
+      actorId: 'beto',
+      change: 'changed',
+      likeCount: 1,
+      topReactions: ['love'],
+    });
+    expect(notifications.notify).not.toHaveBeenCalled();
+  });
+
   it('like.changed removed: nada', async () => {
     await listener.onLike({
       postId: 'p1',
@@ -37,6 +50,7 @@ describe('NotificationsListener', () => {
       actorId: 'beto',
       change: 'removed',
       likeCount: 0,
+      topReactions: [],
     });
     expect(notifications.notify).not.toHaveBeenCalled();
   });

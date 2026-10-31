@@ -99,7 +99,12 @@ describe('Likes (e2e)', () => {
         .set('Cookie', beto.cookie)
         .expect(200);
 
-      expect(statusOf(res)).toEqual({ likeCount: 1, likedByMe: true });
+      expect(statusOf(res)).toEqual({
+        likeCount: 1,
+        likedByMe: true,
+        myReaction: 'like',
+        topReactions: ['like'],
+      });
       expect(emit).toHaveBeenCalledTimes(1);
       expect(emit).toHaveBeenCalledWith('like.changed', {
         postId: id,
@@ -107,6 +112,7 @@ describe('Likes (e2e)', () => {
         actorId: beto.id,
         change: 'added',
         likeCount: 1,
+        topReactions: ['like'],
       });
 
       const post = await request(server)
@@ -129,7 +135,12 @@ describe('Likes (e2e)', () => {
           .put(`/api/posts/${id}/like`)
           .set('Cookie', beto.cookie)
           .expect(200);
-        expect(statusOf(res)).toEqual({ likeCount: 1, likedByMe: true });
+        expect(statusOf(res)).toEqual({
+          likeCount: 1,
+          likedByMe: true,
+          myReaction: 'like',
+          topReactions: ['like'],
+        });
       }
 
       expect(await likeCountOf(id)).toBe(1);
@@ -201,6 +212,125 @@ describe('Likes (e2e)', () => {
     });
   });
 
+  describe('Reacciones (S4-12)', () => {
+    const react = (id: string, cookie: string, reaction?: string) =>
+      request(server)
+        .put(`/api/posts/${id}/like`)
+        .set('Cookie', cookie)
+        .send(reaction === undefined ? {} : { reaction });
+
+    it('200: acepta cada una de las 6 reacciones', async () => {
+      const ana = await signUp('ana_lopez');
+      const id = await postBy(ana.id);
+
+      for (const reaction of ['like', 'love', 'haha', 'wow', 'sad', 'angry']) {
+        const res = await react(id, ana.cookie, reaction).expect(200);
+        expect(statusOf(res)).toEqual({
+          likeCount: 1,
+          likedByMe: true,
+          myReaction: reaction,
+          topReactions: [reaction],
+        });
+      }
+    });
+
+    it('200: cambiar de reacción no suma al total y emite changed', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+      const id = await postBy(ana.id);
+      await react(id, beto.cookie, 'like').expect(200);
+      emit.mockClear();
+
+      const res = await react(id, beto.cookie, 'love').expect(200);
+
+      expect(statusOf(res)).toMatchObject({
+        likeCount: 1,
+        myReaction: 'love',
+        topReactions: ['love'],
+      });
+      expect(await likeCountOf(id)).toBe(1);
+      expect(await prisma.postLike.count({ where: { postId: id } })).toBe(1);
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith('like.changed', {
+        postId: id,
+        postAuthorId: ana.id,
+        actorId: beto.id,
+        change: 'changed',
+        likeCount: 1,
+        topReactions: ['love'],
+      });
+    });
+
+    it('200: repetir la misma reacción no cambia nada ni emite', async () => {
+      const ana = await signUp('ana_lopez');
+      const id = await postBy(ana.id);
+      await react(id, ana.cookie, 'wow').expect(200);
+      emit.mockClear();
+
+      const res = await react(id, ana.cookie, 'wow').expect(200);
+
+      expect(statusOf(res)).toMatchObject({ likeCount: 1, myReaction: 'wow' });
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it('200: las más usadas, hasta 3, y Post muestra mi reacción', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+      const carla = await signUp('carla');
+      const diego = await signUp('diego');
+      const elena = await signUp('elena');
+      const id = await postBy(ana.id);
+      await react(id, ana.cookie, 'sad').expect(200);
+      await react(id, beto.cookie, 'sad').expect(200);
+      await react(id, carla.cookie, 'love').expect(200);
+      await react(id, diego.cookie, 'like').expect(200);
+      await react(id, elena.cookie, 'wow').expect(200);
+
+      const post = await request(server)
+        .get(`/api/posts/${id}`)
+        .set('Cookie', carla.cookie)
+        .expect(200);
+      expect(post.body as PostDto).toMatchObject({
+        likeCount: 5,
+        likedByMe: true,
+        myReaction: 'love',
+        // sad gana con 2; like y love empatan y siguen el orden de la lista; wow queda fuera
+        topReactions: ['sad', 'like', 'love'],
+      });
+
+      const feed = await request(server)
+        .get('/api/feed/explore')
+        .set('Cookie', beto.cookie)
+        .expect(200);
+      expect((feed.body as { items: PostDto[] }).items[0]).toMatchObject({
+        myReaction: 'sad',
+        topReactions: ['sad', 'like', 'love'],
+      });
+    });
+
+    it('400 si la reacción no existe, sin guardar nada', async () => {
+      const ana = await signUp('ana_lopez');
+      const id = await postBy(ana.id);
+
+      const res = await react(id, ana.cookie, 'dislike').expect(400);
+
+      expect(ruleOf(res, 'reaction')).toBe('isIn');
+      expect(await prisma.postLike.count()).toBe(0);
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it('la base rechaza una reacción fuera de la lista', async () => {
+      const ana = await signUp('ana_lopez');
+      const id = await postBy(ana.id);
+
+      await expect(
+        prisma.postLike.create({
+          data: { userId: ana.id, postId: id, reaction: 'dislike' },
+        }),
+      ).rejects.toThrow();
+    });
+  });
+
   describe('DELETE /api/posts/:id/like', () => {
     it('200: resta uno, emite like.changed y repetir no cambia nada', async () => {
       const ana = await signUp('ana_lopez');
@@ -217,7 +347,12 @@ describe('Likes (e2e)', () => {
           .delete(`/api/posts/${id}/like`)
           .set('Cookie', beto.cookie)
           .expect(200);
-        expect(statusOf(res)).toEqual({ likeCount: 0, likedByMe: false });
+        expect(statusOf(res)).toEqual({
+          likeCount: 0,
+          likedByMe: false,
+          myReaction: null,
+          topReactions: [],
+        });
       }
 
       expect(await likeCountOf(id)).toBe(0);
@@ -228,6 +363,7 @@ describe('Likes (e2e)', () => {
         actorId: beto.id,
         change: 'removed',
         likeCount: 0,
+        topReactions: [],
       });
     });
 
@@ -245,7 +381,12 @@ describe('Likes (e2e)', () => {
         .set('Cookie', beto.cookie)
         .expect(200);
 
-      expect(statusOf(res)).toEqual({ likeCount: 1, likedByMe: false });
+      expect(statusOf(res)).toEqual({
+        likeCount: 1,
+        likedByMe: false,
+        myReaction: null,
+        topReactions: ['like'],
+      });
       expect(await likeCountOf(id)).toBe(1);
     });
 

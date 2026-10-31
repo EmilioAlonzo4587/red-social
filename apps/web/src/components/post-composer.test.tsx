@@ -40,6 +40,8 @@ const SAMPLE_POST: PostDto = {
   likeCount: 0,
   commentCount: 0,
   likedByMe: false,
+  myReaction: null,
+  topReactions: [],
   createdAt: "2026-10-28T00:00:00.000Z",
   editedAt: null,
 };

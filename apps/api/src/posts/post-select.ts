@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import { isReaction, type ReactionType } from '../likes/reactions';
 import type { PostDto } from './dto/post.dto';
 
 // Campos que necesita un Post (docs/05-api.md) vistos por viewerId. Los comparten
@@ -23,8 +24,8 @@ export function postSelect(viewerId: string) {
       select: { publicId: true, width: true, height: true },
       orderBy: { position: 'asc' },
     },
-    // "Le di like": a lo sumo una fila, la del usuario con sesión (PK user_id, post_id)
-    likes: { where: { userId: viewerId }, select: { userId: true }, take: 1 },
+    // Mi reacción: a lo sumo una fila, la del usuario con sesión (PK user_id, post_id)
+    likes: { where: { userId: viewerId }, select: { reaction: true }, take: 1 },
   } satisfies Prisma.PostSelect;
 }
 
@@ -32,8 +33,14 @@ export type PostRow = Prisma.PostGetPayload<{
   select: ReturnType<typeof postSelect>;
 }>;
 
-export function toPostDto(row: PostRow): PostDto {
+// topReactions sale aparte (loadTopReactions): necesita contar por tipo, y Prisma no agrupa
+// dentro de un select.
+export function toPostDto(
+  row: PostRow,
+  topReactions: ReactionType[] = [],
+): PostDto {
   const { likes, media, ...rest } = row;
+  const mine = likes[0]?.reaction;
   return {
     ...rest,
     // La api solo guarda imágenes (RN03) y siempre con sus medidas, aunque las columnas
@@ -45,5 +52,7 @@ export function toPostDto(row: PostRow): PostDto {
       height: m.height ?? 0,
     })),
     likedByMe: likes.length > 0,
+    myReaction: mine !== undefined && isReaction(mine) ? mine : null,
+    topReactions,
   };
 }

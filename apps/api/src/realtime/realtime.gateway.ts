@@ -212,12 +212,13 @@ export class RealtimeGateway
     }
   }
 
-  // S2-03: cuando cambia el contador de likes (S2-07), avisa a quienes miran esa publicación
+  // S2-03: cuando cambian las reacciones (S2-07, S4-12), avisa a quienes miran esa publicación
   @OnDomainEvent('like.changed')
   handleLikeChanged(event: LikeChangedEvent): void {
     this.server.to(postRoom(event.postId)).emit('post:likes', {
       postId: event.postId,
       likeCount: event.likeCount,
+      topReactions: event.topReactions,
     });
   }
 

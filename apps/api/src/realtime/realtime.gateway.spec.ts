@@ -176,11 +176,13 @@ describe('RealtimeGateway (likes en vivo)', () => {
       actorId: 'u2',
       change: 'added',
       likeCount: 7,
+      topReactions: ['love', 'like'],
     });
     expect(to).toHaveBeenCalledWith(postRoom(VALID_ID_1));
     expect(emit).toHaveBeenCalledWith('post:likes', {
       postId: VALID_ID_1,
       likeCount: 7,
+      topReactions: ['love', 'like'],
     });
   });
 

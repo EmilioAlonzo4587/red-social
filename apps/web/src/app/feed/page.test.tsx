@@ -38,6 +38,8 @@ function post(id: string): PostDto {
     likeCount: 0,
     commentCount: 0,
     likedByMe: false,
+    myReaction: null,
+    topReactions: [],
     createdAt: new Date().toISOString(),
     editedAt: null,
   };

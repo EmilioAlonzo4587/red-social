@@ -31,6 +31,8 @@ const POST: PostDto = {
   likeCount: 3,
   commentCount: 0,
   likedByMe: false,
+  myReaction: null,
+  topReactions: [],
   createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   editedAt: null,
 };

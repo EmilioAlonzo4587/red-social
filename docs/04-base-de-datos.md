@@ -68,6 +68,7 @@ erDiagram
   post_likes {
     uuid user_id PK, FK
     uuid post_id PK, FK
+    varchar reaction
     timestamptz created_at
   }
   follows {
@@ -186,7 +187,7 @@ erDiagram
 
 | Tabla | Clave primaria | Restricciones adicionales |
 |---|---|---|
-| post_likes | (user_id, post_id) | FKs con ON DELETE CASCADE; la clave impide likes duplicados (RN05). |
+| post_likes | (user_id, post_id) | FKs con ON DELETE CASCADE; la clave impide likes duplicados (RN05). CHECK `reaction` en `like`, `love`, `haha`, `wow`, `sad` o `angry`, con `like` por defecto (S4-12). |
 | follows | (follower_id, following_id) | CHECK `follower_id <> following_id` (RN06). |
 
 ### conversations y messages

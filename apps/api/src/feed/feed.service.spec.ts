@@ -9,6 +9,7 @@ describe('FeedService', () => {
     $queryRaw: jest.fn(),
     user: { findUnique: jest.fn() },
     post: { findMany: jest.fn() },
+    postLike: { groupBy: jest.fn().mockResolvedValue([]) },
   };
   let service: FeedService;
 

@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { REACTIONS, type ReactionType } from '../../likes/reactions';
 import { MediaDto } from '../../media/dto/media.dto';
 import { UserSummaryDto } from '../../users/dto/user-summary.dto';
 
@@ -34,6 +35,23 @@ export class PostDto {
     description: 'Si el usuario con sesión le dio like',
   })
   likedByMe!: boolean;
+
+  @ApiProperty({
+    enum: REACTIONS,
+    nullable: true,
+    example: 'love',
+    description: 'La reacción del usuario con sesión; null si no reaccionó',
+  })
+  myReaction!: ReactionType | null;
+
+  @ApiProperty({
+    enum: REACTIONS,
+    isArray: true,
+    example: ['like', 'love'],
+    description:
+      'Hasta 3, de la más usada a la menos usada; un empate sigue el orden de la lista',
+  })
+  topReactions!: ReactionType[];
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;
