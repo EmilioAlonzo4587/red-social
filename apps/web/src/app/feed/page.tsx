@@ -169,7 +169,7 @@ export default function FeedPage() {
           }}
         />
 
-        <div className="sticky top-16 mt-4 flex gap-[22px] border-b border-border bg-background">
+        <div className="sticky top-16 z-10 mt-4 flex gap-[22px] border-b border-border bg-background">
           <button
             type="button"
             onClick={() => setTab("siguiendo")}
