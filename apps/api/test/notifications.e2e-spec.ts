@@ -287,6 +287,70 @@ describe('Notificaciones (e2e)', () => {
       expect(items.filter((n) => n.postId === post2)).toHaveLength(1);
     });
 
+    it('reply: "respondió a tu comentario" al autor del comentario, con vista previa, y comment al de la publicación (S4-14)', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+      const carla = await signUp('carla');
+      const post = await postBy(ana.id);
+      const root = await request(server)
+        .post(`/api/posts/${post}/comments`)
+        .set('Cookie', carla.cookie)
+        .send({ content: 'Comentario de Carla' })
+        .expect(201);
+      await waitForNotifications(ana.id, 1);
+
+      await request(server)
+        .post(`/api/posts/${post}/comments`)
+        .set('Cookie', beto.cookie)
+        .send({
+          content: 'Te respondo, Carla',
+          parentId: (root.body as { id: string }).id,
+        })
+        .expect(201);
+
+      await waitForNotifications(carla.id, 1);
+      await waitForNotifications(ana.id, 2);
+      const forCarla = pageOf(await listOf(carla.cookie)).items;
+      expect(forCarla).toEqual([
+        expect.objectContaining({
+          type: 'reply',
+          postId: post,
+          preview: 'Te respondo, Carla',
+          actor: expect.objectContaining({ username: 'beto' }) as unknown,
+        }),
+      ]);
+      const forAna = pageOf(await listOf(ana.cookie)).items;
+      expect(forAna.map((n) => n.type)).toEqual(['comment', 'comment']);
+    });
+
+    it('reply al comentario del autor de la publicación: una sola notificación, sin duplicar', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+      const post = await postBy(ana.id);
+      const root = await request(server)
+        .post(`/api/posts/${post}/comments`)
+        .set('Cookie', ana.cookie)
+        .send({ content: 'Comento en mi publicación' })
+        .expect(201);
+      await request(server)
+        .post(`/api/posts/${post}/comments`)
+        .set('Cookie', beto.cookie)
+        .send({
+          content: 'Respuesta',
+          parentId: (root.body as { id: string }).id,
+        })
+        .expect(201);
+      // Barrera: un seguimiento llega después y asegura que la respuesta ya se procesó
+      await request(server)
+        .put('/api/users/ana_lopez/follow')
+        .set('Cookie', beto.cookie)
+        .expect(200);
+
+      await waitForNotifications(ana.id, 2);
+      const items = pageOf(await listOf(ana.cookie)).items;
+      expect(items.map((n) => n.type).sort()).toEqual(['follow', 'reply']);
+    });
+
     it('follow: una sola aunque el PUT se repita (RN06)', async () => {
       const ana = await signUp('ana_lopez');
       const beto = await signUp('beto');

@@ -54,6 +54,7 @@
 | RN12 | La sesión usa un token de acceso de 15 minutos y uno de renovación de 7 días que se rota en cada uso. Reutilizar uno ya rotado cierra todas las sesiones del usuario. |
 | RN13 | Se permiten 5 intentos de login y 5 de registro por minuto por dirección IP. |
 | RN14 | La búsqueda de usuarios requiere al menos 2 caracteres y devuelve como máximo 20 resultados. |
+| RN15 | Se puede responder un comentario de la misma publicación. Las respuestas son de un solo nivel: responder a una respuesta la agrega al mismo hilo. El autor del comentario respondido recibe una notificación (nunca por uno mismo, RN08). Eliminar un comentario conserva sus respuestas. |
 
 ## Historias de usuario
 

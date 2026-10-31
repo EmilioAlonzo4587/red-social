@@ -324,6 +324,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/comments/{id}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CommentsController_listReplies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/comments/{id}": {
         parameters: {
             query?: never;
@@ -669,10 +685,28 @@ export interface components {
             /** Format: uuid */
             postId: string;
             author: components["schemas"]["UserSummaryDto"];
-            /** @example Qué buena foto */
-            content: string;
+            /**
+             * @description null si el comentario fue eliminado (se muestra porque tiene respuestas)
+             * @example Qué buena foto
+             */
+            content: string | null;
             /** Format: date-time */
             createdAt: string;
+            /**
+             * Format: uuid
+             * @description Comentario de primer nivel del hilo; null si no es una respuesta (S4-14)
+             */
+            parentId: string | null;
+            /**
+             * @description Respuestas visibles; siempre 0 en una respuesta
+             * @example 2
+             */
+            replyCount: number;
+            /**
+             * @description Eliminado: solo aparece en la lista si todavía tiene respuestas, sin texto
+             * @example false
+             */
+            deleted: boolean;
         };
         CommentPageDto: {
             items: components["schemas"]["CommentDto"][];
@@ -682,6 +716,11 @@ export interface components {
         CreateCommentDto: {
             /** @example Qué buena foto */
             content: string;
+            /**
+             * Format: uuid
+             * @description Comentario al que se responde
+             */
+            parentId?: string;
         };
         NotificationDto: {
             /** Format: uuid */
@@ -690,7 +729,7 @@ export interface components {
              * @example like
              * @enum {string}
              */
-            type: "like" | "comment" | "follow" | "message";
+            type: "like" | "comment" | "follow" | "message" | "reply";
             /** @description Quién la provocó */
             actor: components["schemas"]["UserSummaryDto"];
             /**
@@ -1841,7 +1880,7 @@ export interface operations {
                     "application/json": components["schemas"]["CommentDto"];
                 };
             };
-            /** @description content vacío o de más de 1000 caracteres (RN07), o id no es un UUID */
+            /** @description content vacío o de más de 1000 caracteres (RN07), id no es un UUID, o parentId no existe, fue eliminado o es de otra publicación (S4-14) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1859,6 +1898,57 @@ export interface operations {
                 };
             };
             /** @description La publicación no existe o fue eliminada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    CommentsController_listReplies: {
+        parameters: {
+            query?: {
+                /** @description nextCursor de la página anterior, tal cual */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Respuestas del comentario, de la más antigua a la más reciente (S4-14) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentPageDto"];
+                };
+            };
+            /** @description id no es un UUID o cursor no válido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description El comentario no existe o su publicación fue eliminada */
             404: {
                 headers: {
                     [name: string]: unknown;

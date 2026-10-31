@@ -61,6 +61,7 @@ erDiagram
     uuid id PK
     uuid post_id FK
     uuid author_id FK
+    uuid parent_id FK "respuesta, un nivel"
     varchar content "max 1000"
     timestamptz created_at
     timestamptz deleted_at
@@ -179,6 +180,7 @@ erDiagram
 | id | uuid | PK | |
 | post_id | uuid | FK posts, ON DELETE CASCADE | |
 | author_id | uuid | FK users, ON DELETE CASCADE | |
+| parent_id | uuid | FK comments, ON DELETE CASCADE | Respuesta (S4-14, RN15): el comentario de primer nivel del hilo; nula en uno de primer nivel. Un solo nivel: nunca apunta a otra respuesta. Migración `comment_replies`. |
 | content | varchar(1000) | NOT NULL, CHECK no vacío | RN07. |
 | created_at | timestamptz | NOT NULL | |
 | deleted_at | timestamptz | | Borrado lógico. |
@@ -207,7 +209,7 @@ erDiagram
 |---|---|---|---|
 | recipient_id | uuid | FK users | Quién recibe. |
 | actor_id | uuid | FK users; CHECK distinto de recipient_id | Quién la provocó (RN08). |
-| type | varchar(20) | CHECK `like`, `comment`, `follow`, `message` | |
+| type | varchar(20) | CHECK `like`, `comment`, `follow`, `message`, `reply` | `reply` desde S4-14. |
 | post_id, comment_id | uuid | FK opcionales, ON DELETE CASCADE | Destino del enlace. |
 | read_at | timestamptz | | Nula si no se ha leído. |
 
@@ -218,6 +220,7 @@ erDiagram
 | `posts (author_id, created_at DESC, id DESC) WHERE deleted_at IS NULL` | Perfil y feed Siguiendo |
 | `posts (created_at DESC, id DESC) WHERE deleted_at IS NULL` | Feed Explorar |
 | `comments (post_id, created_at)` | Comentarios de una publicación |
+| `comments (parent_id, created_at)` | Respuestas de un comentario (S4-14) |
 | `post_likes (post_id)` | Likes de una publicación (la PK cubre "¿le di like?") |
 | `follows (following_id)` | Seguidores de un usuario (la PK cubre "a quién sigo") |
 | `conversations (user_b_id)`, `conversations (last_message_at DESC)` | Bandeja de un usuario |

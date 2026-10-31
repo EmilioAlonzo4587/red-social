@@ -24,7 +24,7 @@ Lee primero `CLAUDE.md` en la raíz. Esta skill agrega las reglas de `apps/web`.
 
 - Importa con el alias `@/` (`@/components/avatar`). Componentes con nombre en PascalCase, archivos en kebab-case, exportación con nombre.
 - Server Components por defecto. Pon `"use client"` solo donde hay estado, eventos o sockets, y lo más abajo posible en el árbol.
-- Estilos con Tailwind y los tokens del tema en `globals.css` (`border-border`, `bg-surface`, `text-primary`, `text-muted`). No metas colores sueltos si existe el token.
+- Estilos con Tailwind y los tokens del tema en `globals.css` (`border-border`, `bg-surface`, `text-primary`, `text-muted`). No metas colores sueltos si existe el token. Desde S4-13 hay modo oscuro: los tokens cambian según `data-theme` en `<html>`. Un relleno verde con texto blanco (botón, contador, avatar con iniciales) es `bg-action`/`hover:bg-action-hover`, nunca `bg-primary` (en oscuro `primary` es verde claro); los errores son `text-danger`/`bg-danger-surface`/`border-danger`. Revisa cada pantalla nueva también en oscuro.
 - Textos visibles en español. HTML semántico (`main`, `article`, `nav`, `button` para acciones, `Link` para navegar).
 - `pnpm --filter web lint` y `pnpm --filter web typecheck` deben pasar.
 
