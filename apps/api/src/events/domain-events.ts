@@ -40,6 +40,9 @@ export interface CommentChangedEvent {
   commentId: string;
   change: CountChange;
   commentCount: number;
+  // Respuesta (S4-14): autor del comentario al que se respondió; null en un comentario
+  // de primer nivel. Es a quien se le notifica "respondió a tu comentario".
+  replyToAuthorId: string | null;
 }
 
 // Solo cuando se crea la fila; seguir a quien ya sigo no emite nada (RN06)
@@ -74,7 +77,7 @@ export interface ConversationReadEvent {
 // Igual que Notification de docs/05-api.md
 export interface NotificationData {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'message';
+  type: 'like' | 'comment' | 'follow' | 'message' | 'reply';
   actor: UserSummaryData;
   postId: string | null;
   commentId: string | null;

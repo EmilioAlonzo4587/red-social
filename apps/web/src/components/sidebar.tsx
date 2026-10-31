@@ -13,6 +13,7 @@ import {
   subscribeNotificationNew,
   subscribeNotificationsRead,
 } from "@/lib/socket";
+import { SETTINGS_ICON_PATH } from "@/components/settings-icon";
 
 function linkClass(active: boolean): string {
   return active
@@ -48,6 +49,7 @@ const ICONS = {
   notificaciones: "M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4",
   mensajes: "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z",
   perfil: "M8 8a4 4 0 1 0 8 0a4 4 0 1 0-8 0M4 21a8 8 0 0 1 16 0",
+  ajustes: SETTINGS_ICON_PATH,
 };
 
 const RECOUNT_DELAY_MS = 800;
@@ -213,7 +215,7 @@ export function Sidebar() {
         {unreadNotifications > 0 && (
           <span
             aria-label={`${unreadNotifications} notificaciones sin leer`}
-            className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white"
+            className="flex h-5 min-w-5 items-center justify-center rounded-full bg-action px-1.5 text-xs font-semibold text-white"
           >
             {unreadNotifications}
           </span>
@@ -229,7 +231,7 @@ export function Sidebar() {
         {unreadMessages > 0 && (
           <span
             aria-label={`${unreadMessages} sin leer`}
-            className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-white"
+            className="flex h-5 min-w-5 items-center justify-center rounded-full bg-action px-1.5 text-xs font-semibold text-white"
           >
             {unreadMessages}
           </span>
@@ -245,6 +247,16 @@ export function Sidebar() {
           Mi perfil
         </Link>
       )}
+      {/* S4-13: en el celular se entra desde el engranaje de la barra superior (Navbar) */}
+      <Link
+        href="/ajustes"
+        onClick={() => setDrawerOpen(false)}
+        aria-current={!drawerOpen && pathname === "/ajustes" ? "page" : undefined}
+        className={linkClass(!drawerOpen && pathname === "/ajustes")}
+      >
+        <Icon path={ICONS.ajustes} />
+        Ajustes
+      </Link>
     </nav>
 
     {/* Celular (S4-06): la barra lateral se oculta bajo `sm`, así que la navegación
@@ -276,7 +288,7 @@ export function Sidebar() {
           {unreadNotifications > 0 && (
             <span
               aria-label={`${unreadNotifications} notificaciones sin leer`}
-              className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white"
+              className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-action px-1 text-[10px] font-semibold text-white"
             >
               {unreadNotifications}
             </span>
@@ -295,7 +307,7 @@ export function Sidebar() {
           {unreadMessages > 0 && (
             <span
               aria-label={`${unreadMessages} sin leer`}
-              className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white"
+              className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-action px-1 text-[10px] font-semibold text-white"
             >
               {unreadMessages}
             </span>

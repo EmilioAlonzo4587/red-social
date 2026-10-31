@@ -199,7 +199,7 @@ export function PostCard({
         aria-invalid={editError !== null}
         className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2 text-base leading-[1.55] outline-primary"
       />
-      {editError && <p className="text-sm text-red-600">{editError}</p>}
+      {editError && <p className="text-sm text-danger">{editError}</p>}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted tabular-nums">
           {draft.length} / {MAX_CONTENT_LENGTH}
@@ -216,7 +216,7 @@ export function PostCard({
           <button
             type="submit"
             disabled={!canSave}
-            className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-action px-4 py-1.5 text-sm font-medium text-white hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? "Guardando…" : "Guardar"}
           </button>
@@ -311,7 +311,7 @@ export function PostCard({
             <button
               type="button"
               onClick={() => setDeleteStage("confirming")}
-              className="tap-area text-xs text-muted hover:text-red-600"
+              className="tap-area text-xs text-muted hover:text-danger"
             >
               Eliminar
             </button>
@@ -326,7 +326,7 @@ export function PostCard({
             type="button"
             onClick={confirmDelete}
             disabled={deleteStage === "deleting"}
-            className="font-semibold text-red-600 disabled:opacity-50"
+            className="font-semibold text-danger disabled:opacity-50"
           >
             {deleteStage === "deleting" ? "Eliminando…" : "Sí, eliminar"}
           </button>
@@ -340,7 +340,7 @@ export function PostCard({
           </button>
         </div>
       )}
-      {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+      {deleteError && <p className="text-sm text-danger">{deleteError}</p>}
 
       {/* Editando, el texto es un cuadro: no puede ir dentro del enlace al detalle */}
       {editing ? (

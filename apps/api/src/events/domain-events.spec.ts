@@ -89,6 +89,7 @@ describe('DomainEvents', () => {
       commentId: 'c1',
       change: 'added',
       commentCount: 1,
+      replyToAuthorId: null,
     };
 
     expect(() => events.emit('comment.changed', comment)).not.toThrow();

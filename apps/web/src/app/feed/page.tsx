@@ -220,7 +220,7 @@ export default function FeedPage() {
                 setNewPostIds([]);
                 setReloadToken((n) => n + 1);
               }}
-              className="rounded-full border border-primary/30 bg-surface px-4 py-1.5 text-xs font-semibold text-primary shadow-sm hover:bg-primary hover:text-white"
+              className="rounded-full border border-primary/30 bg-surface px-4 py-1.5 text-xs font-semibold text-primary shadow-sm hover:bg-action hover:text-white"
             >
               {newPostIds.length === 1
                 ? "Hay 1 publicación nueva · Ver"
@@ -234,7 +234,7 @@ export default function FeedPage() {
         )}
 
         {current.status === "error" && current.items.length === 0 && (
-          <p className="py-10 text-center text-red-600">{current.error}</p>
+          <p className="py-10 text-center text-danger">{current.error}</p>
         )}
 
         {current.status === "ready" &&
@@ -248,7 +248,7 @@ export default function FeedPage() {
               <button
                 type="button"
                 onClick={() => setTab("explorar")}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+                className="rounded-lg bg-action px-4 py-2 text-sm font-medium text-white hover:bg-action-hover"
               >
                 Ir a Explorar
               </button>
@@ -287,7 +287,7 @@ export default function FeedPage() {
             )}
 
             {current.status === "error" && (
-              <p className="pb-6 text-center text-sm text-red-600">
+              <p className="pb-6 text-center text-sm text-danger">
                 {current.error}
               </p>
             )}

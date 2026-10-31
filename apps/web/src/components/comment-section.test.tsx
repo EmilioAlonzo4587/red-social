@@ -40,6 +40,9 @@ function comment(id: string, authorId: string, content: string): CommentDto {
     },
     content,
     createdAt: new Date(Date.now() - 60 * 1000).toISOString(),
+    parentId: null,
+    replyCount: 0,
+    deleted: false,
   };
 }
 
@@ -406,5 +409,109 @@ describe("CommentSection (S3-08)", () => {
     expect(
       screen.queryByRole("dialog", { name: "Elegir emoji" }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("respuestas (S4-14)", () => {
+    function renderWith(items: CommentDto[]) {
+      render(
+        <CommentSection
+          postId={POST_ID}
+          initialComments={page(items)}
+          currentUserId="u1"
+        />,
+      );
+    }
+
+    it("Responder abre un cuadro debajo del comentario y envía la respuesta con parentId", async () => {
+      const user = userEvent.setup();
+      renderWith([comment("c1", "u2", "¿Qué opinan?")]);
+
+      await user.click(
+        screen.getByRole("button", { name: "Responder a Nombre u2" }),
+      );
+      const box = screen.getByLabelText("Escribe una respuesta");
+      expect(box).toHaveFocus();
+
+      const reply = { ...comment("r1", "u1", "Me encanta"), parentId: "c1" };
+      apiFetchClient.mockResolvedValueOnce(reply);
+      await user.type(box, "Me encanta");
+      await user.click(screen.getByRole("button", { name: "Enviar" }));
+
+      expect(apiFetchClient).toHaveBeenCalledWith(
+        `/api/posts/${POST_ID}/comments`,
+        expect.objectContaining({
+          body: JSON.stringify({ content: "Me encanta", parentId: "c1" }),
+        }),
+      );
+      // La respuesta aparece en el hilo, sin recargar
+      const thread = await screen.findByRole("list", { name: "Respuestas" });
+      expect(thread).toHaveTextContent("Me encanta");
+      expect(
+        screen.queryByLabelText("Escribe una respuesta"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("Ver N respuestas trae las respuestas del comentario", async () => {
+      const user = userEvent.setup();
+      renderWith([{ ...comment("c1", "u2", "Raíz"), replyCount: 2 }]);
+      apiFetchClient.mockResolvedValueOnce(
+        page([
+          { ...comment("r1", "u3", "Primera"), parentId: "c1" },
+          { ...comment("r2", "u4", "Segunda"), parentId: "c1" },
+        ]),
+      );
+
+      await user.click(screen.getByRole("button", { name: "Ver 2 respuestas" }));
+
+      expect(apiFetchClient).toHaveBeenCalledWith("/api/comments/c1/replies");
+      const thread = await screen.findByRole("list", { name: "Respuestas" });
+      expect(thread).toHaveTextContent("Primera");
+      expect(thread).toHaveTextContent("Segunda");
+      await user.click(screen.getByRole("button", { name: "Ocultar respuestas" }));
+      expect(
+        screen.queryByRole("list", { name: "Respuestas" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("responder a una respuesta precarga @usuario y la manda al mismo hilo", async () => {
+      const user = userEvent.setup();
+      renderWith([{ ...comment("c1", "u2", "Raíz"), replyCount: 1 }]);
+      apiFetchClient.mockResolvedValueOnce(
+        page([{ ...comment("r1", "u3", "Primera"), parentId: "c1" }]),
+      );
+      await user.click(screen.getByRole("button", { name: "Ver 1 respuesta" }));
+      await screen.findByText("Primera");
+
+      await user.click(
+        screen.getByRole("button", { name: "Responder a Nombre u3" }),
+      );
+      expect(screen.getByLabelText("Escribe una respuesta")).toHaveValue(
+        "@user_u3 ",
+      );
+    });
+
+    it("un comentario eliminado con respuestas se muestra como eliminado, con sus respuestas", () => {
+      renderWith([
+        {
+          ...comment("c1", "u2", ""),
+          content: null,
+          deleted: true,
+          replyCount: 1,
+        },
+      ]);
+      expect(screen.getByText("Comentario eliminado")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Responder a/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Ver 1 respuesta" }),
+      ).toBeInTheDocument();
+    });
+
+    it("el contador en vivo cuenta también las respuestas: no resincroniza si coincide", () => {
+      renderWith([{ ...comment("c1", "u2", "Raíz"), replyCount: 2 }]);
+      emitCommentCount(3); // 1 comentario + 2 respuestas
+      expect(apiFetchClient).not.toHaveBeenCalled();
+    });
   });
 });

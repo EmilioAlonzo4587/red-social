@@ -32,6 +32,19 @@ export class NotificationsListener {
   @OnDomainEvent('comment.changed')
   async onComment(event: CommentChangedEvent): Promise<void> {
     if (event.change !== 'added') return;
+    // S4-14: una respuesta avisa a quien escribió el comentario respondido. Si esa persona
+    // es también la autora de la publicación, le basta con esa: no se duplica con la de
+    // comentario. notify descarta las de uno mismo (RN08).
+    if (event.replyToAuthorId) {
+      await this.notifications.notify({
+        type: 'reply',
+        recipientId: event.replyToAuthorId,
+        actorId: event.actorId,
+        postId: event.postId,
+        commentId: event.commentId,
+      });
+      if (event.replyToAuthorId === event.postAuthorId) return;
+    }
     await this.notifications.notify({
       type: 'comment',
       recipientId: event.postAuthorId,

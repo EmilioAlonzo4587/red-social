@@ -194,7 +194,7 @@ export function PostComposer({
                 <p className="mt-1 text-xs text-primary">Lista</p>
               )}
               {image.error && (
-                <p className="mt-1 text-xs text-red-600">{image.error}</p>
+                <p className="mt-1 text-xs text-danger">{image.error}</p>
               )}
             </div>
           ))}
@@ -202,7 +202,7 @@ export function PostComposer({
       )}
 
       {generalError && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger">
           {generalError}
         </p>
       )}
@@ -249,7 +249,7 @@ export function PostComposer({
         <button
           type="submit"
           disabled={!canSubmit}
-          className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+          className="shrink-0 rounded-lg bg-action px-4 py-2 text-sm font-medium text-white hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? "Publicando…" : "Publicar"}
         </button>

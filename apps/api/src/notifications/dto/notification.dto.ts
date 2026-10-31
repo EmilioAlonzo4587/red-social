@@ -7,10 +7,11 @@ export const NOTIFICATION_TYPES = [
   'comment',
   'follow',
   'message',
+  'reply',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
-// Objeto Notification de docs/05-api.md. La web arma el enlace con type: like y comment van a
+// Objeto Notification de docs/05-api.md. La web arma el enlace con type: like, comment y reply van a
 // /p/{postId}, follow a /u/{actor.username} y message abre el chat con actor.username.
 export class NotificationDto {
   @ApiProperty({ format: 'uuid' })

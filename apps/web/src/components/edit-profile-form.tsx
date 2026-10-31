@@ -126,7 +126,7 @@ export function EditProfileForm({ me }: { me: MeDto }) {
       className="mt-6 flex flex-col gap-6"
     >
       {errors.general && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger">
           {errors.general}
         </p>
       )}
@@ -168,7 +168,7 @@ export function EditProfileForm({ me }: { me: MeDto }) {
             </button>
           )}
           {errors.avatarPublicId && (
-            <p className="text-xs text-red-600">{errors.avatarPublicId}</p>
+            <p className="text-xs text-danger">{errors.avatarPublicId}</p>
           )}
         </div>
       </div>
@@ -188,7 +188,7 @@ export function EditProfileForm({ me }: { me: MeDto }) {
           className="rounded-lg border border-border px-3 py-2 outline-primary"
         />
         <div className="flex justify-between text-xs">
-          <span className="text-red-600">{errors.displayName}</span>
+          <span className="text-danger">{errors.displayName}</span>
           <span className="text-muted">
             {displayName.length}/{DISPLAY_NAME_MAX}
           </span>
@@ -210,7 +210,7 @@ export function EditProfileForm({ me }: { me: MeDto }) {
           className="resize-none rounded-lg border border-border px-3 py-2 outline-primary"
         />
         <div className="flex justify-between text-xs">
-          <span className="text-red-600">{errors.bio}</span>
+          <span className="text-danger">{errors.bio}</span>
           <span className="text-muted">
             {bio.length}/{BIO_MAX}
           </span>
@@ -227,7 +227,7 @@ export function EditProfileForm({ me }: { me: MeDto }) {
         <button
           type="submit"
           disabled={submitting}
-          className="flex-1 rounded-lg bg-primary px-4 py-2 font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex-1 rounded-lg bg-action px-4 py-2 font-medium text-white hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? "Guardando…" : "Guardar cambios"}
         </button>

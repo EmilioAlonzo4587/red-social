@@ -105,7 +105,16 @@ describe('Comentarios (e2e)', () => {
         .expect(201);
 
       expect(Object.keys(res.body as object).sort()).toEqual(
-        ['id', 'postId', 'author', 'content', 'createdAt'].sort(),
+        [
+          'id',
+          'postId',
+          'author',
+          'content',
+          'createdAt',
+          'parentId',
+          'replyCount',
+          'deleted',
+        ].sort(),
       );
       expect(commentOf(res)).toMatchObject({
         postId,
@@ -126,6 +135,7 @@ describe('Comentarios (e2e)', () => {
         commentId: commentOf(res).id,
         change: 'added',
         commentCount: 1,
+        replyToAuthorId: null,
       });
     });
 
@@ -337,6 +347,7 @@ describe('Comentarios (e2e)', () => {
         commentId,
         change: 'removed',
         commentCount: 0,
+        replyToAuthorId: null,
       });
 
       const list = await request(server)
@@ -392,6 +403,192 @@ describe('Comentarios (e2e)', () => {
 
     it('401 sin sesión', async () => {
       await request(server).delete(`/api/comments/${MISSING_ID}`).expect(401);
+    });
+  });
+
+  describe('Respuestas (S4-14)', () => {
+    async function comment(
+      cookie: string,
+      postId: string,
+      content: string,
+      parentId?: string,
+    ) {
+      const res = await request(server)
+        .post(`/api/posts/${postId}/comments`)
+        .set('Cookie', cookie)
+        .send(parentId ? { content, parentId } : { content })
+        .expect(201);
+      return commentOf(res);
+    }
+
+    it('201: la respuesta va debajo de su comentario, cuenta en el contador y no sale en la lista de primer nivel', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+      const postId = await postBy(ana.id);
+      const root = await comment(ana.cookie, postId, 'Primer comentario');
+      emit.mockClear();
+
+      const reply = await comment(beto.cookie, postId, 'Respuesta', root.id);
+      expect(reply).toMatchObject({
+        parentId: root.id,
+        replyCount: 0,
+        deleted: false,
+      });
+      expect(await commentCountOf(postId)).toBe(2);
+      expect(emit).toHaveBeenCalledWith(
+        'comment.changed',
+        expect.objectContaining({
+          commentId: reply.id,
+          replyToAuthorId: ana.id,
+          commentCount: 2,
+        }),
+      );
+
+      const top = await request(server)
+        .get(`/api/posts/${postId}/comments`)
+        .set('Cookie', ana.cookie)
+        .expect(200);
+      expect(pageOf(top).items).toHaveLength(1);
+      expect(pageOf(top).items[0]).toMatchObject({
+        id: root.id,
+        parentId: null,
+        replyCount: 1,
+        deleted: false,
+      });
+
+      const replies = await request(server)
+        .get(`/api/comments/${root.id}/replies`)
+        .set('Cookie', ana.cookie)
+        .expect(200);
+      expect(contentsOf(replies)).toEqual(['Respuesta']);
+      expect(pageOf(replies).nextCursor).toBeNull();
+    });
+
+    it('responder a una respuesta la agrega al mismo hilo y avisa a quien la escribió', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+      const carla = await signUp('carla');
+      const postId = await postBy(ana.id);
+      const root = await comment(ana.cookie, postId, 'Raíz');
+      const first = await comment(beto.cookie, postId, 'De Beto', root.id);
+      emit.mockClear();
+
+      const second = await comment(carla.cookie, postId, '@beto sí', first.id);
+      expect(second.parentId).toBe(root.id);
+      expect(emit).toHaveBeenCalledWith(
+        'comment.changed',
+        expect.objectContaining({ replyToAuthorId: beto.id }),
+      );
+
+      const replies = await request(server)
+        .get(`/api/comments/${root.id}/replies`)
+        .set('Cookie', ana.cookie)
+        .expect(200);
+      expect(contentsOf(replies)).toEqual(['De Beto', '@beto sí']);
+    });
+
+    it('400 si el comentario respondido no existe, fue eliminado, es de otra publicación o no es un UUID', async () => {
+      const ana = await signUp('ana_lopez');
+      const postId = await postBy(ana.id);
+      const otherPost = await postBy(ana.id);
+      const foreign = await comment(ana.cookie, otherPost, 'De otra');
+      const removed = await comment(ana.cookie, postId, 'Borrado');
+      await request(server)
+        .delete(`/api/comments/${removed.id}`)
+        .set('Cookie', ana.cookie)
+        .expect(204);
+
+      for (const parentId of [MISSING_ID, foreign.id, removed.id]) {
+        const res = await request(server)
+          .post(`/api/posts/${postId}/comments`)
+          .set('Cookie', ana.cookie)
+          .send({ content: 'Hola', parentId })
+          .expect(400);
+        expect(ruleOf(res, 'parentId')).toBe('parent');
+      }
+      await request(server)
+        .post(`/api/posts/${postId}/comments`)
+        .set('Cookie', ana.cookie)
+        .send({ content: 'Hola', parentId: 'no-es-uuid' })
+        .expect(400);
+      expect(await commentCountOf(postId)).toBe(0);
+    });
+
+    it('eliminar un comentario con respuestas lo deja como eliminado, sin texto, y conserva sus respuestas', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+      const postId = await postBy(ana.id);
+      const root = await comment(ana.cookie, postId, 'Raíz');
+      const reply = await comment(beto.cookie, postId, 'Respuesta', root.id);
+
+      await request(server)
+        .delete(`/api/comments/${root.id}`)
+        .set('Cookie', ana.cookie)
+        .expect(204);
+      const top = await request(server)
+        .get(`/api/posts/${postId}/comments`)
+        .set('Cookie', ana.cookie)
+        .expect(200);
+      expect(pageOf(top).items).toEqual([
+        expect.objectContaining({
+          id: root.id,
+          deleted: true,
+          content: null,
+          replyCount: 1,
+        }),
+      ]);
+      const replies = await request(server)
+        .get(`/api/comments/${root.id}/replies`)
+        .set('Cookie', ana.cookie)
+        .expect(200);
+      expect(contentsOf(replies)).toEqual(['Respuesta']);
+
+      // Sin respuestas visibles, el comentario eliminado ya no aparece
+      await request(server)
+        .delete(`/api/comments/${reply.id}`)
+        .set('Cookie', beto.cookie)
+        .expect(204);
+      const empty = await request(server)
+        .get(`/api/posts/${postId}/comments`)
+        .set('Cookie', ana.cookie)
+        .expect(200);
+      expect(pageOf(empty).items).toEqual([]);
+      expect(await commentCountOf(postId)).toBe(0);
+    });
+
+    it('403 al eliminar la respuesta de otro (RN04)', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+      const postId = await postBy(ana.id);
+      const root = await comment(ana.cookie, postId, 'Raíz');
+      const reply = await comment(beto.cookie, postId, 'De Beto', root.id);
+      await request(server)
+        .delete(`/api/comments/${reply.id}`)
+        .set('Cookie', ana.cookie)
+        .expect(403);
+    });
+
+    it('GET replies: 404 si el comentario no existe o su publicación fue eliminada, 400 si no es un UUID, 401 sin sesión', async () => {
+      const ana = await signUp('ana_lopez');
+      const postId = await postBy(ana.id);
+      const root = await comment(ana.cookie, postId, 'Raíz');
+      await request(server)
+        .get(`/api/comments/${MISSING_ID}/replies`)
+        .set('Cookie', ana.cookie)
+        .expect(404);
+      await prisma.post.update({
+        where: { id: postId },
+        data: { deletedAt: new Date() },
+      });
+      await request(server)
+        .get(`/api/comments/${root.id}/replies`)
+        .set('Cookie', ana.cookie)
+        .expect(404);
+      await request(server)
+        .get('/api/comments/no-es-uuid/replies')
+        .set('Cookie', ana.cookie)
+        .expect(400);
+      await request(server).get(`/api/comments/${root.id}/replies`).expect(401);
     });
   });
 });

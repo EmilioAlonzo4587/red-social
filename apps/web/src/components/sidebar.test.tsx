@@ -143,14 +143,18 @@ describe("Sidebar", () => {
       expect(desktop().getByRole("link", { name: "Mi perfil" })).toBeInTheDocument();
     });
 
-    // 4 ítems, 4 íconos: el nombre accesible de cada enlace sigue siendo solo
+    // 5 ítems (con Ajustes, S4-13), 5 íconos: el nombre accesible de cada enlace sigue siendo solo
     // el texto porque el svg lleva aria-hidden.
     expect(
       screen
         .getByRole("navigation", { name: "Navegación principal" })
         .querySelectorAll("a svg"),
-    ).toHaveLength(4);
+    ).toHaveLength(5);
     expect(desktop().getByRole("link", { name: "Inicio" })).toBeInTheDocument();
+    expect(desktop().getByRole("link", { name: "Ajustes" })).toHaveAttribute(
+      "href",
+      "/ajustes",
+    );
     expect(
       desktop().getByRole("link", { name: "Notificaciones" }),
     ).toBeInTheDocument();

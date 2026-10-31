@@ -57,9 +57,14 @@ Post         { id: string; author: UserSummary; content: string | null;
                createdAt: string;
                editedAt: string | null }       // última edición del texto; null si nunca se editó
 
-Comment      { id: string; postId: string; author: UserSummary; content: string; createdAt: string }
+Comment      { id: string; postId: string; author: UserSummary;
+               content: string | null;         // null si deleted
+               parentId: string | null;        // comentario de primer nivel del hilo; null si no es respuesta (S4-14)
+               replyCount: number;             // respuestas visibles; 0 en una respuesta
+               deleted: boolean;               // eliminado que sigue en la lista porque tiene respuestas
+               createdAt: string }
 
-Notification { id: string; type: "like" | "comment" | "follow" | "message"; actor: UserSummary;
+Notification { id: string; type: "like" | "comment" | "follow" | "message" | "reply"; actor: UserSummary;
                postId: string | null;          // like y comment
                commentId: string | null;       // comment
                preview: string | null;         // primeros ~80 caracteres en comment y message; null en like y follow
@@ -152,9 +157,13 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 
 | Método | Ruta | Body | Respuesta | Errores |
 |---|---|---|---|---|
-| GET | `/api/posts/:id/comments` 🔒 | `?cursor=` | `Page<Comment>`, del más antiguo al más reciente | 404 |
-| POST | `/api/posts/:id/comments` 🔒 | `{ content }` | 201 `Comment` | 400 (RN07), 404 |
+| GET | `/api/posts/:id/comments` 🔒 | `?cursor=` | `Page<Comment>` de primer nivel, del más antiguo al más reciente | 404 |
+| POST | `/api/posts/:id/comments` 🔒 | `{ content, parentId? }` | 201 `Comment` | 400 (RN07; `rule: "parent"` si `parentId` no existe, fue eliminado o es de otra publicación), 404 |
+| GET | `/api/comments/:id/replies` 🔒 | `?cursor=` | `Page<Comment>`, respuestas del más antiguo al más reciente (S4-14) | 400 si `id` no es un UUID, 404 si el comentario no existe o su publicación fue eliminada |
 | DELETE | `/api/comments/:id` 🔒 | | 204 | 403 si es ajeno (RN04), 404 |
+
+- Respuestas (S4-14, RN15): un solo nivel. Con `parentId` el comentario responde a otro de la misma publicación; si ese ya es una respuesta, la nueva va al mismo hilo (`parentId` queda en el comentario de primer nivel). `commentCount` de la publicación cuenta también las respuestas.
+- Un comentario eliminado que todavía tiene respuestas sigue en `GET /api/posts/:id/comments` con `deleted: true` y `content: null`; sin respuestas visibles deja de aparecer.
 
 ### Notificaciones (S3-03)
 
@@ -167,7 +176,8 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 - Se crean solas al dar like, comentar, seguir o escribir (RN08), nunca por una acción sobre uno mismo. Quitar el like o borrar el comentario no borra la notificación ya creada.
 - Una misma persona genera una única notificación de `like` por publicación (quitar el like y volver a darlo no crea otra) y como máximo 10 notificaciones de `comment` por publicación (`MAX_COMMENT_NOTIFICATIONS_PER_POST = 10`, el contador se reinicia en cada publicación nueva; S4-11, RN08).
 - Se crea una notificación de `message` solo si no hay otra sin leer del mismo remitente, para no llenar la campana con cada mensaje de una conversación.
-- `preview` trae los primeros ~80 caracteres del comentario (`comment`) o del último mensaje de ese remitente (`message`), y `null` en `like` y `follow`. Se calcula al leer (sin columna nueva en la base) y viaja tanto en `GET /api/notifications` como en `notification:new` (S4-11).
+- `reply` (S4-14): "respondió a tu comentario", para el autor del comentario respondido; si esa persona es también la autora de la publicación no recibe además la de `comment`. Tiene su propio tope de 10 por persona y publicación, y enlaza a `/p/{postId}`.
+- `preview` trae los primeros ~80 caracteres del comentario (`comment` y `reply`) o del último mensaje de ese remitente (`message`), y `null` en `like` y `follow`. Se calcula al leer (sin columna nueva en la base) y viaja tanto en `GET /api/notifications` como en `notification:new` (S4-11).
 - La lista y `unread-count` no incluyen las de una publicación o un comentario eliminados: su enlace llevaría a un 404.
 - `POST /api/notifications/read` lleva exactamente uno de los dos campos: `ids` (de 1 a 100 UUID) o `all: true`. Sin ninguno, con los dos (`details: [{ field: "all", rule: "notWith" }]`) o con otro valor responde 400. Las ids ajenas o inexistentes se ignoran sin error, y una ya leída conserva su fecha de lectura.
 

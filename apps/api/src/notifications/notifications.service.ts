@@ -102,7 +102,7 @@ export class NotificationsService {
 
   // La llaman los listeners. Nunca para uno mismo (RN08; la base también lo impide con un
   // CHECK). De like solo una por persona y publicación; de comment hasta 10 por persona y
-  // publicación (S4-11); de message solo una sin leer por remitente (docs/05-api.md). Emite
+  // publicación (S4-11), y otras 10 de reply (S4-14); de message solo una sin leer por remitente (docs/05-api.md). Emite
   // notification.created para que el Gateway la mande a user:{recipientId}.
   async notify(input: NewNotification): Promise<NotificationDto | null> {
     if (input.recipientId === input.actorId) return null;
@@ -118,10 +118,11 @@ export class NotificationsService {
       });
       if (existing) return null;
     }
-    if (input.type === 'comment') {
+    // S4-14: el mismo tope para las respuestas, contadas aparte de los comentarios
+    if (input.type === 'comment' || input.type === 'reply') {
       const count = await this.prisma.notification.count({
         where: {
-          type: 'comment',
+          type: input.type,
           recipientId: input.recipientId,
           actorId: input.actorId,
           postId: input.postId ?? null,
@@ -199,7 +200,7 @@ export class NotificationsService {
              n.post_id AS "postId",
              n.comment_id AS "commentId",
              CASE
-               WHEN n.type = 'comment' THEN c.content
+               WHEN n.type IN ('comment', 'reply') THEN c.content
                WHEN n.type = 'message' THEN (
                  SELECT m.content
                  FROM conversations cv

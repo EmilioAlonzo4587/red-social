@@ -95,7 +95,7 @@ export function ProfileStats({
               className={
                 isFollowing
                   ? "flex-1 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface disabled:opacity-50"
-                  : "flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
+                  : "flex-1 rounded-lg bg-action px-4 py-2 text-sm font-medium text-white hover:bg-action-hover disabled:opacity-50"
               }
             >
               {isFollowing ? "Siguiendo" : "Seguir"}

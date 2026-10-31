@@ -57,12 +57,33 @@ export class CommentsController {
     return this.comments.list(postId, query.cursor);
   }
 
+  @Get('comments/:id/replies')
+  @ApiOkResponse({
+    type: CommentPageDto,
+    description:
+      'Respuestas del comentario, de la más antigua a la más reciente (S4-14)',
+  })
+  @ApiBadRequestResponse({
+    type: ErrorResponseDto,
+    description: 'id no es un UUID o cursor no válido',
+  })
+  @ApiNotFoundResponse({
+    type: ErrorResponseDto,
+    description: 'El comentario no existe o su publicación fue eliminada',
+  })
+  listReplies(
+    @Param('id', postIdPipe) commentId: string,
+    @Query() query: CursorQueryDto,
+  ): Promise<CommentPageDto> {
+    return this.comments.listReplies(commentId, query.cursor);
+  }
+
   @Post('posts/:id/comments')
   @ApiCreatedResponse({ type: CommentDto })
   @ApiBadRequestResponse({
     type: ErrorResponseDto,
     description:
-      'content vacío o de más de 1000 caracteres (RN07), o id no es un UUID',
+      'content vacío o de más de 1000 caracteres (RN07), id no es un UUID, o parentId no existe, fue eliminado o es de otra publicación (S4-14)',
   })
   @ApiNotFoundResponse({
     type: ErrorResponseDto,

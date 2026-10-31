@@ -14,29 +14,41 @@ const MAX_CONTENT_LENGTH = 1000;
  * Recuadro para comentar sin salir del feed: se abre debajo de la publicación al
  * tocar el 💬 de PostCard. Envía con POST /api/posts/:id/comments; el contador en
  * vivo (S3-18) se actualiza solo por el socket, así que aquí no se suma nada.
+ * Con `parentId` responde ese comentario (S4-14): lo usa CommentSection en /p/[id], con
+ * `initialContent` "@usuario " al responder una respuesta.
  */
 export function QuickCommentBox({
   postId,
+  parentId,
+  initialContent = "",
+  label = "Escribe un comentario",
   onPosted,
   onClose,
 }: {
   postId: string;
+  parentId?: string;
+  initialContent?: string;
+  label?: string;
   onPosted: (comment: CommentDto) => void;
   onClose: () => void;
 }) {
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(initialContent);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const { ref: textareaRef, insert: insertEmoji } =
     useEmojiInsert<HTMLTextAreaElement>(content, setContent, MAX_CONTENT_LENGTH);
   const pickerId = useId();
-  const inputId = `quick-comment-${postId}`;
+  const inputId = `quick-comment-${parentId ?? postId}`;
   const canSubmit = !submitting && content.trim().length > 0;
 
   // textareaRef es el mismo objeto en cada render: esto corre una sola vez, al abrir
+  // Con "@usuario " precargado, el cursor queda al final para seguir escribiendo
   useEffect(() => {
-    textareaRef.current?.focus();
+    const field = textareaRef.current;
+    if (!field) return;
+    field.focus();
+    field.setSelectionRange(field.value.length, field.value.length);
   }, [textareaRef]);
 
   async function handleSubmit(event: React.FormEvent) {
@@ -50,14 +62,19 @@ export function QuickCommentBox({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
+          body: JSON.stringify(parentId ? { content, parentId } : { content }),
         },
       );
       setContent("");
       setEmojiOpen(false);
       onPosted(comment);
     } catch (err) {
-      if (err instanceof ApiError && err.statusCode === 400) {
+      if (
+        err instanceof ApiError &&
+        err.details.some((detail) => detail.field === "parentId")
+      ) {
+        setError("Ese comentario ya no existe.");
+      } else if (err instanceof ApiError && err.statusCode === 400) {
         setError("El comentario debe tener entre 1 y 1000 caracteres.");
       } else if (err instanceof ApiError && err.statusCode === 404) {
         setError("Esta publicación ya no existe.");
@@ -84,7 +101,7 @@ export function QuickCommentBox({
       className="quick-comment-box flex flex-col gap-2 rounded-xl border border-border bg-surface p-3 focus-within:border-primary"
     >
       <label htmlFor={inputId} className="sr-only">
-        Escribe un comentario
+        {label}
       </label>
       <textarea
         ref={textareaRef}
@@ -96,7 +113,7 @@ export function QuickCommentBox({
         }}
         maxLength={MAX_CONTENT_LENGTH}
         rows={2}
-        placeholder="Escribe un comentario…"
+        placeholder={`${label}…`}
         aria-invalid={error !== null}
         className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-primary"
       />
@@ -111,7 +128,7 @@ export function QuickCommentBox({
           className="rounded-xl border border-border p-2.5 sm:w-[328px]"
         />
       )}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <EmojiToggleButton
@@ -136,7 +153,7 @@ export function QuickCommentBox({
           <button
             type="submit"
             disabled={!canSubmit}
-            className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-action px-4 py-1.5 text-sm font-medium text-white hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Enviando…" : "Enviar"}
           </button>
