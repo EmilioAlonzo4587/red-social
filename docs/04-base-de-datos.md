@@ -45,6 +45,7 @@ erDiagram
     int comment_count "desnormalizado"
     timestamptz created_at
     timestamptz updated_at
+    timestamptz edited_at "última edición del texto"
     timestamptz deleted_at "borrado lógico"
   }
   post_media {
@@ -156,6 +157,7 @@ erDiagram
 | like_count | integer | NOT NULL, DEFAULT 0, CHECK ≥ 0 | Contador desnormalizado (D05). |
 | comment_count | integer | NOT NULL, DEFAULT 0, CHECK ≥ 0 | Contador desnormalizado. |
 | created_at, updated_at | timestamptz | NOT NULL | |
+| edited_at | timestamptz | | Última vez que el autor editó el texto (`PATCH /api/posts/:id`); null si nunca se editó. No se usa `updated_at` porque cambia con cada like o comentario al actualizar los contadores (D05). Migración `post_edited_at`. |
 | deleted_at | timestamptz | | Borrado lógico (RN04). |
 
 ### post_media

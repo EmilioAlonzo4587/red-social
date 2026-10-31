@@ -32,6 +32,7 @@ const POST: PostDto = {
   commentCount: 0,
   likedByMe: false,
   createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  editedAt: null,
 };
 
 const EMPTY_COMMENTS: CommentPageDto = { items: [], nextCursor: null };

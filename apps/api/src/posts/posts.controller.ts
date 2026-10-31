@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
 } from '@nestjs/common';
 import {
@@ -24,6 +25,7 @@ import type { SessionUser } from '../auth/session.guard';
 import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { PostDto } from './dto/post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 import { postIdPipe } from './post-id.pipe';
 import { PostsService } from './posts.service';
 
@@ -63,6 +65,29 @@ export class PostsController {
     @CurrentUser() user: SessionUser,
   ): Promise<PostDto> {
     return this.posts.findOne(id, user.id);
+  }
+
+  @Patch(':id')
+  @ApiOkResponse({ type: PostDto })
+  @ApiBadRequestResponse({
+    type: ErrorResponseDto,
+    description:
+      'id no es un UUID, content pasa de 2000 o quedaría sin texto ni imágenes (RN03)',
+  })
+  @ApiForbiddenResponse({
+    type: ErrorResponseDto,
+    description: 'La publicación es de otro usuario (RN04)',
+  })
+  @ApiNotFoundResponse({
+    type: ErrorResponseDto,
+    description: 'No existe o fue eliminada',
+  })
+  update(
+    @Param('id', postIdPipe) id: string,
+    @CurrentUser() user: SessionUser,
+    @Body() dto: UpdatePostDto,
+  ): Promise<PostDto> {
+    return this.posts.update(id, user.id, dto);
   }
 
   @Delete(':id')

@@ -1,7 +1,8 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { LikeStatusDto, PostDto } from "@red/api-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/lib/api-error";
 import { PostCard } from "./post-card";
 
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
@@ -35,6 +36,7 @@ const BASE_POST: PostDto = {
   commentCount: 1,
   likedByMe: false,
   createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  editedAt: null,
 };
 
 describe("PostCard", () => {
@@ -76,10 +78,17 @@ describe("PostCard", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("el avatar del autor también enlaza a su perfil", () => {
-    render(<PostCard post={BASE_POST} />);
-    // Sin avatarPublicId, el avatar muestra las iniciales ("AL") como texto del enlace.
-    expect(screen.getByRole("link", { name: "AL" })).toHaveAttribute(
+  it("el avatar del autor también enlaza a su perfil, sin repetirse en Tab ni en el lector (S4-06)", () => {
+    const { container } = render(<PostCard post={BASE_POST} />);
+    // Se puede tocar, pero el enlace accesible al perfil es el del nombre de al lado
+    const avatarLink = container.querySelector('a[aria-hidden="true"]');
+    expect(avatarLink).toHaveAttribute("href", "/u/ana_lopez");
+    expect(avatarLink).toHaveAttribute("tabindex", "-1");
+    expect(avatarLink).toHaveTextContent("AL");
+    expect(
+      screen.getAllByRole("link").filter((l) => l.getAttribute("href") === "/u/ana_lopez"),
+    ).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Ana López" })).toHaveAttribute(
       "href",
       "/u/ana_lopez",
     );
@@ -120,10 +129,34 @@ describe("PostCard", () => {
         { publicId: "users/u1/b", mediaType: "image", width: 10, height: 10 },
       ],
     };
-    const { container } = render(<PostCard post={post} />);
-    // alt="" es a propósito (imagen decorativa sin descripción propia): no tiene
-    // rol "img" accesible, así que se consulta directo en el DOM.
-    expect(container.querySelectorAll("img")).toHaveLength(2);
+    render(<PostCard post={post} />);
+    // Cada imagen dice cuál es y de quién (S4-06): el lector de pantalla ya no se las salta
+    expect(
+      screen.getByRole("img", {
+        name: "Imagen 1 de 2 de la publicación de Ana López",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", {
+        name: "Imagen 2 de 2 de la publicación de Ana López",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("con una sola imagen, el texto alternativo no la numera", () => {
+    const post: PostDto = {
+      ...BASE_POST,
+      author: { ...BASE_POST.author, displayName: null },
+      media: [
+        { publicId: "users/u1/a", mediaType: "image", width: 10, height: 10 },
+      ],
+    };
+    render(<PostCard post={post} />);
+    expect(
+      screen.getByRole("img", {
+        name: "Imagen de la publicación de ana_lopez",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("dar like: sube el contador al toque y confirma con la respuesta de la api", async () => {
@@ -411,5 +444,142 @@ describe("PostCard", () => {
     );
     expect(input).toHaveFocus();
     expect(input.scrollIntoView).toHaveBeenCalled();
+  });
+
+  describe("editar el texto", () => {
+    const owner = BASE_POST.author.id;
+    const apiError = (statusCode: number) =>
+      new ApiError(
+        { statusCode, error: "Error", message: "Error", details: [] },
+        statusCode,
+      );
+
+    it("solo el autor ve Editar", () => {
+      const { rerender } = render(
+        <PostCard post={BASE_POST} currentUserId="otro-usuario" />,
+      );
+      expect(
+        screen.queryByRole("button", { name: "Editar" }),
+      ).not.toBeInTheDocument();
+      rerender(<PostCard post={BASE_POST} currentUserId={owner} />);
+      expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
+    });
+
+    it("caso feliz: guarda el texto nuevo con PATCH y muestra · editado", async () => {
+      const user = userEvent.setup();
+      render(<PostCard post={BASE_POST} currentUserId={owner} />);
+      expect(screen.queryByText(/editado/)).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+      const box = screen.getByLabelText("Editar el texto de la publicación");
+      expect(box).toHaveValue("Primer atardecer del semestre");
+      expect(box).toHaveFocus();
+      // Mientras edita, no se puede editar ni eliminar otra vez
+      expect(
+        screen.queryByRole("button", { name: "Eliminar" }),
+      ).not.toBeInTheDocument();
+
+      await user.clear(box);
+      await user.type(box, "Segundo atardecer");
+      apiFetchClient.mockResolvedValueOnce({
+        ...BASE_POST,
+        content: "Segundo atardecer",
+        editedAt: new Date().toISOString(),
+      } satisfies PostDto);
+      await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+      expect(apiFetchClient).toHaveBeenCalledWith(`/api/posts/${BASE_POST.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Segundo atardecer" }),
+      });
+      expect(await screen.findByText("Segundo atardecer")).toBeInTheDocument();
+      expect(screen.getByText(/· editado/)).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Editar el texto de la publicación"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("una publicación ya editada muestra · editado al cargar", () => {
+      render(
+        <PostCard
+          post={{ ...BASE_POST, editedAt: new Date().toISOString() }}
+        />,
+      );
+      expect(screen.getByText(/· editado/)).toBeInTheDocument();
+    });
+
+    it("Cancelar y Escape descartan los cambios sin llamar a la api", async () => {
+      const user = userEvent.setup();
+      render(<PostCard post={BASE_POST} currentUserId={owner} />);
+
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+      await user.type(
+        screen.getByLabelText("Editar el texto de la publicación"),
+        " cambio",
+      );
+      await user.click(screen.getByRole("button", { name: "Cancelar" }));
+      expect(
+        screen.getByText("Primer atardecer del semestre"),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+      const box = screen.getByLabelText("Editar el texto de la publicación");
+      expect(box).toHaveValue("Primer atardecer del semestre");
+      fireEvent.keyDown(box, { key: "Escape" });
+      expect(
+        screen.queryByLabelText("Editar el texto de la publicación"),
+      ).not.toBeInTheDocument();
+      expect(apiFetchClient).not.toHaveBeenCalled();
+    });
+
+    it("sin imágenes no deja guardar vacío (RN03), ni guardar sin cambios", async () => {
+      const user = userEvent.setup();
+      render(<PostCard post={BASE_POST} currentUserId={owner} />);
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+
+      const save = screen.getByRole("button", { name: "Guardar" });
+      expect(save).toBeDisabled(); // sin cambios
+      await user.clear(screen.getByLabelText("Editar el texto de la publicación"));
+      expect(save).toBeDisabled(); // vacía y sin imágenes
+    });
+
+    it("con imágenes sí se puede quitar todo el texto", async () => {
+      const user = userEvent.setup();
+      const post: PostDto = {
+        ...BASE_POST,
+        media: [
+          { publicId: "users/u1/a", mediaType: "image", width: 10, height: 10 },
+        ],
+      };
+      render(<PostCard post={post} currentUserId={owner} />);
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+      await user.clear(screen.getByLabelText("Editar el texto de la publicación"));
+      expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
+      // La imagen se sigue viendo mientras edita
+      expect(
+        screen.getByRole("img", { name: /Imagen de la publicación/ }),
+      ).toBeInTheDocument();
+    });
+
+    it.each([
+      [403, "No tienes permiso."],
+      [404, "Esta publicación ya no existe."],
+    ])("si la api responde %i, avisa y sigue editando", async (status, text) => {
+      const user = userEvent.setup();
+      render(<PostCard post={BASE_POST} currentUserId={owner} />);
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+      await user.type(
+        screen.getByLabelText("Editar el texto de la publicación"),
+        "!",
+      );
+      apiFetchClient.mockRejectedValueOnce(apiError(status));
+      await user.click(screen.getByRole("button", { name: "Guardar" }));
+
+      expect(await screen.findByText(text)).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Editar el texto de la publicación"),
+      ).toHaveValue("Primer atardecer del semestre!");
+    });
   });
 });

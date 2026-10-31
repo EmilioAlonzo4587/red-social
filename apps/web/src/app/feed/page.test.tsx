@@ -39,6 +39,7 @@ function post(id: string): PostDto {
     commentCount: 0,
     likedByMe: false,
     createdAt: new Date().toISOString(),
+    editedAt: null,
   };
 }
 

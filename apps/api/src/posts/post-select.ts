@@ -10,6 +10,7 @@ export function postSelect(viewerId: string) {
     likeCount: true,
     commentCount: true,
     createdAt: true,
+    editedAt: true,
     author: {
       select: {
         id: true,

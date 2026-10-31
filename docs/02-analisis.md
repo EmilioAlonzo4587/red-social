@@ -43,7 +43,7 @@
 | RN01 | El nombre de usuario tiene entre 3 y 30 caracteres (letras, números y guion bajo) y es único sin distinguir mayúsculas. El correo también es único sin distinguir mayúsculas. |
 | RN02 | La contraseña tiene entre 8 y 128 caracteres. Solo se guarda su hash argon2id. |
 | RN03 | Una publicación tiene texto de hasta 2000 caracteres, al menos una imagen, o ambos. Máximo 4 imágenes jpeg, png o webp de hasta 5 MB cada una. |
-| RN04 | Solo el autor puede eliminar su publicación o su comentario. La eliminación es lógica y las imágenes se borran de Cloudinary. |
+| RN04 | Solo el autor puede eliminar su publicación o su comentario. La eliminación es lógica y las imágenes se borran de Cloudinary. Solo el autor puede editar el texto de su publicación (las imágenes no se editan); al guardar, sigue cumpliendo RN03 y queda marcada como editada. |
 | RN05 | Un usuario da como máximo un like por publicación. Repetir la acción no cambia el contador. |
 | RN06 | Nadie puede seguirse a sí mismo. Seguir dos veces a la misma persona no crea un segundo registro. |
 | RN07 | Un comentario tiene entre 1 y 1000 caracteres sin contar espacios iniciales y finales. |

@@ -100,6 +100,7 @@ describe('Publicaciones (e2e)', () => {
           'commentCount',
           'likedByMe',
           'createdAt',
+          'editedAt',
         ].sort(),
       );
       expect(postOf(res)).toMatchObject({
@@ -270,6 +271,151 @@ describe('Publicaciones (e2e)', () => {
     it('401 sin sesión', async () => {
       await request(server)
         .get('/api/posts/01a17fbf-5024-7141-88aa-8c7e3ffa3259')
+        .expect(401);
+    });
+  });
+
+  describe('PATCH /api/posts/:id', () => {
+    async function createPost(
+      cookie: string,
+      body: { content?: string; media?: ReturnType<typeof image>[] },
+    ) {
+      const res = await request(server)
+        .post('/api/posts')
+        .set('Cookie', cookie)
+        .send(body)
+        .expect(201);
+      return postOf(res);
+    }
+
+    it('200: cambia el texto recortado, marca editedAt y se ve igual en GET y en el feed', async () => {
+      const ana = await signUp('ana_lopez');
+      const post = await createPost(ana.cookie, { content: 'Hola' });
+      expect(post.editedAt).toBeNull();
+
+      const res = await request(server)
+        .patch(`/api/posts/${post.id}`)
+        .set('Cookie', ana.cookie)
+        .send({ content: '  Hola, editado  ' })
+        .expect(200);
+      const edited = postOf(res);
+      expect(edited.content).toBe('Hola, editado');
+      expect(edited.editedAt).not.toBeNull();
+      expect(edited.createdAt).toBe(post.createdAt);
+
+      const again = await request(server)
+        .get(`/api/posts/${post.id}`)
+        .set('Cookie', ana.cookie)
+        .expect(200);
+      expect(postOf(again)).toEqual(edited);
+
+      const feed = await request(server)
+        .get('/api/feed')
+        .set('Cookie', ana.cookie)
+        .expect(200);
+      const [first] = (feed.body as { items: PostDto[] }).items;
+      expect(first).toMatchObject({ id: post.id, editedAt: edited.editedAt });
+    });
+
+    it('200: con imágenes se puede quitar todo el texto, y las imágenes no cambian', async () => {
+      const ana = await signUp('ana_lopez');
+      const post = await createPost(ana.cookie, {
+        content: 'Con foto',
+        media: [image(ana.id, 'a')],
+      });
+
+      const res = await request(server)
+        .patch(`/api/posts/${post.id}`)
+        .set('Cookie', ana.cookie)
+        .send({ content: '   ' })
+        .expect(200);
+      expect(postOf(res).content).toBeNull();
+      expect(postOf(res).media).toEqual(post.media);
+    });
+
+    it('400 si quedaría sin texto ni imágenes, o el texto pasa de 2000 (RN03)', async () => {
+      const ana = await signUp('ana_lopez');
+      const post = await createPost(ana.cookie, { content: 'Solo texto' });
+
+      const empty = await request(server)
+        .patch(`/api/posts/${post.id}`)
+        .set('Cookie', ana.cookie)
+        .send({ content: '' })
+        .expect(400);
+      expect(ruleOf(empty, 'content')).toBe('contentOrMedia');
+
+      const long = await request(server)
+        .patch(`/api/posts/${post.id}`)
+        .set('Cookie', ana.cookie)
+        .send({ content: 'a'.repeat(2001) })
+        .expect(400);
+      expect(ruleOf(long, 'content')).toBe('maxLength');
+
+      const unchanged = await prisma.post.findUniqueOrThrow({
+        where: { id: post.id },
+      });
+      expect(unchanged.content).toBe('Solo texto');
+      expect(unchanged.editedAt).toBeNull();
+    });
+
+    it('400 si intenta cambiar las imágenes u otro campo, o el id no es un UUID', async () => {
+      const ana = await signUp('ana_lopez');
+      const post = await createPost(ana.cookie, { content: 'Hola' });
+
+      await request(server)
+        .patch(`/api/posts/${post.id}`)
+        .set('Cookie', ana.cookie)
+        .send({ content: 'Hola', media: [image(ana.id, 'b')] })
+        .expect(400);
+      await request(server)
+        .patch('/api/posts/no-es-uuid')
+        .set('Cookie', ana.cookie)
+        .send({ content: 'Hola' })
+        .expect(400);
+    });
+
+    it('403 si la publicación es de otro usuario, sin cambiarla (RN04)', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+      const post = await createPost(ana.cookie, { content: 'De Ana' });
+
+      await request(server)
+        .patch(`/api/posts/${post.id}`)
+        .set('Cookie', beto.cookie)
+        .send({ content: 'Lo cambió Beto' })
+        .expect(403);
+
+      const unchanged = await prisma.post.findUniqueOrThrow({
+        where: { id: post.id },
+      });
+      expect(unchanged.content).toBe('De Ana');
+      expect(unchanged.editedAt).toBeNull();
+    });
+
+    it('404 si no existe o fue eliminada', async () => {
+      const ana = await signUp('ana_lopez');
+      const post = await createPost(ana.cookie, { content: 'Hola' });
+      await request(server)
+        .delete(`/api/posts/${post.id}`)
+        .set('Cookie', ana.cookie)
+        .expect(204);
+
+      await request(server)
+        .patch(`/api/posts/${post.id}`)
+        .set('Cookie', ana.cookie)
+        .send({ content: 'Tarde' })
+        .expect(404);
+      await request(server)
+        .patch('/api/posts/00000000-0000-7000-8000-000000000000')
+        .set('Cookie', ana.cookie)
+        .send({ content: 'Nada' })
+        .expect(404);
+    });
+
+    it('401 sin sesión', async () => {
+      await request(server)
+        .patch('/api/posts/00000000-0000-7000-8000-000000000000')
+        .send({ content: 'Hola' })
         .expect(401);
     });
   });

@@ -65,7 +65,14 @@ function CommentRow({
 
   return (
     <li className="flex items-start gap-3 py-4">
-      <Link href={`/u/${comment.author.username}`} className="shrink-0">
+      {/* Mismo destino que el nombre de al lado: fuera del Tab y del lector de
+          pantalla para no repetirlo, pero se puede tocar (S4-06). */}
+      <Link
+        href={`/u/${comment.author.username}`}
+        tabIndex={-1}
+        aria-hidden="true"
+        className="shrink-0"
+      >
         <Avatar
           name={authorName}
           avatarPublicId={comment.author.avatarPublicId}
@@ -114,7 +121,7 @@ function CommentRow({
         <button
           type="button"
           onClick={() => setStage("confirming")}
-          className="text-xs text-muted hover:text-red-600"
+          className="tap-area text-xs text-muted hover:text-red-600"
         >
           Eliminar
         </button>

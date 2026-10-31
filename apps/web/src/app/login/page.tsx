@@ -78,7 +78,7 @@ export default function LoginPage() {
     <BrandLayout>
       <main className="flex w-full max-w-[380px] flex-col gap-6">
         <div className="flex flex-col gap-1.5">
-          <h1 className="text-[28px] font-bold">Iniciar sesión</h1>
+          <h1 className="text-[26px] font-bold lg:text-[28px]">Iniciar sesión</h1>
           <p className="text-sm text-muted">Entra para ver tu feed y tus mensajes.</p>
         </div>
 
@@ -93,17 +93,33 @@ export default function LoginPage() {
             <label htmlFor="identifier" className="text-sm font-medium">
               Usuario o correo
             </label>
-            <input
-              id="identifier"
-              name="identifier"
-              type="text"
-              maxLength={254}
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              aria-invalid={Boolean(errors.identifier)}
-              className="rounded-lg border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-red-500"
-              placeholder="ana_garcia"
-            />
+            {/* Ícono de usuario dentro del campo, en el mismo trazo que los de la
+                barra lateral; se pone verde al escribir (S4-06). Sin texto de ejemplo. */}
+            <div className="group relative">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted group-focus-within:text-primary"
+              >
+                <path d="M8 8a4 4 0 1 0 8 0a4 4 0 1 0-8 0M4 21a8 8 0 0 1 16 0" />
+              </svg>
+              <input
+                id="identifier"
+                name="identifier"
+                type="text"
+                autoComplete="username"
+                maxLength={254}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                aria-invalid={Boolean(errors.identifier)}
+                className="w-full rounded-lg border border-border py-2 pl-10 pr-3 outline-primary aria-[invalid=true]:border-red-500"
+              />
+            </div>
             {errors.identifier && (
               <p className="text-xs text-red-600">{errors.identifier}</p>
             )}
@@ -120,7 +136,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               ariaInvalid={Boolean(errors.password)}
-              placeholder="••••••••"
+              leadingIcon
             />
             {errors.password && (
               <p className="text-xs text-red-600">{errors.password}</p>
@@ -130,7 +146,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+            className="w-full rounded-lg bg-primary px-4 py-3 font-semibold lg:py-2 lg:font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
           >
             {submitting ? "Iniciando sesión..." : "Iniciar sesión"}
           </button>
