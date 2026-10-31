@@ -664,6 +664,8 @@ export interface components {
              * @description En comment
              */
             commentId: string | null;
+            /** @description Primeros ~80 caracteres del comentario o del último mensaje del remitente */
+            preview: string | null;
             /** @example false */
             read: boolean;
             /** Format: date-time */
