@@ -1,14 +1,16 @@
 import { DomainEvents } from '../events/domain-events.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsService } from './notifications.service';
+import { toPreview, NotificationsService } from './notifications.service';
 
 // Lógica de NotificationsService con Prisma simulado. La lista, el contador y la paginación
 // contra la base real están en test/notifications.e2e-spec.ts.
 describe('NotificationsService', () => {
   const prisma = {
     $queryRaw: jest.fn(),
+    $executeRaw: jest.fn(),
     notification: {
       findFirst: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       updateMany: jest.fn(),
     },
@@ -29,6 +31,7 @@ describe('NotificationsService', () => {
     commentId: null,
     readAt: null,
     createdAt: new Date('2026-10-29T12:00:00Z'),
+    comment: null,
     actor,
   };
   const notification = {
@@ -37,6 +40,7 @@ describe('NotificationsService', () => {
     actor,
     postId: 'p1',
     commentId: null,
+    preview: null,
     read: false,
     createdAt: row.createdAt,
   };
@@ -51,6 +55,7 @@ describe('NotificationsService', () => {
 
   describe('notify', () => {
     it('crea la notificación y emite notification.created', async () => {
+      prisma.notification.findFirst.mockResolvedValueOnce(null);
       prisma.notification.create.mockResolvedValueOnce(row);
 
       await expect(
@@ -109,7 +114,7 @@ describe('NotificationsService', () => {
       expect(events.emit).not.toHaveBeenCalled();
     });
 
-    it('message: la crea si no hay una pendiente', async () => {
+    it('message: la crea si no hay una pendiente y recorta preview a ~80 caracteres', async () => {
       prisma.notification.findFirst.mockResolvedValueOnce(null);
       prisma.notification.create.mockResolvedValueOnce({
         ...row,
@@ -117,26 +122,73 @@ describe('NotificationsService', () => {
         postId: null,
       });
 
+      const longText = 'a'.repeat(100);
       await expect(
         service.notify({
           type: 'message',
           recipientId: 'ana',
           actorId: 'beto',
+          preview: longText,
         }),
-      ).resolves.toMatchObject({ type: 'message', postId: null });
+      ).resolves.toMatchObject({
+        type: 'message',
+        postId: null,
+        preview: `${'a'.repeat(80)}…`,
+      });
       expect(events.emit).toHaveBeenCalledTimes(1);
     });
 
-    it('like no busca pendientes: solo message se agrupa', async () => {
-      prisma.notification.create.mockResolvedValueOnce(row);
+    it('preview: recorta a 80 caracteres sin partir un emoji ni dejar saltos de línea (S4-11)', () => {
+      expect(toPreview(`${'a'.repeat(79)}😀😀`)).toBe(`${'a'.repeat(79)}😀…`);
+      expect(toPreview('Hola\n\n  mundo ')).toBe('Hola mundo');
+      expect(toPreview('   ')).toBeNull();
+      expect(toPreview(null)).toBeNull();
+    });
 
-      await service.notify({
-        type: 'like',
-        recipientId: 'ana',
-        actorId: 'beto',
-        postId: 'p1',
+    it('like: no crea otra si la misma persona ya había dado like a esa publicación (S4-11)', async () => {
+      prisma.notification.findFirst.mockResolvedValueOnce({ id: 'n-previa' });
+
+      await expect(
+        service.notify({
+          type: 'like',
+          recipientId: 'ana',
+          actorId: 'beto',
+          postId: 'p1',
+        }),
+      ).resolves.toBeNull();
+      expect(prisma.notification.findFirst).toHaveBeenCalledWith({
+        where: {
+          type: 'like',
+          recipientId: 'ana',
+          actorId: 'beto',
+          postId: 'p1',
+        },
+        select: { id: true },
       });
-      expect(prisma.notification.findFirst).not.toHaveBeenCalled();
+      expect(prisma.notification.create).not.toHaveBeenCalled();
+    });
+
+    it('comment: silencia a partir del comentario 10 de la misma persona en la misma publicación (S4-11)', async () => {
+      prisma.notification.count.mockResolvedValueOnce(10);
+
+      await expect(
+        service.notify({
+          type: 'comment',
+          recipientId: 'ana',
+          actorId: 'beto',
+          postId: 'p1',
+          commentId: 'c11',
+        }),
+      ).resolves.toBeNull();
+      expect(prisma.notification.count).toHaveBeenCalledWith({
+        where: {
+          type: 'comment',
+          recipientId: 'ana',
+          actorId: 'beto',
+          postId: 'p1',
+        },
+      });
+      expect(prisma.notification.create).not.toHaveBeenCalled();
     });
   });
 

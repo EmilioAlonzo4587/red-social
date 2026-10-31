@@ -140,6 +140,7 @@ describe('Notificaciones (e2e)', () => {
           'actor',
           'postId',
           'commentId',
+          'preview',
           'read',
           'createdAt',
         ].sort(),
@@ -154,6 +155,7 @@ describe('Notificaciones (e2e)', () => {
         },
         postId,
         commentId: null,
+        preview: null,
         read: false,
       });
       expect(await unreadOf(ana.cookie)).toBe(1);
@@ -162,14 +164,34 @@ describe('Notificaciones (e2e)', () => {
         notification: expect.objectContaining({
           id: notification.id,
           type: 'like',
+          preview: null,
         }) as unknown,
       });
 
       // Beto no recibe nada por su propio like
       expect(pageOf(await listOf(beto.cookie)).items).toEqual([]);
+
+      // S4-11: quitar el like y volver a darlo no crea una segunda notificación
+      await request(server)
+        .delete(`/api/posts/${postId}/like`)
+        .set('Cookie', beto.cookie)
+        .expect(200);
+      await request(server)
+        .put(`/api/posts/${postId}/like`)
+        .set('Cookie', beto.cookie)
+        .expect(200);
+      // Un follow final confirma que los listeners anteriores ya terminaron
+      await request(server)
+        .put('/api/users/ana_lopez/follow')
+        .set('Cookie', beto.cookie)
+        .expect(200);
+      await waitForNotifications(ana.id, 2);
+      expect(
+        pageOf(await listOf(ana.cookie)).items.filter((n) => n.type === 'like'),
+      ).toHaveLength(1);
     });
 
-    it('comment: lleva la publicación y el comentario', async () => {
+    it('comment: lleva la publicación, el comentario y su preview (~80 caracteres)', async () => {
       const ana = await signUp('ana_lopez');
       const beto = await signUp('beto');
       const postId = await postBy(ana.id);
@@ -187,8 +209,36 @@ describe('Notificaciones (e2e)', () => {
           actor: { id: beto.id },
           postId,
           commentId: (comment.body as { id: string }).id,
+          preview: 'Qué buena foto',
         },
       ]);
+    });
+
+    it('comment: a partir del comentario 10 de la misma persona en la misma publicación ya no notifica, pero en otra sí (S4-11)', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+      const post1 = await postBy(ana.id);
+      const post2 = await postBy(ana.id);
+
+      for (let i = 1; i <= 11; i++) {
+        await request(server)
+          .post(`/api/posts/${post1}/comments`)
+          .set('Cookie', beto.cookie)
+          .send({ content: `Comentario ${i}` })
+          .expect(201);
+      }
+      // Comentario en otra publicación: sí debe notificar y sirve de barrera para saber
+      // que el comentario 11 de post1 ya se procesó.
+      await request(server)
+        .post(`/api/posts/${post2}/comments`)
+        .set('Cookie', beto.cookie)
+        .send({ content: 'En otra publicación' })
+        .expect(201);
+
+      await waitForNotifications(ana.id, 11);
+      const items = pageOf(await listOf(ana.cookie)).items;
+      expect(items.filter((n) => n.postId === post1)).toHaveLength(10);
+      expect(items.filter((n) => n.postId === post2)).toHaveLength(1);
     });
 
     it('follow: una sola aunque el PUT se repita (RN06)', async () => {
@@ -268,6 +318,61 @@ describe('Notificaciones (e2e)', () => {
         'follow',
         'message',
       ]);
+    });
+
+    it('message: calcula preview con el último mensaje del remitente en GET /api/notifications y notification.created (S4-11)', async () => {
+      const ana = await signUp('ana_lopez');
+      const beto = await signUp('beto');
+
+      const convRes = await request(server)
+        .post('/api/conversations')
+        .set('Cookie', beto.cookie)
+        .send({ username: 'ana_lopez' })
+        .expect(201);
+      const convId = (convRes.body as { id: string }).id;
+
+      await request(server)
+        .post(`/api/conversations/${convId}/messages`)
+        .set('Cookie', beto.cookie)
+        .send({ content: 'Primer mensaje de Beto' })
+        .expect(201);
+      await waitForNotifications(ana.id, 1);
+
+      expect(emit).toHaveBeenCalledWith('notification.created', {
+        recipientId: ana.id,
+        notification: expect.objectContaining({
+          type: 'message',
+          preview: 'Primer mensaje de Beto',
+        }) as unknown,
+      });
+
+      // Segundo mensaje mientras la notificación sigue sin leer: no crea otra fila, pero al
+      // leer GET /api/notifications muestra el preview del último mensaje del remitente.
+      await request(server)
+        .post(`/api/conversations/${convId}/messages`)
+        .set('Cookie', beto.cookie)
+        .send({ content: 'Último mensaje de Beto' })
+        .expect(201);
+
+      const items = pageOf(await listOf(ana.cookie)).items;
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({
+        type: 'message',
+        preview: 'Último mensaje de Beto',
+      });
+
+      // Al leer la conversación en /chat, un nuevo mensaje vuelve a crear otra notificación
+      await request(server)
+        .post(`/api/conversations/${convId}/read`)
+        .set('Cookie', ana.cookie)
+        .expect(204);
+      await request(server)
+        .post(`/api/conversations/${convId}/messages`)
+        .set('Cookie', beto.cookie)
+        .send({ content: 'Mensaje después de leer el chat' })
+        .expect(201);
+      await waitForNotifications(ana.id, 2);
+      expect(pageOf(await listOf(ana.cookie)).items).toHaveLength(2);
     });
   });
 

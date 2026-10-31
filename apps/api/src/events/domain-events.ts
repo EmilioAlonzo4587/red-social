@@ -70,6 +70,7 @@ export interface NotificationData {
   actor: UserSummaryData;
   postId: string | null;
   commentId: string | null;
+  preview: string | null;
   read: boolean;
   createdAt: Date;
 }
@@ -80,8 +81,16 @@ export interface NotificationCreatedEvent {
   notification: NotificationData;
 }
 
+// Publicación creada (S4-11). El Gateway envía feed:new { postId, authorId } a la sala
+// user:{id} de cada seguidor del autor (D11), sin crear filas en notifications.
+export interface PostCreatedEvent {
+  postId: string;
+  authorId: string;
+}
+
 // Nombre de cada evento y sus datos. Un evento nuevo se agrega aquí y en docs/03-arquitectura.md.
 export interface DomainEventMap {
+  'post.created': PostCreatedEvent;
   'like.changed': LikeChangedEvent;
   'comment.changed': CommentChangedEvent;
   'follow.created': FollowCreatedEvent;

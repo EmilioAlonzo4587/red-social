@@ -4,7 +4,10 @@ import { NotificationsService } from './notifications.service';
 // Qué notificación pide cada evento de dominio. Que se registren con @OnDomainEvent lo prueba
 // test/notifications.e2e-spec.ts con la app completa.
 describe('NotificationsListener', () => {
-  const notifications = { notify: jest.fn() };
+  const notifications = {
+    notify: jest.fn(),
+    markConversationMessagesRead: jest.fn(),
+  };
   let listener: NotificationsListener;
 
   beforeEach(() => {
@@ -95,6 +98,21 @@ describe('NotificationsListener', () => {
       type: 'message',
       recipientId: 'ana',
       actorId: 'beto',
+      preview: 'Hola',
     });
+  });
+
+  it('conversation.read: marca como leídas las notificaciones de mensaje de esa conversación', async () => {
+    const readAt = new Date('2026-10-30T15:00:00Z');
+    await listener.onConversationRead({
+      conversationId: 'conv1',
+      userId: 'ana',
+      readAt,
+    });
+    expect(notifications.markConversationMessagesRead).toHaveBeenCalledWith(
+      'conv1',
+      'ana',
+      readAt,
+    );
   });
 });

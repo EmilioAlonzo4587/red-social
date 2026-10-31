@@ -24,6 +24,21 @@ export interface NewNotification {
   actorId: string;
   postId?: string;
   commentId?: string;
+  preview?: string | null;
+}
+
+export const PREVIEW_MAX_LENGTH = 80;
+export const MAX_COMMENT_NOTIFICATIONS_PER_POST = 10;
+
+export function toPreview(content: string | null | undefined): string | null {
+  if (!content) return null;
+  const singleLine = content.replace(/\s+/g, ' ').trim();
+  if (!singleLine) return null;
+  // Por puntos de código, no por unidades UTF-16: así un emoji nunca queda partido a la mitad
+  const chars = Array.from(singleLine);
+  return chars.length > PREVIEW_MAX_LENGTH
+    ? `${chars.slice(0, PREVIEW_MAX_LENGTH).join('')}…`
+    : singleLine;
 }
 
 // Campos de Notification (docs/05-api.md) para Prisma
@@ -34,6 +49,11 @@ const NOTIFICATION_SELECT = {
   commentId: true,
   readAt: true,
   createdAt: true,
+  comment: {
+    select: {
+      content: true,
+    },
+  },
   actor: {
     select: {
       id: true,
@@ -53,6 +73,7 @@ interface ListRow extends CursorKey {
   type: NotificationType;
   postId: string | null;
   commentId: string | null;
+  rawPreview: string | null;
   read: boolean;
   actorId: string;
   username: string;
@@ -77,12 +98,58 @@ export class NotificationsService {
   ) {}
 
   // La llaman los listeners. Nunca para uno mismo (RN08; la base también lo impide con un
-  // CHECK). De message solo una sin leer por remitente (docs/05-api.md): mientras la campana
-  // ya avisa de ese chat, los mensajes siguientes no agregan otra. Emite notification.created
-  // para que el Gateway la mande a user:{recipientId}.
+  // CHECK). De like solo una por persona y publicación; de comment hasta 10 por persona y
+  // publicación (S4-11); de message solo una sin leer por remitente (docs/05-api.md). Emite
+  // notification.created para que el Gateway la mande a user:{recipientId}.
   async notify(input: NewNotification): Promise<NotificationDto | null> {
     if (input.recipientId === input.actorId) return null;
+    if (input.type === 'like') {
+      const existing = await this.prisma.notification.findFirst({
+        where: {
+          type: 'like',
+          recipientId: input.recipientId,
+          actorId: input.actorId,
+          postId: input.postId ?? null,
+        },
+        select: { id: true },
+      });
+      if (existing) return null;
+    }
+    if (input.type === 'comment') {
+      const count = await this.prisma.notification.count({
+        where: {
+          type: 'comment',
+          recipientId: input.recipientId,
+          actorId: input.actorId,
+          postId: input.postId ?? null,
+        },
+      });
+      if (count >= MAX_COMMENT_NOTIFICATIONS_PER_POST) return null;
+    }
     if (input.type === 'message') {
+      // Si el destinatario ya leyó la conversación en /chat (o respondió) después de la
+      // notificación anterior, esa notificación ya quedó atendida y el nuevo mensaje sí debe
+      // disparar una ventana emergente nueva. Si sigue sin leer los mensajes, se limita a una.
+      await this.prisma.$executeRaw`
+        UPDATE notifications n
+        SET read_at = CASE
+          WHEN c.user_a_id = ${input.recipientId}::uuid THEN c.user_a_last_read_at
+          ELSE c.user_b_last_read_at
+        END
+        FROM conversations c
+        WHERE c.user_a_id = LEAST(${input.recipientId}::uuid, ${input.actorId}::uuid)
+          AND c.user_b_id = GREATEST(${input.recipientId}::uuid, ${input.actorId}::uuid)
+          AND n.type = 'message'
+          AND n.recipient_id = ${input.recipientId}::uuid
+          AND n.actor_id = ${input.actorId}::uuid
+          AND n.read_at IS NULL
+          AND (
+            CASE
+              WHEN c.user_a_id = ${input.recipientId}::uuid THEN c.user_a_last_read_at
+              ELSE c.user_b_last_read_at
+            END
+          ) >= n.created_at
+      `;
       const pending = await this.prisma.notification.findFirst({
         where: {
           type: 'message',
@@ -105,7 +172,7 @@ export class NotificationsService {
       },
       select: NOTIFICATION_SELECT,
     });
-    const notification = toNotificationDto(row);
+    const notification = toNotificationDto(row, input.preview);
     this.events.emit('notification.created', {
       recipientId: input.recipientId,
       notification,
@@ -128,6 +195,20 @@ export class NotificationsService {
              n.type,
              n.post_id AS "postId",
              n.comment_id AS "commentId",
+             CASE
+               WHEN n.type = 'comment' THEN c.content
+               WHEN n.type = 'message' THEN (
+                 SELECT m.content
+                 FROM conversations cv
+                 JOIN messages m ON m.conversation_id = cv.id
+                 WHERE cv.user_a_id = LEAST(n.recipient_id, n.actor_id)
+                   AND cv.user_b_id = GREATEST(n.recipient_id, n.actor_id)
+                   AND m.sender_id = n.actor_id
+                 ORDER BY m.created_at DESC, m.id DESC
+                 LIMIT 1
+               )
+               ELSE NULL
+             END AS "rawPreview",
              n.read_at IS NOT NULL AS read,
              to_char(n.created_at AT TIME ZONE 'UTC', ${CURSOR_AT_FORMAT}) AS "createdAt",
              u.id AS "actorId",
@@ -165,15 +246,41 @@ export class NotificationsService {
       data: { readAt: new Date() },
     });
   }
+
+  // Al leer una conversación en /chat, marca también como leídas las notificaciones de
+  // mensaje pendientes de ese remitente para que futuros mensajes vuelvan a notificar.
+  async markConversationMessagesRead(
+    conversationId: string,
+    userId: string,
+    readAt: Date,
+  ): Promise<void> {
+    await this.prisma.$executeRaw`
+      UPDATE notifications n
+      SET read_at = ${readAt}::timestamptz
+      FROM conversations c
+      WHERE c.id = ${conversationId}::uuid
+        AND n.type = 'message'
+        AND n.recipient_id = ${userId}::uuid
+        AND n.actor_id = CASE
+          WHEN c.user_a_id = ${userId}::uuid THEN c.user_b_id
+          ELSE c.user_a_id
+        END
+        AND n.read_at IS NULL
+    `;
+  }
 }
 
-function toNotificationDto(row: NotificationRow): NotificationDto {
+function toNotificationDto(
+  row: NotificationRow,
+  rawPreview?: string | null,
+): NotificationDto {
   return {
     id: row.id,
     type: row.type as NotificationType,
     actor: row.actor,
     postId: row.postId,
     commentId: row.commentId,
+    preview: toPreview(rawPreview ?? row.comment?.content ?? null),
     read: row.readAt !== null,
     createdAt: row.createdAt,
   };
@@ -185,6 +292,7 @@ function toListItem(row: ListRow): NotificationDto {
     type: row.type,
     postId: row.postId,
     commentId: row.commentId,
+    preview: toPreview(row.rawPreview),
     read: row.read,
     createdAt: new Date(row.createdAt),
     actor: {
