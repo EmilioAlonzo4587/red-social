@@ -7,6 +7,9 @@ import { SEARCH_DEBOUNCE_MS, UserSearch } from "./user-search";
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 function user(username: string, displayName: string | null): UserSummaryDto {
   return { id: `id-${username}`, username, displayName, avatarPublicId: null };
 }
@@ -15,7 +18,7 @@ function user(username: string, displayName: string | null): UserSummaryDto {
 // temporizadores y la prueba se queda colgada.
 function setup() {
   render(<UserSearch />);
-  const input = screen.getByRole("searchbox", { name: "Buscar personas" });
+  const input = screen.getByRole("combobox", { name: "Buscar personas" });
   return {
     input,
     type: (value: string) => fireEvent.change(input, { target: { value } }),
@@ -33,6 +36,7 @@ describe("UserSearch", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     apiFetchClient.mockReset();
+    push.mockReset();
   });
 
   afterEach(() => {
@@ -88,14 +92,14 @@ describe("UserSearch", () => {
     expect(screen.getByText("Buscando…")).toBeInTheDocument();
     await advance();
 
-    expect(screen.getByRole("link", { name: /Ana López/ })).toHaveAttribute(
+    expect(screen.getByRole("option", { name: /Ana López/ })).toHaveAttribute(
       "href",
       "/u/ana_lopez",
     );
     expect(screen.getByText("@ana_lopez")).toBeInTheDocument();
     expect(screen.getByText("AL")).toBeInTheDocument();
     // Sin displayName, el nombre sale del username
-    expect(screen.getByRole("link", { name: /anabel/ })).toHaveAttribute(
+    expect(screen.getByRole("option", { name: /anabel/ })).toHaveAttribute(
       "href",
       "/u/anabel",
     );
@@ -107,9 +111,9 @@ describe("UserSearch", () => {
 
     type("ana");
     await advance();
-    fireEvent.click(screen.getByRole("link", { name: /Ana López/ }));
+    fireEvent.click(screen.getByRole("option", { name: /Ana López/ }));
 
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
     expect(input).toHaveValue("");
   });
 
@@ -166,7 +170,7 @@ describe("UserSearch", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByRole("link", { name: /Beto/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Beto/ })).toBeInTheDocument();
     expect(screen.queryByText("Ana López")).not.toBeInTheDocument();
   });
 
@@ -177,11 +181,91 @@ describe("UserSearch", () => {
     type("ana");
     await advance();
     fireEvent.keyDown(input, { key: "Escape" });
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
 
     fireEvent.focus(input);
-    expect(screen.getByRole("link", { name: /Ana López/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Ana López/ })).toBeInTheDocument();
     fireEvent.mouseDown(document.body);
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+  });
+
+  describe("teclado (S4-16)", () => {
+    async function searchThree() {
+      apiFetchClient.mockResolvedValue([
+        user("ana_lopez", "Ana López"),
+        user("anabel", null),
+        user("andres", "Andrés"),
+      ]);
+      const ctx = setup();
+      ctx.type("an");
+      await advance();
+      return ctx;
+    }
+    const optionOf = (name: RegExp) => screen.getByRole("option", { name });
+
+    it("las flechas mueven la opción activa (circular) y el foco se queda en el campo", async () => {
+      const { input } = await searchThree();
+      input.focus();
+      expect(input).toHaveAttribute("aria-expanded", "true");
+      expect(input).not.toHaveAttribute("aria-activedescendant");
+
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      expect(optionOf(/Ana López/)).toHaveAttribute("aria-selected", "true");
+      expect(input).toHaveAttribute(
+        "aria-activedescendant",
+        optionOf(/Ana López/).id,
+      );
+
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      expect(optionOf(/Andrés/)).toHaveAttribute("aria-selected", "true");
+      expect(optionOf(/Ana López/)).toHaveAttribute("aria-selected", "false");
+
+      // Desde la última vuelve a la primera, y hacia arriba desde la primera a la última
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      expect(optionOf(/Ana López/)).toHaveAttribute("aria-selected", "true");
+      fireEvent.keyDown(input, { key: "ArrowUp" });
+      expect(optionOf(/Andrés/)).toHaveAttribute("aria-selected", "true");
+      expect(input).toHaveFocus();
+    });
+
+    it("Enter entra al perfil de la opción elegida, cierra la lista y limpia el campo", async () => {
+      const { input } = await searchThree();
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      expect(push).toHaveBeenCalledWith("/u/anabel");
+      expect(screen.queryByRole("option")).not.toBeInTheDocument();
+      expect(input).toHaveValue("");
+    });
+
+    it("Enter sin elegir con las flechas entra al primer resultado", async () => {
+      const { input } = await searchThree();
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(push).toHaveBeenCalledWith("/u/ana_lopez");
+    });
+
+    it("Enter no hace nada mientras busca o sin resultados", async () => {
+      apiFetchClient.mockResolvedValue([]);
+      const { input, type } = setup();
+      type("zz");
+      fireEvent.keyDown(input, { key: "Enter" });
+      await advance();
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(push).not.toHaveBeenCalled();
+    });
+
+    it("una búsqueda nueva vuelve a empezar sin opción elegida, y el mouse también la marca", async () => {
+      const { input, type } = await searchThree();
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+      type("and");
+      await advance();
+      expect(input).not.toHaveAttribute("aria-activedescendant");
+
+      fireEvent.mouseMove(optionOf(/Andrés/));
+      expect(optionOf(/Andrés/)).toHaveAttribute("aria-selected", "true");
+    });
   });
 });

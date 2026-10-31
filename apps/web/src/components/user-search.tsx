@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useId, useRef, useState } from "react";
 import type { UserSummaryDto } from "@red/api-types";
 import { Avatar } from "@/components/avatar";
 import { apiFetchClient } from "@/lib/api-client";
@@ -15,12 +16,23 @@ export const SEARCH_DEBOUNCE_MS = 300;
 
 type Status = "idle" | "loading" | "ready" | "error";
 
+function profileHref(user: UserSummaryDto): string {
+  return `/u/${encodeURIComponent(user.username)}`;
+}
+
+// Combobox (S4-16): el foco se queda en el campo y las flechas mueven la opción activa,
+// que se anuncia con aria-activedescendant; Enter entra a su perfil.
 export function UserSearch() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserSummaryDto[]>([]);
   const [status, setStatus] = useState<Status>("idle");
   const [open, setOpen] = useState(false);
+  // -1: ninguna elegida todavía
+  const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const optionId = (index: number) => `${listId}-${index}`;
   const term = query.trim();
 
   useEffect(() => {
@@ -35,6 +47,7 @@ export function UserSearch() {
         .then((users) => {
           if (cancelled) return;
           setResults(users);
+          setActiveIndex(-1);
           setStatus("ready");
         })
         .catch(() => {
@@ -64,6 +77,7 @@ export function UserSearch() {
     setOpen(true);
     const next = value.trim();
     if (next === term) return;
+    setActiveIndex(-1);
     if (next.length < MIN_LENGTH) {
       setResults([]);
       setStatus("idle");
@@ -76,10 +90,46 @@ export function UserSearch() {
     setOpen(false);
     setQuery("");
     setResults([]);
+    setActiveIndex(-1);
     setStatus("idle");
   }
 
   const showPanel = open && term.length >= MIN_LENGTH;
+  const hasResults = status === "ready" && results.length > 0;
+  const listVisible = showPanel && hasResults;
+
+  function moveTo(index: number) {
+    setActiveIndex(index);
+    // La opción activa siempre a la vista si la lista tiene scroll
+    document
+      .getElementById(optionId(index))
+      ?.scrollIntoView?.({ block: "nearest" });
+  }
+
+  function handleInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (!hasResults) return;
+      event.preventDefault();
+      if (!open) setOpen(true);
+      const last = results.length - 1;
+      const next =
+        event.key === "ArrowDown"
+          ? activeIndex >= last
+            ? 0
+            : activeIndex + 1
+          : activeIndex <= 0
+            ? last
+            : activeIndex - 1;
+      moveTo(next);
+    } else if (event.key === "Enter") {
+      if (!listVisible) return;
+      event.preventDefault();
+      // Sin elegir con las flechas, Enter entra al primer resultado
+      const chosen = results[activeIndex >= 0 ? activeIndex : 0];
+      close();
+      router.push(profileHref(chosen));
+    }
+  }
 
   return (
     <div
@@ -91,8 +141,16 @@ export function UserSearch() {
     >
       <input
         type="search"
+        role="combobox"
+        aria-expanded={listVisible}
+        aria-controls={listVisible ? listId : undefined}
+        aria-autocomplete="list"
+        aria-activedescendant={
+          listVisible && activeIndex >= 0 ? optionId(activeIndex) : undefined
+        }
         value={query}
         onChange={(event) => handleChange(event.target.value)}
+        onKeyDown={handleInputKeyDown}
         onFocus={() => setOpen(true)}
         maxLength={MAX_LENGTH}
         placeholder="Buscar personas..."
@@ -119,15 +177,31 @@ export function UserSearch() {
           )}
 
           {status === "ready" && results.length > 0 && (
-            <ul aria-label="Resultados de búsqueda">
-              {results.map((user) => {
+            <ul id={listId} role="listbox" aria-label="Resultados de búsqueda">
+              {results.map((user, index) => {
                 const name = user.displayName ?? user.username;
+                const active = index === activeIndex;
                 return (
-                  <li key={user.id}>
+                  <li key={user.id} role="none">
+                    {/* Sigue siendo un enlace (clic, abrir en otra pestaña), con el rol
+                        de opción para el lector de pantalla */}
                     <Link
-                      href={`/u/${encodeURIComponent(user.username)}`}
+                      id={optionId(index)}
+                      role="option"
+                      aria-selected={active}
+                      tabIndex={-1}
+                      href={profileHref(user)}
                       onClick={close}
-                      className="flex items-center gap-3 px-4 py-2 hover:bg-surface"
+                      onMouseMove={() => {
+                        if (!active) setActiveIndex(index);
+                      }}
+                      // Barra verde a la izquierda además del fondo: surface sola casi no
+                      // se distingue del blanco
+                      className={`flex items-center gap-3 px-4 py-2 ${
+                        active
+                          ? "bg-surface shadow-[inset_3px_0_0_var(--color-primary)]"
+                          : ""
+                      }`}
                     >
                       <Avatar
                         name={name}
