@@ -17,6 +17,8 @@ describe('LikesService', () => {
   };
   const prisma = {
     $transaction: jest.fn(),
+    post: { findFirst: jest.fn() },
+    postLike: { findMany: jest.fn() },
   };
   const events = { emit: jest.fn() };
   let service: LikesService;
@@ -147,5 +149,45 @@ describe('LikesService', () => {
     );
     expect(tx.postLike.createMany).not.toHaveBeenCalled();
     expect(events.emit).not.toHaveBeenCalled();
+  });
+
+  describe('recent (S4-16)', () => {
+    it('devuelve las 5 más recientes con el total de like_count', async () => {
+      prisma.post.findFirst.mockResolvedValueOnce({ likeCount: 7 });
+      const createdAt = new Date('2026-10-31T12:00:00Z');
+      const user = {
+        id: 'beto',
+        username: 'beto',
+        displayName: null,
+        avatarPublicId: null,
+      };
+      prisma.postLike.findMany.mockResolvedValueOnce([
+        { reaction: 'love', createdAt, user },
+      ]);
+
+      await expect(service.recent('p1')).resolves.toEqual({
+        total: 7,
+        items: [{ user, reaction: 'love', createdAt }],
+      });
+      expect(prisma.post.findFirst).toHaveBeenCalledWith({
+        where: { id: 'p1', deletedAt: null },
+        select: { likeCount: true },
+      });
+      expect(prisma.postLike.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { postId: 'p1' },
+          orderBy: [{ createdAt: 'desc' }, { userId: 'desc' }],
+          take: 5,
+        }),
+      );
+    });
+
+    it('404 si la publicación no existe o fue eliminada', async () => {
+      prisma.post.findFirst.mockResolvedValueOnce(null);
+      await expect(service.recent('p1')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(prisma.postLike.findMany).not.toHaveBeenCalled();
+    });
   });
 });
