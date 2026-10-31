@@ -180,11 +180,14 @@ describe('RealtimeGateway (likes en vivo)', () => {
       actorId: 'u2',
       change: 'added',
       likeCount: 7,
+      topReactions: ['love', 'like'],
+      reaction: 'love',
     });
     expect(to).toHaveBeenCalledWith(postRoom(VALID_ID_1));
     expect(emit).toHaveBeenCalledWith('post:likes', {
       postId: VALID_ID_1,
       likeCount: 7,
+      topReactions: ['love', 'like'],
     });
   });
 
@@ -387,6 +390,7 @@ describe('RealtimeGateway (likes en vivo)', () => {
           postId: VALID_ID_2,
           commentId: null,
           preview: null,
+          reaction: null,
           read: false,
           createdAt,
         },
@@ -405,6 +409,7 @@ describe('RealtimeGateway (likes en vivo)', () => {
         postId: VALID_ID_2,
         commentId: null,
         preview: null,
+        reaction: null,
         read: false,
         createdAt: '2026-10-30T15:05:00.000Z',
       });

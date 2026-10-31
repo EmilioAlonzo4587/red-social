@@ -285,6 +285,7 @@ describe("Sidebar", () => {
         postId: "p1",
         commentId: null,
         preview: null,
+        reaction: null,
         read: false,
         createdAt: "2026-10-30T15:00:00.000Z",
       });

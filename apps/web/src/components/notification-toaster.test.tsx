@@ -56,6 +56,7 @@ function makeNotification(
       overrides.preview !== undefined
         ? overrides.preview
         : "Qué buena publicación",
+    reaction: overrides.reaction ?? null,
     read: overrides.read ?? false,
     createdAt: overrides.createdAt ?? "2026-10-30T15:00:00.000Z",
   };
@@ -76,6 +77,36 @@ describe("NotificationToaster y sonido (S4-11)", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it("una reacción muestra su emoji; si ya no existe, el texto general", () => {
+    render(<NotificationToaster />);
+
+    act(() => {
+      onNotificationNew.current?.(
+        makeNotification({
+          id: "n1",
+          type: "like",
+          commentId: null,
+          preview: null,
+          reaction: "love",
+        }),
+      );
+    });
+    expect(screen.getByText(/reaccionó con ❤️/)).toBeInTheDocument();
+
+    act(() => {
+      onNotificationNew.current?.(
+        makeNotification({
+          id: "n2",
+          type: "like",
+          commentId: null,
+          preview: null,
+          reaction: null,
+        }),
+      );
+    });
+    expect(screen.getByText(/reaccionó a tu publicación/)).toBeInTheDocument();
   });
 
   it("muestra el aviso con actor, acción, preview y se cierra solo a los 5 s", () => {
@@ -156,6 +187,7 @@ describe("NotificationToaster y sonido (S4-11)", () => {
           postId: null,
           commentId: null,
           preview: "Hola desde el chat abierto",
+          reaction: null,
         }),
       );
     });
@@ -176,6 +208,7 @@ describe("NotificationToaster y sonido (S4-11)", () => {
           postId: null,
           commentId: null,
           preview: "¿Tienes un minuto?",
+          reaction: null,
         }),
       );
     });

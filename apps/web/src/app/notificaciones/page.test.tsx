@@ -36,6 +36,7 @@ const N1: NotificationDto = {
   postId: "p1",
   commentId: "c1",
   preview: "Excelente aporte",
+  reaction: null,
   read: false,
   createdAt: "2026-10-30T15:00:00.000Z",
 };
@@ -52,6 +53,7 @@ const N2: NotificationDto = {
   postId: null,
   commentId: null,
   preview: "Nos vemos mañana",
+  reaction: null,
   read: false,
   createdAt: "2026-10-30T14:00:00.000Z",
 };

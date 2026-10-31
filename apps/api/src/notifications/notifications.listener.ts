@@ -25,6 +25,7 @@ export class NotificationsListener {
       recipientId: event.postAuthorId,
       actorId: event.actorId,
       postId: event.postId,
+      reaction: event.reaction,
     });
   }
 

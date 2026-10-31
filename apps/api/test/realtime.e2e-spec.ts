@@ -261,8 +261,14 @@ describe('Socket.io autenticado (e2e)', () => {
         .expect(200);
 
       expect(await onLike).toEqual([
-        { event: 'post:likes', data: { postId, likeCount: 1 } },
-        { event: 'post:likes', data: { postId, likeCount: 1 } },
+        {
+          event: 'post:likes',
+          data: { postId, likeCount: 1, topReactions: ['like'] },
+        },
+        {
+          event: 'post:likes',
+          data: { postId, likeCount: 1, topReactions: ['like'] },
+        },
       ]);
 
       const onUnlike = Promise.all([
@@ -276,8 +282,14 @@ describe('Socket.io autenticado (e2e)', () => {
         .expect(200);
 
       expect(await onUnlike).toEqual([
-        { event: 'post:likes', data: { postId, likeCount: 0 } },
-        { event: 'post:likes', data: { postId, likeCount: 0 } },
+        {
+          event: 'post:likes',
+          data: { postId, likeCount: 0, topReactions: [] },
+        },
+        {
+          event: 'post:likes',
+          data: { postId, likeCount: 0, topReactions: [] },
+        },
       ]);
     });
 
@@ -312,7 +324,7 @@ describe('Socket.io autenticado (e2e)', () => {
 
       expect(await betoReceived).toEqual({
         event: 'post:likes',
-        data: { postId, likeCount: 1 },
+        data: { postId, likeCount: 1, topReactions: ['like'] },
       });
       expect(anaReceived).toBe(false);
     });

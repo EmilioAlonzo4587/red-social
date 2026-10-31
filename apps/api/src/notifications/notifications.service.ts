@@ -8,6 +8,7 @@ import {
   type CursorKey,
 } from '../common/pagination';
 import { DomainEvents } from '../events/domain-events.service';
+import { isReaction, type ReactionType } from '../likes/reactions';
 import { PrismaService } from '../prisma/prisma.service';
 import { MarkReadDto } from './dto/mark-read.dto';
 import {
@@ -25,6 +26,7 @@ export interface NewNotification {
   postId?: string;
   commentId?: string;
   preview?: string | null;
+  reaction?: ReactionType | null;
 }
 
 export const PREVIEW_MAX_LENGTH = 80;
@@ -74,6 +76,7 @@ interface ListRow extends CursorKey {
   postId: string | null;
   commentId: string | null;
   rawPreview: string | null;
+  rawReaction: string | null;
   read: boolean;
   actorId: string;
   username: string;
@@ -172,7 +175,7 @@ export class NotificationsService {
       },
       select: NOTIFICATION_SELECT,
     });
-    const notification = toNotificationDto(row, input.preview);
+    const notification = toNotificationDto(row, input.preview, input.reaction);
     this.events.emit('notification.created', {
       recipientId: input.recipientId,
       notification,
@@ -209,6 +212,13 @@ export class NotificationsService {
                )
                ELSE NULL
              END AS "rawPreview",
+             CASE
+               WHEN n.type = 'like' THEN (
+                 SELECT pl.reaction
+                 FROM post_likes pl
+                 WHERE pl.post_id = n.post_id AND pl.user_id = n.actor_id
+               )
+             END AS "rawReaction",
              n.read_at IS NOT NULL AS read,
              to_char(n.created_at AT TIME ZONE 'UTC', ${CURSOR_AT_FORMAT}) AS "createdAt",
              u.id AS "actorId",
@@ -273,6 +283,7 @@ export class NotificationsService {
 function toNotificationDto(
   row: NotificationRow,
   rawPreview?: string | null,
+  reaction?: ReactionType | null,
 ): NotificationDto {
   return {
     id: row.id,
@@ -281,6 +292,7 @@ function toNotificationDto(
     postId: row.postId,
     commentId: row.commentId,
     preview: toPreview(rawPreview ?? row.comment?.content ?? null),
+    reaction: reaction ?? null,
     read: row.readAt !== null,
     createdAt: row.createdAt,
   };
@@ -293,6 +305,11 @@ function toListItem(row: ListRow): NotificationDto {
     postId: row.postId,
     commentId: row.commentId,
     preview: toPreview(row.rawPreview),
+    // Se lee al listar: muestra la reacción actual aunque haya cambiado después de crearse
+    reaction:
+      row.rawReaction !== null && isReaction(row.rawReaction)
+        ? row.rawReaction
+        : null,
     read: row.read,
     createdAt: new Date(row.createdAt),
     actor: {

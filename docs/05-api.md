@@ -53,7 +53,8 @@ Media        { publicId: string; mediaType: "image"; width: number; height: numb
 Post         { id: string; author: UserSummary; content: string | null;
                media: Media[];                 // en el orden de subida, máximo 4 (RN03)
                likeCount: number; commentCount: number;
-               likedByMe: boolean; createdAt: string;
+               likedByMe: boolean; myReaction: Reaction | null; topReactions: Reaction[];
+               createdAt: string;
                editedAt: string | null }       // última edición del texto; null si nunca se editó
 
 Comment      { id: string; postId: string; author: UserSummary; content: string; createdAt: string }
@@ -62,6 +63,7 @@ Notification { id: string; type: "like" | "comment" | "follow" | "message"; acto
                postId: string | null;          // like y comment
                commentId: string | null;       // comment
                preview: string | null;         // primeros ~80 caracteres en comment y message; null en like y follow
+               reaction: Reaction | null;      // en like: la reacción actual; null si ya la quitó o en otros tipos
                read: boolean; createdAt: string }
 
 // Una fila de la bandeja, vista por el usuario con sesión
@@ -139,11 +141,12 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 | DELETE | `/api/posts/:id` 🔒 | | 204 | 400 si `id` no es un UUID; 403 si es ajena (RN04); 404 | S2-04 |
 | GET | `/api/feed` 🔒 | `?cursor=` | `Page<Post>`: propias y de seguidos (RN10) | | S2-05 |
 | GET | `/api/feed/explore` 🔒 | `?cursor=` | `Page<Post>`: todas (RN10) | | S2-05 |
-| PUT | `/api/posts/:id/like` 🔒 | | `{ likeCount, likedByMe: true }` | 404 | S2-07 |
-| DELETE | `/api/posts/:id/like` 🔒 | | `{ likeCount, likedByMe: false }` | 404 | S2-07 |
+| PUT | `/api/posts/:id/like` 🔒 | `{ reaction? }` | `{ likeCount, likedByMe: true, myReaction, topReactions }` | 400 si la reacción no es válida, 404 | S2-07, S4-12 |
+| DELETE | `/api/posts/:id/like` 🔒 | | `{ likeCount, likedByMe: false, myReaction: null, topReactions }` | 404 | S2-07, S4-12 |
 
 - Cada elemento de `media` es lo que devolvió `POST /api/media` (`publicId`, `width` y `height`, enteros positivos), en el orden en que se muestran. La api guarda las medidas para que la web reserve el espacio de la imagen.
 - Like y unlike son idempotentes: repetirlos responde 200 con el mismo contador (RN05).
+- Reacciones: `like`, `love`, `haha`, `wow`, `sad` o `angry`. Sin `reaction` cuenta como `like`. Cada persona tiene una sola: elegir otra la reemplaza sin sumar a `likeCount`, que es el total. `topReactions` trae hasta 3, de la más usada a la menos usada; un empate sigue ese orden (S4-12).
 
 ### Comentarios (S3-01)
 
@@ -214,7 +217,7 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
 | Cliente → servidor | `conversation:typing` | `{ conversationId }` | Avisa al otro participante en `conv:{id}` que el usuario está escribiendo |
 | Cliente → servidor | `presence:watch` | `{ userIds: string[] }` | Entra a las salas `presence:{userId}` y devuelve por acknowledgement `{ onlineUserIds: string[] }` |
 | Servidor → cliente | `session:ready` | `{ userId }` | Llega a ese socket al conectarse: la sesión es válida y el socket ya está en `user:{id}` |
-| Servidor → cliente | `post:likes` | `{ postId, likeCount }` | Actualiza el contador de likes |
+| Servidor → cliente | `post:likes` | `{ postId, likeCount, topReactions }` | Actualiza el contador de likes |
 | Servidor → cliente | `post:comments` | `{ postId, commentCount }` | Actualiza el contador de comentarios |
 | Servidor → cliente | `message:new` | `Message` | Agrega el mensaje a la conversación abierta |
 | Servidor → cliente | `conversation:updated` | `Conversation`, vista por quien la recibe | Actualiza la fila de la bandeja (o la agrega si es nueva), la reordena y ajusta el contador del menú |
@@ -229,7 +232,7 @@ La conexión se autentica con la misma cookie de sesión; sin ella el servidor l
 - `postIds` lleva de 1 a 100 UUID por evento; el cliente manda listas más largas en varios eventos. Un payload inválido (otro tipo, ids que no son UUID, más de 100 o campos de más) se ignora sin respuesta ni error.
 - Un socket mira como máximo 500 publicaciones a la vez. Pasado el tope, las salas de más no se agregan; `post:unwatch` libera lugar. Repetir un id que ya mira no ocupa otro lugar.
 - Al reconectar, el socket ya no está en ninguna sala `post:{id}`: el cliente vuelve a mandar `post:watch` con las publicaciones que sigue mostrando.
-- `post:likes` sale cuando el contador cambia de verdad (`like.changed`): repetir un `PUT` idempotente no emite nada (RN05).
+- `post:likes` sale cuando el contador cambia de verdad (`like.changed`) y también al cambiar de reacción: repetir un `PUT` idempotente no emite nada (RN05).
 - `post:comments` sale al crear o borrar un comentario (`comment.changed`), a la misma sala `post:{id}` (S3-18).
 - `feed:new` sale a la sala `user:{id}` de cada seguidor cuando alguien crea una publicación (`post.created`, S4-11), sin guardar notificaciones en la base (D11).
 

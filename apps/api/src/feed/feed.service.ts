@@ -7,6 +7,7 @@ import {
   toPage,
   type CursorKey,
 } from '../common/pagination';
+import { loadTopReactions } from '../likes/reactions';
 import { postSelect, toPostDto } from '../posts/post-select';
 import { PrismaService } from '../prisma/prisma.service';
 import { PostPageDto } from './dto/post-page.dto';
@@ -73,11 +74,15 @@ export class FeedService {
       LIMIT ${PAGE_SIZE + 1}
     `;
 
+    const ids = keys.slice(0, PAGE_SIZE).map((k) => k.id);
     const posts = await this.prisma.post.findMany({
-      where: { id: { in: keys.slice(0, PAGE_SIZE).map((k) => k.id) } },
+      where: { id: { in: ids } },
       select: postSelect(viewerId),
     });
-    const byId = new Map(posts.map((post) => [post.id, toPostDto(post)]));
+    const top = await loadTopReactions(this.prisma, ids);
+    const byId = new Map(
+      posts.map((post) => [post.id, toPostDto(post, top.get(post.id))]),
+    );
 
     // findMany no garantiza el orden: se respeta el de la consulta del cursor. Si una fila
     // se borró del todo entre las dos consultas (cuenta eliminada), se omite.

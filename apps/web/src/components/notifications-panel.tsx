@@ -16,12 +16,13 @@ import {
   notifyNotificationsRead,
   subscribeNotificationNew,
 } from "@/lib/socket";
+import { reactionActionText } from "@/lib/reactions";
 
 type NotificationType = NotificationDto["type"];
 type FilterTab = "all" | "unread";
 
 const MESSAGES: Record<NotificationType, string> = {
-  like: "le dio like a tu publicación",
+  like: "reaccionó a tu publicación",
   comment: "comentó tu publicación",
   follow: "empezó a seguirte",
   message: "te envió un mensaje",
@@ -351,7 +352,8 @@ export function NotificationsPanel({
                       <div className="flex items-baseline justify-between gap-2">
                         <p className="leading-snug text-foreground">
                           <span className="font-semibold">{actorName}</span>{" "}
-                          {MESSAGES[notification.type]}
+                          {reactionActionText(notification.reaction) ??
+                            MESSAGES[notification.type]}
                         </p>
                         <span className="shrink-0 text-xs text-muted">
                           {formatRelativeTime(notification.createdAt)}

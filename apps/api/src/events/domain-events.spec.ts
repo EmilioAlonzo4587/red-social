@@ -15,6 +15,8 @@ const like: LikeChangedEvent = {
   actorId: 'u2',
   change: 'added',
   likeCount: 1,
+  topReactions: ['like'],
+  reaction: 'like',
 };
 
 // Un listener como el que escribirán el Gateway y las notificaciones

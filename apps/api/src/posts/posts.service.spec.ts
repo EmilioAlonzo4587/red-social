@@ -13,6 +13,7 @@ import { PostsService } from './posts.service';
 describe('PostsService', () => {
   const prisma = {
     post: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+    postLike: { groupBy: jest.fn().mockResolvedValue([]) },
   };
   const cloudinary = {
     belongsToUser: jest.fn(),
@@ -35,7 +36,7 @@ describe('PostsService', () => {
       avatarPublicId: null,
     },
     media: [{ publicId: 'users/u1/a', width: 1200, height: 800 }],
-    likes: [] as { userId: string }[],
+    likes: [] as { reaction: string }[],
   };
 
   beforeEach(() => {
@@ -93,6 +94,8 @@ describe('PostsService', () => {
         likeCount: 3,
         commentCount: 1,
         likedByMe: false,
+        myReaction: null,
+        topReactions: [],
         createdAt: row.createdAt,
         editedAt: null,
       });
@@ -116,13 +119,19 @@ describe('PostsService', () => {
       );
     });
 
-    it('likedByMe es true si el usuario con sesión tiene su fila en likes', async () => {
+    it('likedByMe, myReaction y topReactions salen de sus filas en post_likes', async () => {
       prisma.post.findFirst.mockResolvedValueOnce({
         ...row,
-        likes: [{ userId: 'u2' }],
+        likes: [{ reaction: 'love' }],
       });
+      prisma.postLike.groupBy.mockResolvedValueOnce([
+        { postId: 'p1', reaction: 'like', _count: { _all: 1 } },
+        { postId: 'p1', reaction: 'love', _count: { _all: 2 } },
+      ]);
       await expect(service.findOne('p1', 'u2')).resolves.toMatchObject({
         likedByMe: true,
+        myReaction: 'love',
+        topReactions: ['love', 'like'],
       });
     });
   });

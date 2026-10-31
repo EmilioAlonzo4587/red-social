@@ -80,8 +80,12 @@ describe("socket (S2-03)", () => {
     expect(emit).toHaveBeenCalledTimes(1);
     expect(emit).toHaveBeenCalledWith("post:watch", { postIds: ["p1", "p2"] });
 
-    trigger("post:likes", { postId: "p1", likeCount: 9 });
-    expect(l1).toHaveBeenCalledWith(9);
+    trigger("post:likes", {
+      postId: "p1",
+      likeCount: 9,
+      topReactions: ["love"],
+    });
+    expect(l1).toHaveBeenCalledWith(9, ["love"]);
     expect(l2).not.toHaveBeenCalled();
 
     emit.mockClear();
@@ -375,6 +379,7 @@ describe("socket (S2-03)", () => {
       postId: "p1",
       commentId: "c1",
       preview: "Buen post",
+      reaction: null,
       read: false,
       createdAt: "2026-10-30T15:00:00.000Z",
     };

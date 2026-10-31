@@ -149,6 +149,8 @@ describe('Feeds (e2e)', () => {
           'likeCount',
           'commentCount',
           'likedByMe',
+          'myReaction',
+          'topReactions',
           'createdAt',
           'editedAt',
         ].sort(),

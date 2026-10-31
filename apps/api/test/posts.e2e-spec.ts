@@ -99,6 +99,8 @@ describe('Publicaciones (e2e)', () => {
           'likeCount',
           'commentCount',
           'likedByMe',
+          'myReaction',
+          'topReactions',
           'createdAt',
           'editedAt',
         ].sort(),
@@ -118,6 +120,8 @@ describe('Publicaciones (e2e)', () => {
         likeCount: 0,
         commentCount: 0,
         likedByMe: false,
+        myReaction: null,
+        topReactions: [],
       });
     });
 
@@ -236,7 +240,12 @@ describe('Publicaciones (e2e)', () => {
         .get(`/api/posts/${id}`)
         .set('Cookie', beto.cookie)
         .expect(200);
-      expect(postOf(forBeto)).toEqual({ ...postOf(created), likedByMe: true });
+      expect(postOf(forBeto)).toEqual({
+        ...postOf(created),
+        likedByMe: true,
+        myReaction: 'like',
+        topReactions: ['like'],
+      });
 
       const forAna = await request(server)
         .get(`/api/posts/${id}`)
