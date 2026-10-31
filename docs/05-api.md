@@ -53,7 +53,8 @@ Media        { publicId: string; mediaType: "image"; width: number; height: numb
 Post         { id: string; author: UserSummary; content: string | null;
                media: Media[];                 // en el orden de subida, máximo 4 (RN03)
                likeCount: number; commentCount: number;
-               likedByMe: boolean; createdAt: string }
+               likedByMe: boolean; createdAt: string;
+               editedAt: string | null }       // última edición del texto; null si nunca se editó
 
 Comment      { id: string; postId: string; author: UserSummary; content: string; createdAt: string }
 
@@ -133,6 +134,7 @@ En la columna Body, `?` marca un campo opcional y `?cursor=` una lista paginada.
 |---|---|---|---|---|---|
 | POST | `/api/posts` 🔒 | `{ content?, media?: { publicId, width, height }[] }` | 201 `Post` | 400 si está vacía, si `content` pasa de 2000 caracteres, si hay más de 4 imágenes (RN03), si una imagen se repite o si una imagen no es del usuario | S2-04 |
 | GET | `/api/posts/:id` 🔒 | | `Post` | 400 si `id` no es un UUID; 404, también si fue eliminada | S2-04 |
+| PATCH | `/api/posts/:id` 🔒 | `{ content: string \| null }` | `Post`, con `editedAt` actualizado | 400 si `id` no es un UUID, si `content` pasa de 2000 caracteres, si quedaría sin texto ni imágenes (RN03, `rule: "contentOrMedia"`) o si trae otro campo; 403 si es ajena (RN04); 404, también si fue eliminada | S4-06 |
 | DELETE | `/api/posts/:id` 🔒 | | 204 | 400 si `id` no es un UUID; 403 si es ajena (RN04); 404 | S2-04 |
 | GET | `/api/feed` 🔒 | `?cursor=` | `Page<Post>`: propias y de seguidos (RN10) | | S2-05 |
 | GET | `/api/feed/explore` 🔒 | `?cursor=` | `Page<Post>`: todas (RN10) | | S2-05 |
