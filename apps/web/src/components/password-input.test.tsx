@@ -64,4 +64,30 @@ describe("PasswordInput", () => {
       screen.getByRole("button", { name: "Ocultar contraseña" }),
     ).toHaveAttribute("aria-pressed", "true");
   });
+
+  it("sin leadingIcon no hay candado y el texto empieza en el borde de siempre", () => {
+    const { container } = render(<Wrapper />);
+    expect(container.querySelectorAll("svg")).toHaveLength(1); // solo el ojo
+    expect(screen.getByDisplayValue("secreta123")).toHaveClass("pl-3");
+  });
+
+  it("con leadingIcon muestra el candado (decorativo) y deja lugar para él (S4-06)", () => {
+    const { container } = render(
+      <PasswordInput
+        id="password"
+        name="password"
+        value="secreta123"
+        onChange={vi.fn()}
+        leadingIcon
+      />,
+    );
+    const icons = container.querySelectorAll("svg");
+    expect(icons).toHaveLength(2); // candado y ojo
+    expect(icons[0]).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByDisplayValue("secreta123")).toHaveClass("pl-10");
+    // El nombre accesible del botón no cambia
+    expect(
+      screen.getByRole("button", { name: "Mostrar contraseña" }),
+    ).toBeInTheDocument();
+  });
 });

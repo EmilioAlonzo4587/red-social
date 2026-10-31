@@ -10,6 +10,7 @@ export function PasswordInput({
   maxLength,
   placeholder,
   ariaInvalid,
+  leadingIcon = false,
 }: {
   id: string;
   name: string;
@@ -18,11 +19,27 @@ export function PasswordInput({
   maxLength?: number;
   placeholder?: string;
   ariaInvalid?: boolean;
+  /** Candado dentro del campo, a la izquierda (login, S4-06). */
+  leadingIcon?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
 
   return (
-    <div className="relative">
+    <div className="group relative">
+      {leadingIcon && (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted group-focus-within:text-primary"
+        >
+          <path d="M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1zM8 11V8a4 4 0 0 1 8 0v3" />
+        </svg>
+      )}
       <input
         id={id}
         name={name}
@@ -32,7 +49,9 @@ export function PasswordInput({
         onChange={onChange}
         aria-invalid={ariaInvalid}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-border px-3 py-2 pr-10 outline-primary aria-[invalid=true]:border-red-500"
+        className={`w-full rounded-lg border border-border py-2 pr-10 outline-primary aria-[invalid=true]:border-red-500 ${
+          leadingIcon ? "pl-10" : "pl-3"
+        }`}
       />
       <button
         type="button"
