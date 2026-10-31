@@ -98,6 +98,8 @@ export interface NotificationCreatedEvent {
 export interface PostCreatedEvent {
   postId: string;
   authorId: string;
+  // Para que la web muestre quién publicó en el aviso de publicaciones nuevas (S4-15)
+  author: UserSummaryData;
 }
 
 // Nombre de cada evento y sus datos. Un evento nuevo se agrega aquí y en docs/03-arquitectura.md.

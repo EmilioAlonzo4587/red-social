@@ -55,9 +55,11 @@ export interface PostCommentsEvent {
   commentCount: number;
 }
 
+// feed:new (seguidores, Siguiendo) y explore:new (todos menos el autor, Explorar; S4-15)
 export interface FeedNewEvent {
   postId: string;
   authorId: string;
+  author: UserSummaryDto;
 }
 
 export interface ConversationJoinPayload {
@@ -115,6 +117,7 @@ export interface ServerToClientEvents {
   "post:likes": (data: PostLikesEvent) => void;
   "post:comments": (data: PostCommentsEvent) => void;
   "feed:new": (data: FeedNewEvent) => void;
+  "explore:new": (data: FeedNewEvent) => void;
   "message:new": (data: MessageNewEvent) => void;
   "conversation:updated": (data: ConversationUpdatedEvent) => void;
   "conversation:typing": (data: ConversationTypingEvent) => void;

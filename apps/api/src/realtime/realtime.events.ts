@@ -75,9 +75,11 @@ export interface NotificationNewEvent {
   createdAt: string;
 }
 
+// feed:new (seguidores, pestaña Siguiendo) y explore:new (todos, pestaña Explorar)
 export interface FeedNewEvent {
   postId: string;
   authorId: string;
+  author: UserSummaryData;
 }
 
 // Cliente → servidor
@@ -101,6 +103,7 @@ export interface ServerToClientEvents {
   'post:likes': (data: PostLikesEvent) => void;
   'post:comments': (data: PostCommentsEvent) => void;
   'feed:new': (data: FeedNewEvent) => void;
+  'explore:new': (data: FeedNewEvent) => void;
   'message:new': (data: MessageNewEvent) => void;
   'conversation:updated': (data: ConversationUpdatedEvent) => void;
   'conversation:typing': (data: ConversationTypingEvent) => void;

@@ -456,7 +456,7 @@ describe('Socket.io autenticado (e2e)', () => {
       expect(betoNotifications.map((n) => n.type)).toEqual(['follow']);
     });
 
-    it('crear publicación emite feed:new al seguidor y no a quien no sigue (S4-11)', async () => {
+    it('crear publicación emite feed:new al seguidor y explore:new a todos menos al autor (S4-11, S4-15)', async () => {
       const ana = await registerUser('ana');
       const beto = await registerUser('beto');
       const carla = await registerUser('carla');
@@ -467,13 +467,18 @@ describe('Socket.io autenticado (e2e)', () => {
         .set('Cookie', `access_token=${beto.access}`)
         .expect(200);
 
+      const anaSocket = connect(withCookie(ana.access));
       const betoSocket = connect(withCookie(beto.access));
       const carlaSocket = connect(withCookie(carla.access));
+      await waitFor(anaSocket, ['session:ready']);
       await waitFor(betoSocket, ['session:ready']);
       await waitFor(carlaSocket, ['session:ready']);
 
       const onBetoFeed = waitFor(betoSocket, ['feed:new']);
       const carlaNoFeed = expectNothing(carlaSocket, 'feed:new');
+      const onBetoExplore = waitFor(betoSocket, ['explore:new']);
+      const onCarlaExplore = waitFor(carlaSocket, ['explore:new']);
+      const anaNoExplore = expectNothing(anaSocket, 'explore:new');
 
       const created = await request(app.getHttpServer())
         .post('/api/posts')
@@ -482,11 +487,21 @@ describe('Socket.io autenticado (e2e)', () => {
         .expect(201);
       const postId = (created.body as { id: string }).id;
 
-      expect(await onBetoFeed).toEqual({
-        event: 'feed:new',
-        data: { postId, authorId: ana.id },
-      });
+      const data = {
+        postId,
+        authorId: ana.id,
+        author: {
+          id: ana.id,
+          username: 'ana',
+          displayName: null,
+          avatarPublicId: null,
+        },
+      };
+      expect(await onBetoFeed).toEqual({ event: 'feed:new', data });
+      expect(await onBetoExplore).toEqual({ event: 'explore:new', data });
+      expect(await onCarlaExplore).toEqual({ event: 'explore:new', data });
       await carlaNoFeed;
+      await anaNoExplore;
     });
 
     it('conversation:join rechaza con "forbidden" a quien no participa, una conversación inexistente o un UUID inválido (RN09)', async () => {

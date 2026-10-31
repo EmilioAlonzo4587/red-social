@@ -104,8 +104,9 @@ describe('RealtimeGateway (likes en vivo)', () => {
       conversations as never,
       follows as never,
     );
-    gateway.server = { to } as never;
-    return { gateway, to, emit, conversations, follows };
+    const except = jest.fn().mockReturnValue({ emit });
+    gateway.server = { to, except } as never;
+    return { gateway, to, except, emit, conversations, follows };
   }
 
   it('post:watch mete el socket en las salas post:{id}', async () => {
@@ -416,23 +417,46 @@ describe('RealtimeGateway (likes en vivo)', () => {
       });
     });
 
-    it('post.created emite feed:new a la sala user:{id} de cada seguidor (S4-11)', async () => {
-      const { gateway, to, emit, follows } = createGateway();
+    it('post.created emite explore:new a todos menos al autor y feed:new a cada seguidor (S4-11, S4-15)', async () => {
+      const { gateway, to, except, emit, follows } = createGateway();
       follows.findFollowerIds.mockResolvedValueOnce(['u2', 'u3']);
+      const author = {
+        id: 'u1',
+        username: 'ana',
+        displayName: 'Ana',
+        avatarPublicId: null,
+      };
+      const event = { postId: VALID_ID_1, authorId: 'u1', author };
+
+      await gateway.handlePostCreated(event);
+
+      expect(except).toHaveBeenCalledWith(userRoom('u1'));
+      expect(emit).toHaveBeenCalledWith('explore:new', event);
+      expect(follows.findFollowerIds).toHaveBeenCalledWith('u1');
+      expect(to).toHaveBeenCalledTimes(1);
+      expect(to).toHaveBeenCalledWith([userRoom('u2'), userRoom('u3')]);
+      expect(emit).toHaveBeenCalledWith('feed:new', event);
+      expect(emit).toHaveBeenCalledTimes(2);
+    });
+
+    it('post.created sin seguidores solo emite explore:new (S4-15)', async () => {
+      const { gateway, to, emit, follows } = createGateway();
+      follows.findFollowerIds.mockResolvedValueOnce([]);
 
       await gateway.handlePostCreated({
         postId: VALID_ID_1,
         authorId: 'u1',
+        author: {
+          id: 'u1',
+          username: 'ana',
+          displayName: null,
+          avatarPublicId: null,
+        },
       });
 
-      expect(follows.findFollowerIds).toHaveBeenCalledWith('u1');
-      expect(to).toHaveBeenCalledTimes(1);
-      expect(to).toHaveBeenCalledWith([userRoom('u2'), userRoom('u3')]);
+      expect(to).not.toHaveBeenCalled();
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith('feed:new', {
-        postId: VALID_ID_1,
-        authorId: 'u1',
-      });
+      expect(emit).toHaveBeenCalledWith('explore:new', expect.anything());
     });
 
     it('conversation:typing reenvía al otro participante solo si el socket está en conv:{id} y conversation.read emite conversation:read (S3-06)', () => {

@@ -25,8 +25,9 @@ vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
 // llevarse una respuesta encolada para el feed y la prueba fallaba a veces.
 vi.mock("@/components/following-panel", () => ({ FollowingPanel: () => null }));
 
-const { onFeedNew } = vi.hoisted(() => ({
+const { onFeedNew, onExploreNew } = vi.hoisted(() => ({
   onFeedNew: { current: null as ((event: FeedNewEvent) => void) | null },
+  onExploreNew: { current: null as ((event: FeedNewEvent) => void) | null },
 }));
 
 vi.mock("@/lib/socket", () => ({
@@ -36,6 +37,12 @@ vi.mock("@/lib/socket", () => ({
     onFeedNew.current = cb;
     return () => {
       onFeedNew.current = null;
+    };
+  }),
+  subscribeExploreNew: vi.fn((cb: (event: FeedNewEvent) => void) => {
+    onExploreNew.current = cb;
+    return () => {
+      onExploreNew.current = null;
     };
   }),
 }));
@@ -58,6 +65,20 @@ function post(id: string): PostDto {
     topReactions: [],
     createdAt: new Date().toISOString(),
     editedAt: null,
+  };
+}
+
+// Lo que mandan feed:new y explore:new cuando alguien publica (S4-15)
+function newPost(postId: string, authorId: string, name: string): FeedNewEvent {
+  return {
+    postId,
+    authorId,
+    author: {
+      id: authorId,
+      username: name.toLowerCase(),
+      displayName: name,
+      avatarPublicId: null,
+    },
   };
 }
 
@@ -284,7 +305,103 @@ describe("FeedPage", () => {
     expect(screen.queryByText("@ana_lopez")).not.toBeInTheDocument();
   });
 
-  it("en Siguiendo muestra 'Hay N publicaciones nuevas · Ver' al recibir feed:new y recarga al hacer clic (S4-11)", async () => {
+  it("en Explorar muestra 'Ver N publicaciones nuevas' con las caras al recibir explore:new y recarga al tocarlo (S4-15)", async () => {
+    const user = userEvent.setup();
+    const scrollTo = vi.fn();
+    vi.stubGlobal("scrollTo", scrollTo);
+    // jsdom no trae matchMedia: sin prefers-reduced-motion, sube con animación
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({ matches: false })),
+    );
+    apiFetchClient.mockResolvedValueOnce(page([post("1")])); // explorar inicial
+    render(<FeedPage />);
+    await waitFor(() =>
+      expect(screen.getByText("Publicación 1")).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: /publicac.*nueva/i }),
+    ).not.toBeInTheDocument();
+
+    act(() => {
+      onExploreNew.current?.(newPost("p-new-1", "u2", "Beto"));
+    });
+    expect(
+      screen.getByRole("button", { name: "Ver 1 publicación nueva" }),
+    ).toBeInTheDocument();
+
+    // Otra de Beto y una de Carla: dos caras (una por persona) y el plural
+    act(() => {
+      onExploreNew.current?.(newPost("p-new-2", "u2", "Beto"));
+      onExploreNew.current?.(newPost("p-new-3", "u3", "Carla"));
+      // Repetida: no cuenta dos veces
+      onExploreNew.current?.(newPost("p-new-3", "u3", "Carla"));
+    });
+    const button = screen.getByRole("button", {
+      name: "Ver 3 publicaciones nuevas",
+    });
+    expect(button).toHaveTextContent("C");
+    expect(button).toHaveTextContent("B");
+    expect(button.querySelectorAll(".ring-2")).toHaveLength(2);
+
+    // Al tocarlo vuelve a pedir Explorar, sube al inicio y el botón desaparece
+    apiFetchClient.mockResolvedValueOnce(
+      page([post("p-new-3"), post("p-new-2"), post("p-new-1"), post("1")]),
+    );
+    await user.click(button);
+    await waitFor(() => {
+      expect(screen.getByText("Publicación p-new-3")).toBeInTheDocument();
+    });
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+    expect(
+      screen.queryByRole("button", { name: /publicac.*nueva/i }),
+    ).not.toBeInTheDocument();
+    // Las recién mostradas se resaltan
+    expect(
+      screen.getByText("Publicación p-new-3").closest(".feed-fresh-post"),
+    ).not.toBeNull();
+    expect(
+      screen.getByText("Publicación 1").closest(".feed-fresh-post"),
+    ).toBeNull();
+    vi.unstubAllGlobals();
+  });
+
+  it("cada pestaña cuenta lo suyo: feed:new para Siguiendo y explore:new para Explorar; las propias no cuentan (S4-15)", async () => {
+    const user = userEvent.setup();
+    apiFetchClient.mockResolvedValueOnce(page([post("1")])); // explorar inicial
+    render(<FeedPage />);
+    await waitFor(() =>
+      expect(screen.getByText("Publicación 1")).toBeInTheDocument(),
+    );
+    // Espera a /api/auth/me para conocer el usuario actual (u1)
+    await waitFor(() =>
+      expect(apiFetchClient).toHaveBeenCalledWith("/api/users/ana_lopez"),
+    );
+
+    act(() => {
+      // Una de alguien seguido llega por los dos eventos
+      onFeedNew.current?.(newPost("p-seguido", "u2", "Beto"));
+      onExploreNew.current?.(newPost("p-seguido", "u2", "Beto"));
+      // Una de alguien que no sigo solo llega a Explorar
+      onExploreNew.current?.(newPost("p-otro", "u3", "Carla"));
+      // La propia nunca cuenta
+      onFeedNew.current?.(newPost("p-mia", "u1", "Ana"));
+    });
+    expect(
+      screen.getByRole("button", { name: "Ver 2 publicaciones nuevas" }),
+    ).toBeInTheDocument();
+
+    apiFetchClient.mockResolvedValueOnce(page([post("2")])); // siguiendo inicial
+    await user.click(screen.getByRole("button", { name: "Siguiendo" }));
+    await waitFor(() =>
+      expect(screen.getByText("Publicación 2")).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Ver 1 publicación nueva" }),
+    ).toBeInTheDocument();
+  });
+
+  it("si una carga ya trae la publicación avisada, deja de contarla (S4-15)", async () => {
     const user = userEvent.setup();
     apiFetchClient.mockResolvedValueOnce(page([post("1")])); // explorar inicial
     render(<FeedPage />);
@@ -292,38 +409,15 @@ describe("FeedPage", () => {
       expect(screen.getByText("Publicación 1")).toBeInTheDocument(),
     );
 
-    apiFetchClient.mockResolvedValueOnce(page([post("2")])); // siguiendo inicial
+    act(() => {
+      onFeedNew.current?.(newPost("p-nueva", "u2", "Beto"));
+    });
+    // Siguiendo se carga por primera vez después del aviso y ya la trae
+    apiFetchClient.mockResolvedValueOnce(page([post("p-nueva"), post("2")]));
     await user.click(screen.getByRole("button", { name: "Siguiendo" }));
     await waitFor(() =>
-      expect(screen.getByText("Publicación 2")).toBeInTheDocument(),
+      expect(screen.getByText("Publicación p-nueva")).toBeInTheDocument(),
     );
-
-    // Llega feed:new de alguien seguido
-    act(() => {
-      onFeedNew.current?.({ postId: "p-new-1", authorId: "u2" });
-    });
-    expect(
-      screen.getByRole("button", { name: "Hay 1 publicación nueva · Ver" }),
-    ).toBeInTheDocument();
-
-    // Llega otra publicación nueva -> plural
-    act(() => {
-      onFeedNew.current?.({ postId: "p-new-2", authorId: "u3" });
-    });
-    const banner = screen.getByRole("button", {
-      name: "Hay 2 publicaciones nuevas · Ver",
-    });
-    expect(banner).toBeInTheDocument();
-
-    // Al hacer clic, limpia el aviso y recarga /api/feed
-    apiFetchClient.mockResolvedValueOnce(
-      page([post("p-new-2"), post("p-new-1"), post("2")]),
-    );
-    await user.click(banner);
-
-    await waitFor(() => {
-      expect(screen.getByText("Publicación p-new-2")).toBeInTheDocument();
-    });
     expect(
       screen.queryByRole("button", { name: /publicac.*nueva/i }),
     ).not.toBeInTheDocument();

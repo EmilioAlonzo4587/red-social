@@ -83,6 +83,7 @@ const presenceListeners = new Set<PresenceListener>();
 const notificationNewListeners = new Set<NotificationNewListener>();
 const notificationsReadListeners = new Set<NotificationsReadListener>();
 const feedNewListeners = new Set<FeedNewListener>();
+const exploreNewListeners = new Set<FeedNewListener>();
 const watchedPresenceUsers = new Set<string>();
 const onlineUsers = new Set<string>();
 const pendingWatch = new Set<string>();
@@ -238,6 +239,12 @@ function getSocket(): AppClientSocket {
 
   instance.on("feed:new", (event: FeedNewEvent) => {
     for (const listener of feedNewListeners) {
+      listener(event);
+    }
+  });
+
+  instance.on("explore:new", (event: FeedNewEvent) => {
+    for (const listener of exploreNewListeners) {
       listener(event);
     }
   });
@@ -539,6 +546,17 @@ export function subscribeFeedNew(onFeedNew: FeedNewListener): () => void {
   feedNewListeners.add(onFeedNew);
   return () => {
     feedNewListeners.delete(onFeedNew);
+  };
+}
+
+/**
+ * Escucha explore:new: alguien (seguido o no) publicó, para la pestaña Explorar (S4-15, D11).
+ */
+export function subscribeExploreNew(onExploreNew: FeedNewListener): () => void {
+  getSocket();
+  exploreNewListeners.add(onExploreNew);
+  return () => {
+    exploreNewListeners.delete(onExploreNew);
   };
 }
 
