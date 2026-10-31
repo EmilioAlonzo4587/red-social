@@ -24,6 +24,11 @@ export function refreshSession(): Promise<boolean> {
   return refreshPromise;
 }
 
+// En estas rutas un 401 no es una sesión vencida: es la propia respuesta (credenciales
+// incorrectas en login, refresh rechazado). Intentar refrescar y mandar a la portada
+// recargaría la página y el formulario nunca mostraría el error.
+const NO_REFRESH_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh"];
+
 async function parse<T>(response: Response): Promise<T> {
   if (!response.ok) throw await toApiError(response);
   if (response.status === 204) return undefined as T;
@@ -41,7 +46,7 @@ export async function apiFetchClient<T>(
 ): Promise<T> {
   const response = await fetch(path, { ...init, credentials: "include" });
 
-  if (response.status !== 401 || path === "/api/auth/refresh") {
+  if (response.status !== 401 || NO_REFRESH_PATHS.includes(path)) {
     return parse<T>(response);
   }
 

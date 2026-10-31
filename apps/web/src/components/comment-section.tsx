@@ -10,6 +10,18 @@ import { fieldErrorsFromDetails } from "@/lib/api-field-errors";
 import { formatRelativeTime } from "@/lib/format";
 import { subscribePostComments } from "@/lib/socket";
 
+// Ya dentro del detalle, el 💬 de PostCard llama a focusCommentInput() para llevar
+// al cuadro de comentario de esta sección.
+export const COMMENT_INPUT_ID = "comment-content";
+
+export function focusCommentInput(): boolean {
+  const input = document.getElementById(COMMENT_INPUT_ID);
+  if (!input) return false;
+  input.scrollIntoView({ block: "center" });
+  input.focus({ preventScroll: true });
+  return true;
+}
+
 // Tope de páginas por resincronización silenciosa (S3-08): una conversación real no debería
 // acercarse a esto; es solo para no reintentar sin fin si algo queda inconsistente.
 const MAX_RESYNC_PAGES = 50;
@@ -247,7 +259,7 @@ export function CommentSection({
           Escribe un comentario
         </label>
         <textarea
-          id="comment-content"
+          id={COMMENT_INPUT_ID}
           value={content}
           onChange={(event) => setContent(event.target.value)}
           maxLength={MAX_CONTENT_LENGTH}

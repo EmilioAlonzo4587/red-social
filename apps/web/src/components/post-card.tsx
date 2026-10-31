@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { LikeStatusDto, PostDto } from "@red/api-types";
 import { Avatar } from "@/components/avatar";
+import { focusCommentInput } from "@/components/comment-section";
+import { QuickCommentBox } from "@/components/quick-comment-box";
 import { apiFetchClient } from "@/lib/api-client";
 import { formatRelativeTime } from "@/lib/format";
 import { cloudinaryImageUrl } from "@/lib/media";
@@ -26,6 +28,8 @@ export function PostCard({
   const [likedByMe, setLikedByMe] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [commentCount, setCommentCount] = useState(post.commentCount);
+  const [commentBoxOpen, setCommentBoxOpen] = useState(false);
+  const [commentPosted, setCommentPosted] = useState(false);
   const [liking, setLiking] = useState(false);
   const [deleteStage, setDeleteStage] = useState<
     "idle" | "confirming" | "deleting"
@@ -118,6 +122,8 @@ export function PostCard({
     </>
   );
 
+  const commentLabel = `Comentar (${commentCount} ${commentCount === 1 ? "comentario" : "comentarios"})`;
+
   return (
     <article className="flex flex-col gap-2.5 border-b border-border py-4">
       <div className="flex items-center gap-3">
@@ -194,8 +200,54 @@ export function PostCard({
         >
           ❤ {likeCount}
         </button>
-        <span className="text-muted">💬 {commentCount}</span>
+        {/* En el feed abre el recuadro para comentar debajo de la publicación; ya en
+            el detalle, enfoca el formulario de CommentSection, que está justo abajo. */}
+        {linkToDetail ? (
+          <button
+            type="button"
+            onClick={() => {
+              setCommentBoxOpen((open) => !open);
+              setCommentPosted(false);
+            }}
+            aria-label={commentLabel}
+            aria-expanded={commentBoxOpen}
+            className={
+              commentBoxOpen ? "text-primary" : "text-muted hover:text-primary"
+            }
+          >
+            💬 {commentCount}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={focusCommentInput}
+            aria-label={commentLabel}
+            className="text-muted hover:text-primary"
+          >
+            💬 {commentCount}
+          </button>
+        )}
       </div>
+
+      {commentBoxOpen && (
+        <QuickCommentBox
+          postId={post.id}
+          onPosted={() => {
+            setCommentBoxOpen(false);
+            setCommentPosted(true);
+          }}
+          onClose={() => setCommentBoxOpen(false)}
+        />
+      )}
+
+      {commentPosted && (
+        <p role="status" className="text-sm text-primary">
+          Comentario publicado.{" "}
+          <Link href={`/p/${post.id}`} className="font-medium underline">
+            Ver comentarios
+          </Link>
+        </p>
+      )}
     </article>
   );
 }

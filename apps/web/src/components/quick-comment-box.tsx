@@ -1,0 +1,118 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import type { CommentDto } from "@red/api-types";
+import { apiFetchClient } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-error";
+
+// Mismo límite que la api y que CommentSection (RN07).
+const MAX_CONTENT_LENGTH = 1000;
+
+/**
+ * Recuadro para comentar sin salir del feed: se abre debajo de la publicación al
+ * tocar el 💬 de PostCard. Envía con POST /api/posts/:id/comments; el contador en
+ * vivo (S3-18) se actualiza solo por el socket, así que aquí no se suma nada.
+ */
+export function QuickCommentBox({
+  postId,
+  onPosted,
+  onClose,
+}: {
+  postId: string;
+  onPosted: (comment: CommentDto) => void;
+  onClose: () => void;
+}) {
+  const [content, setContent] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputId = `quick-comment-${postId}`;
+  const canSubmit = !submitting && content.trim().length > 0;
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const comment = await apiFetchClient<CommentDto>(
+        `/api/posts/${postId}/comments`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content }),
+        },
+      );
+      setContent("");
+      onPosted(comment);
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 400) {
+        setError("El comentario debe tener entre 1 y 1000 caracteres.");
+      } else if (err instanceof ApiError && err.statusCode === 404) {
+        setError("Esta publicación ya no existe.");
+      } else if (err instanceof ApiError && err.statusCode === 429) {
+        setError("Demasiados intentos. Espera un momento.");
+      } else {
+        setError("No se pudo comentar. Intenta de nuevo.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form
+      noValidate
+      onSubmit={handleSubmit}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") onClose();
+      }}
+      className="quick-comment-box flex flex-col gap-2 rounded-xl border border-border bg-surface p-3 focus-within:border-primary"
+    >
+      <label htmlFor={inputId} className="sr-only">
+        Escribe un comentario
+      </label>
+      <textarea
+        ref={textareaRef}
+        id={inputId}
+        value={content}
+        onChange={(event) => {
+          setContent(event.target.value);
+          setError(null);
+        }}
+        maxLength={MAX_CONTENT_LENGTH}
+        rows={2}
+        placeholder="Escribe un comentario…"
+        aria-invalid={error !== null}
+        className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-primary"
+      />
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted tabular-nums">
+          {content.length} / {MAX_CONTENT_LENGTH}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-background disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting ? "Enviando…" : "Enviar"}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}

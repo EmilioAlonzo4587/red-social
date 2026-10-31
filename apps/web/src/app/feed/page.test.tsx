@@ -14,6 +14,10 @@ vi.mock("@/lib/media", async (importOriginal) => {
 
 const { apiFetchClient } = vi.hoisted(() => ({ apiFetchClient: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetchClient }));
+// La lista "Siguiendo" de la columna derecha tiene sus propias pruebas
+// (following-panel.test.tsx). Aquí se simula: si no, su pedido a la api podía
+// llevarse una respuesta encolada para el feed y la prueba fallaba a veces.
+vi.mock("@/components/following-panel", () => ({ FollowingPanel: () => null }));
 
 vi.mock("@/lib/socket", () => ({
   subscribePostLikes: vi.fn(() => () => {}),
@@ -72,8 +76,15 @@ describe("FeedPage", () => {
     // /api/users/{username} (seguidores/seguidos de la tarjeta). Los tests de abajo solo
     // encolan valores para las llamadas de feed con mockResolvedValueOnce, así que esto
     // queda como respuesta por defecto para las llamadas sin encolar.
+    // También pide /api/users/{username}/following (lista "Siguiendo" de la columna derecha).
     apiFetchClient.mockImplementation((path: string) =>
-      Promise.resolve(path === "/api/auth/me" ? ME : PROFILE),
+      Promise.resolve(
+        path === "/api/auth/me"
+          ? ME
+          : path.endsWith("/following")
+            ? page([])
+            : PROFILE,
+      ),
     );
     uploadMedia.mockReset();
   });
@@ -122,13 +133,22 @@ describe("FeedPage", () => {
 
   it("estado vacío en Siguiendo invita a ir a Explorar", async () => {
     const user = userEvent.setup();
-    apiFetchClient.mockResolvedValueOnce(page([])); // explorar al montar, vacío también
+    // Por ruta y no con mockResolvedValueOnce: la lista "Siguiendo" de la columna
+    // derecha también pide a la api y se llevaría la respuesta encolada.
+    apiFetchClient.mockImplementation((path: string) =>
+      Promise.resolve(
+        path === "/api/auth/me"
+          ? ME
+          : path.startsWith("/api/feed") || path.endsWith("/following")
+            ? page([])
+            : PROFILE,
+      ),
+    );
     render(<FeedPage />);
     await waitFor(() =>
       expect(apiFetchClient).toHaveBeenCalledWith("/api/feed/explore"),
     );
 
-    apiFetchClient.mockResolvedValueOnce(page([]));
     await user.click(screen.getByRole("button", { name: "Siguiendo" }));
 
     await waitFor(() => {

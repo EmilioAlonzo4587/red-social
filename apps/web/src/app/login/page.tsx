@@ -7,6 +7,7 @@ import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
 import { fieldErrorsFromDetails } from "@/lib/api-field-errors";
 import { PasswordInput } from "@/components/password-input";
+import { BrandLayout } from "@/components/brand-layout";
 
 type FormErrors = {
   identifier?: string;
@@ -74,69 +75,74 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-sm flex-col justify-center gap-6 px-4">
-      <h1 className="text-2xl font-bold">Iniciar sesión</h1>
+    <BrandLayout>
+      <main className="flex w-full max-w-[380px] flex-col gap-6">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-[28px] font-bold">Iniciar sesión</h1>
+          <p className="text-sm text-muted">Entra para ver tu feed y tus mensajes.</p>
+        </div>
 
-      {errors.general && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
-          {errors.general}
+        {errors.general && (
+          <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600">
+            {errors.general}
+          </p>
+        )}
+
+        <form method="post" noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="identifier" className="text-sm font-medium">
+              Usuario o correo
+            </label>
+            <input
+              id="identifier"
+              name="identifier"
+              type="text"
+              maxLength={254}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              aria-invalid={Boolean(errors.identifier)}
+              className="rounded-lg border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-red-500"
+              placeholder="ana_garcia"
+            />
+            {errors.identifier && (
+              <p className="text-xs text-red-600">{errors.identifier}</p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="password" className="text-sm font-medium">
+              Contraseña
+            </label>
+            <PasswordInput
+              id="password"
+              name="password"
+              maxLength={128}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              ariaInvalid={Boolean(errors.password)}
+              placeholder="••••••••"
+            />
+            {errors.password && (
+              <p className="text-xs text-red-600">{errors.password}</p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
+          >
+            {submitting ? "Iniciando sesión..." : "Iniciar sesión"}
+          </button>
+        </form>
+
+        <p className="text-center text-sm text-muted">
+          ¿No tienes cuenta?{" "}
+          <Link href="/registro" className="font-medium text-primary underline">
+            Regístrate
+          </Link>
         </p>
-      )}
-
-      <form method="post" noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="identifier" className="text-sm font-medium">
-            Usuario o correo
-          </label>
-          <input
-            id="identifier"
-            name="identifier"
-            type="text"
-            maxLength={254}
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            aria-invalid={Boolean(errors.identifier)}
-            className="rounded-lg border border-border px-3 py-2 outline-primary aria-[invalid=true]:border-red-500"
-            placeholder="ana_garcia"
-          />
-          {errors.identifier && (
-            <p className="text-xs text-red-600">{errors.identifier}</p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="password" className="text-sm font-medium">
-            Contraseña
-          </label>
-          <PasswordInput
-            id="password"
-            name="password"
-            maxLength={128}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            ariaInvalid={Boolean(errors.password)}
-            placeholder="••••••••"
-          />
-          {errors.password && (
-            <p className="text-xs text-red-600">{errors.password}</p>
-          )}
-        </div>
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
-        >
-          {submitting ? "Iniciando sesión..." : "Iniciar sesión"}
-        </button>
-      </form>
-
-      <p className="text-center text-sm text-muted">
-        ¿No tienes cuenta?{" "}
-        <Link href="/registro" className="font-medium text-primary underline">
-          Regístrate
-        </Link>
-      </p>
-    </main>
+      </main>
+    </BrandLayout>
   );
 }

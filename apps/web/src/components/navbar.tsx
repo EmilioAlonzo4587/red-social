@@ -9,13 +9,16 @@ export function Navbar() {
   const pathname = usePathname();
   const isPublic = PUBLIC_PATHS.includes(pathname);
 
+  // S4-08: portada, login y registro no llevan barra; su marca está en BrandLayout.
+  if (isPublic) return null;
+
   // S4-09, como el mockup: marca a la izquierda y buscador a la derecha. La cuenta
   // activa ya no va aquí (era NavProfile, S3-19): está en la tarjeta "Tu perfil" de /feed.
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-background">
       <nav className="flex h-16 items-center gap-4 px-5">
         <Link
-          href={isPublic ? "/" : "/feed"}
+          href="/feed"
           className="flex shrink-0 items-center gap-2 text-xl font-bold text-primary"
         >
           <svg
@@ -34,7 +37,7 @@ export function Navbar() {
           ChatInit
         </Link>
 
-        {!isPublic && <UserSearch />}
+        <UserSearch />
       </nav>
     </header>
   );
