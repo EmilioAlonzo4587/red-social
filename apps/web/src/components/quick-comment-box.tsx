@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { CommentDto } from "@red/api-types";
 import { apiFetchClient } from "@/lib/api-client";
+import { EmojiPicker, EmojiToggleButton } from "@/components/emoji-picker";
 import { ApiError } from "@/lib/api-error";
+import { useEmojiInsert } from "@/lib/use-emoji-insert";
 
 // Mismo límite que la api y que CommentSection (RN07).
 const MAX_CONTENT_LENGTH = 1000;
@@ -25,13 +27,17 @@ export function QuickCommentBox({
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const { ref: textareaRef, insert: insertEmoji } =
+    useEmojiInsert<HTMLTextAreaElement>(content, setContent, MAX_CONTENT_LENGTH);
+  const pickerId = useId();
   const inputId = `quick-comment-${postId}`;
   const canSubmit = !submitting && content.trim().length > 0;
 
+  // textareaRef es el mismo objeto en cada render: esto corre una sola vez, al abrir
   useEffect(() => {
     textareaRef.current?.focus();
-  }, []);
+  }, [textareaRef]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -48,6 +54,7 @@ export function QuickCommentBox({
         },
       );
       setContent("");
+      setEmojiOpen(false);
       onPosted(comment);
     } catch (err) {
       if (err instanceof ApiError && err.statusCode === 400) {
@@ -69,7 +76,10 @@ export function QuickCommentBox({
       noValidate
       onSubmit={handleSubmit}
       onKeyDown={(event) => {
-        if (event.key === "Escape") onClose();
+        if (event.key !== "Escape") return;
+        // Con el panel de emojis abierto, Escape solo cierra el panel
+        if (emojiOpen) setEmojiOpen(false);
+        else onClose();
       }}
       className="quick-comment-box flex flex-col gap-2 rounded-xl border border-border bg-surface p-3 focus-within:border-primary"
     >
@@ -90,11 +100,30 @@ export function QuickCommentBox({
         aria-invalid={error !== null}
         className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-primary"
       />
+      {emojiOpen && (
+        <EmojiPicker
+          id={pickerId}
+          onPick={(emoji) => {
+            insertEmoji(emoji);
+            setError(null);
+          }}
+          onClose={() => setEmojiOpen(false)}
+          className="rounded-xl border border-border p-2.5 sm:w-[328px]"
+        />
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-muted tabular-nums">
-          {content.length} / {MAX_CONTENT_LENGTH}
-        </span>
+        <div className="flex items-center gap-2">
+          <EmojiToggleButton
+            open={emojiOpen}
+            onToggle={() => setEmojiOpen((open) => !open)}
+            controls={pickerId}
+            className="h-9 w-9"
+          />
+          <span className="text-xs text-muted tabular-nums">
+            {content.length} / {MAX_CONTENT_LENGTH}
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <button
             type="button"

@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { CommentDto, CommentPageDto } from "@red/api-types";
 import { Avatar } from "@/components/avatar";
+import { EmojiPicker, EmojiToggleButton } from "@/components/emoji-picker";
 import { apiFetchClient } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-error";
 import { fieldErrorsFromDetails } from "@/lib/api-field-errors";
 import { formatRelativeTime } from "@/lib/format";
 import { subscribePostComments } from "@/lib/socket";
+import { useEmojiInsert } from "@/lib/use-emoji-insert";
 
 // Ya dentro del detalle, el 💬 de PostCard llama a focusCommentInput() para llevar
 // al cuadro de comentario de esta sección.
@@ -145,6 +147,10 @@ export function CommentSection({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
 
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const { ref: textareaRef, insert: insertEmoji } =
+    useEmojiInsert<HTMLTextAreaElement>(content, setContent, MAX_CONTENT_LENGTH);
+  const pickerId = useId();
   const remaining = MAX_CONTENT_LENGTH - content.length;
   const canSubmit = !submitting && content.trim().length > 0;
 
@@ -231,6 +237,7 @@ export function CommentSection({
       );
       setItems((prev) => [...prev, comment]);
       setContent("");
+      setEmojiOpen(false);
     } catch (error) {
       if (error instanceof ApiError && error.details.length > 0) {
         setFieldErrors(fieldErrorsFromDetails(error.details));
@@ -259,6 +266,7 @@ export function CommentSection({
           Escribe un comentario
         </label>
         <textarea
+          ref={textareaRef}
           id={COMMENT_INPUT_ID}
           value={content}
           onChange={(event) => setContent(event.target.value)}
@@ -266,8 +274,19 @@ export function CommentSection({
           rows={2}
           placeholder="Escribe un comentario…"
           aria-invalid={fieldErrors.content !== undefined}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setEmojiOpen(false);
+          }}
           className="resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-primary"
         />
+        {emojiOpen && (
+          <EmojiPicker
+            id={pickerId}
+            onPick={insertEmoji}
+            onClose={() => setEmojiOpen(false)}
+            className="rounded-xl border border-border p-2.5 sm:w-[328px]"
+          />
+        )}
         {fieldErrors.content && (
           <p className="text-sm text-red-600">{fieldErrors.content}</p>
         )}
@@ -275,9 +294,17 @@ export function CommentSection({
           <p className="text-sm text-red-600">{generalError}</p>
         )}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted">
-            {remaining} caracteres restantes
-          </span>
+          <div className="flex items-center gap-2">
+            <EmojiToggleButton
+              open={emojiOpen}
+              onToggle={() => setEmojiOpen((open) => !open)}
+              controls={pickerId}
+              className="h-9 w-9"
+            />
+            <span className="text-xs text-muted">
+              {remaining} caracteres restantes
+            </span>
+          </div>
           <button
             type="submit"
             disabled={!canSubmit}
