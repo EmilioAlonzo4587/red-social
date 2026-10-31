@@ -77,7 +77,7 @@ export interface ConversationReadEvent {
 // Igual que Notification de docs/05-api.md
 export interface NotificationData {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'message' | 'reply';
+  type: 'like' | 'comment' | 'follow' | 'reply';
   actor: UserSummaryData;
   postId: string | null;
   commentId: string | null;

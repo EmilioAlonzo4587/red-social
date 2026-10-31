@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import type {
   CommentChangedEvent,
-  ConversationReadEvent,
   FollowCreatedEvent,
   LikeChangedEvent,
-  MessageCreatedEvent,
 } from '../events/domain-events';
 import { OnDomainEvent } from '../events/on-domain-event.decorator';
 import { NotificationsService } from './notifications.service';
@@ -63,23 +61,6 @@ export class NotificationsListener {
     });
   }
 
-  // Lo emitirá el chat (S3-04)
-  @OnDomainEvent('message.created')
-  async onMessage(event: MessageCreatedEvent): Promise<void> {
-    await this.notifications.notify({
-      type: 'message',
-      recipientId: event.recipientId,
-      actorId: event.message.senderId,
-      preview: event.message.content,
-    });
-  }
-
-  @OnDomainEvent('conversation.read')
-  async onConversationRead(event: ConversationReadEvent): Promise<void> {
-    await this.notifications.markConversationMessagesRead(
-      event.conversationId,
-      event.userId,
-      event.readAt,
-    );
-  }
+  // Los mensajes no se guardan como notificación (S4-15): el aviso emergente sale de
+  // conversation:updated y el contador de no leídos vive en la bandeja del chat.
 }

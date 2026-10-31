@@ -65,7 +65,7 @@ export interface ConversationUpdatedEvent {
 
 export interface NotificationNewEvent {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'message' | 'reply';
+  type: 'like' | 'comment' | 'follow' | 'reply';
   actor: UserSummaryData;
   postId: string | null;
   commentId: string | null;

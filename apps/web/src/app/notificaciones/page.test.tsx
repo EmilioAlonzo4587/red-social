@@ -43,7 +43,7 @@ const N1: NotificationDto = {
 
 const N2: NotificationDto = {
   id: "n2",
-  type: "message",
+  type: "follow",
   actor: {
     id: "u3",
     username: "carla",
@@ -52,7 +52,7 @@ const N2: NotificationDto = {
   },
   postId: null,
   commentId: null,
-  preview: "Nos vemos mañana",
+  preview: null,
   reaction: null,
   read: false,
   createdAt: "2026-10-30T14:00:00.000Z",
@@ -100,7 +100,7 @@ describe("NotificacionesPage (S4-11)", () => {
     });
     expect(screen.getByRole("link", { name: /Carla/ })).toHaveAttribute(
       "href",
-      "/chat?username=carla",
+      "/u/carla",
     );
   });
 

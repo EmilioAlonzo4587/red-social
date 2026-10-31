@@ -364,7 +364,7 @@ describe('Socket.io autenticado (e2e)', () => {
       });
     }
 
-    it('conversation:join une a quien participa y enviar mensaje emite message:new, conversation:updated y notification:new', async () => {
+    it('conversation:join une a quien participa y enviar mensaje emite message:new y conversation:updated, sin notification:new (S4-15)', async () => {
       const ana = await registerUser('ana');
       const beto = await registerUser('beto');
       const conversationId = await openConversation(ana.access, 'beto');
@@ -389,7 +389,10 @@ describe('Socket.io autenticado (e2e)', () => {
         waitFor(anaSocket, ['conversation:updated']),
         waitFor(betoSocket, ['conversation:updated']),
       ]);
-      const onBetoNotification = waitFor(betoSocket, ['notification:new']);
+      const betoNotifications: { type: string }[] = [];
+      betoSocket.on('notification:new', (data: { type: string }) => {
+        betoNotifications.push(data);
+      });
 
       const sent = await request(app.getHttpServer())
         .post(`/api/conversations/${conversationId}/messages`)
@@ -441,23 +444,16 @@ describe('Socket.io autenticado (e2e)', () => {
         },
       });
 
-      // Beto también recibe notification:new en su sala personal user:{id}
-      expect(await onBetoNotification).toEqual({
-        event: 'notification:new',
-        data: expect.objectContaining({
-          type: 'message',
-          actor: {
-            id: ana.id,
-            username: 'ana',
-            displayName: null,
-            avatarPublicId: null,
-          },
-          postId: null,
-          commentId: null,
-          preview: 'Hola en vivo',
-          read: false,
-        }) as unknown,
-      });
+      // El mensaje no crea notificación (S4-15): el aviso emergente de la web sale de
+      // conversation:updated. Un follow de Ana después confirma que el listener ya procesó el
+      // mensaje: la primera notification:new que llega a Beto es la del follow.
+      const onBetoNotification = waitFor(betoSocket, ['notification:new']);
+      await request(app.getHttpServer())
+        .put('/api/users/beto/follow')
+        .set('Cookie', `access_token=${ana.access}`)
+        .expect(200);
+      await onBetoNotification;
+      expect(betoNotifications.map((n) => n.type)).toEqual(['follow']);
     });
 
     it('crear publicación emite feed:new al seguidor y no a quien no sigue (S4-11)', async () => {

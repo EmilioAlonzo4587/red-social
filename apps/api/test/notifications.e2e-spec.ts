@@ -81,19 +81,6 @@ describe('Notificaciones (e2e)', () => {
       ).body as UnreadCountDto
     ).count;
 
-  function sendMessage(senderId: string, recipientId: string) {
-    events.emit('message.created', {
-      recipientId,
-      message: {
-        id: '01a17fbf-5024-7141-88aa-8c7e3ffa3259',
-        conversationId: '01a17fbf-5024-7141-88aa-8c7e3ffa3260',
-        senderId,
-        content: 'Hola',
-        createdAt: new Date(),
-      },
-    });
-  }
-
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -399,38 +386,7 @@ describe('Notificaciones (e2e)', () => {
       ]);
     });
 
-    it('message: una sin leer por remitente; leída, el siguiente mensaje crea otra', async () => {
-      const ana = await signUp('ana_lopez');
-      const beto = await signUp('beto');
-
-      sendMessage(beto.id, ana.id);
-      await waitForNotifications(ana.id, 1);
-      sendMessage(beto.id, ana.id);
-      // Igual que en RN08: un follow al final confirma que el segundo mensaje ya se procesó
-      await request(server)
-        .put('/api/users/ana_lopez/follow')
-        .set('Cookie', beto.cookie)
-        .expect(200);
-      await waitForNotifications(ana.id, 2);
-
-      const types = (res: Response) => pageOf(res).items.map((n) => n.type);
-      expect(types(await listOf(ana.cookie))).toEqual(['follow', 'message']);
-
-      await request(server)
-        .post('/api/notifications/read')
-        .set('Cookie', ana.cookie)
-        .send({ all: true })
-        .expect(204);
-      sendMessage(beto.id, ana.id);
-      await waitForNotifications(ana.id, 3);
-      expect(types(await listOf(ana.cookie))).toEqual([
-        'message',
-        'follow',
-        'message',
-      ]);
-    });
-
-    it('message: calcula preview con el último mensaje del remitente en GET /api/notifications y notification.created (S4-11)', async () => {
+    it('un mensaje no crea notificación ni suma en unread-count (S4-15)', async () => {
       const ana = await signUp('ana_lopez');
       const beto = await signUp('beto');
 
@@ -440,49 +396,27 @@ describe('Notificaciones (e2e)', () => {
         .send({ username: 'ana_lopez' })
         .expect(201);
       const convId = (convRes.body as { id: string }).id;
-
+      for (const content of ['Hola', 'Otro mensaje']) {
+        await request(server)
+          .post(`/api/conversations/${convId}/messages`)
+          .set('Cookie', beto.cookie)
+          .send({ content })
+          .expect(201);
+      }
+      // Igual que en RN08: un follow al final confirma que los mensajes ya se procesaron
       await request(server)
-        .post(`/api/conversations/${convId}/messages`)
+        .put('/api/users/ana_lopez/follow')
         .set('Cookie', beto.cookie)
-        .send({ content: 'Primer mensaje de Beto' })
-        .expect(201);
+        .expect(200);
       await waitForNotifications(ana.id, 1);
 
-      expect(emit).toHaveBeenCalledWith('notification.created', {
-        recipientId: ana.id,
-        notification: expect.objectContaining({
-          type: 'message',
-          preview: 'Primer mensaje de Beto',
-        }) as unknown,
-      });
-
-      // Segundo mensaje mientras la notificación sigue sin leer: no crea otra fila, pero al
-      // leer GET /api/notifications muestra el preview del último mensaje del remitente.
-      await request(server)
-        .post(`/api/conversations/${convId}/messages`)
-        .set('Cookie', beto.cookie)
-        .send({ content: 'Último mensaje de Beto' })
-        .expect(201);
-
-      const items = pageOf(await listOf(ana.cookie)).items;
-      expect(items).toHaveLength(1);
-      expect(items[0]).toMatchObject({
-        type: 'message',
-        preview: 'Último mensaje de Beto',
-      });
-
-      // Al leer la conversación en /chat, un nuevo mensaje vuelve a crear otra notificación
-      await request(server)
-        .post(`/api/conversations/${convId}/read`)
-        .set('Cookie', ana.cookie)
-        .expect(204);
-      await request(server)
-        .post(`/api/conversations/${convId}/messages`)
-        .set('Cookie', beto.cookie)
-        .send({ content: 'Mensaje después de leer el chat' })
-        .expect(201);
-      await waitForNotifications(ana.id, 2);
-      expect(pageOf(await listOf(ana.cookie)).items).toHaveLength(2);
+      expect(pageOf(await listOf(ana.cookie)).items.map((n) => n.type)).toEqual(
+        ['follow'],
+      );
+      expect(await unreadOf(ana.cookie)).toBe(1);
+      expect(
+        await prisma.notification.count({ where: { recipientId: ana.id } }),
+      ).toBe(1);
     });
   });
 

@@ -92,48 +92,25 @@ describe('NotificationsService', () => {
       expect(events.emit).not.toHaveBeenCalled();
     });
 
-    it('message: no crea otra si ya hay una sin leer del mismo remitente', async () => {
-      prisma.notification.findFirst.mockResolvedValueOnce({ id: 'n0' });
-
-      await expect(
-        service.notify({
-          type: 'message',
-          recipientId: 'ana',
-          actorId: 'beto',
-        }),
-      ).resolves.toBeNull();
-      expect(prisma.notification.findFirst).toHaveBeenCalledWith({
-        where: {
-          type: 'message',
-          recipientId: 'ana',
-          actorId: 'beto',
-          readAt: null,
-        },
-        select: { id: true },
-      });
-      expect(prisma.notification.create).not.toHaveBeenCalled();
-      expect(events.emit).not.toHaveBeenCalled();
-    });
-
-    it('message: la crea si no hay una pendiente y recorta preview a ~80 caracteres', async () => {
-      prisma.notification.findFirst.mockResolvedValueOnce(null);
+    it('preview: recorta el de un comentario a ~80 caracteres', async () => {
+      prisma.notification.count.mockResolvedValueOnce(0);
       prisma.notification.create.mockResolvedValueOnce({
         ...row,
-        type: 'message',
-        postId: null,
+        type: 'comment',
+        commentId: 'c1',
       });
 
-      const longText = 'a'.repeat(100);
       await expect(
         service.notify({
-          type: 'message',
+          type: 'comment',
           recipientId: 'ana',
           actorId: 'beto',
-          preview: longText,
+          postId: 'p1',
+          commentId: 'c1',
+          preview: 'a'.repeat(100),
         }),
       ).resolves.toMatchObject({
-        type: 'message',
-        postId: null,
+        type: 'comment',
         preview: `${'a'.repeat(80)}…`,
       });
       expect(events.emit).toHaveBeenCalledTimes(1);

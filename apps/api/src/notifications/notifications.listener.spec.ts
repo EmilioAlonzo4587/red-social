@@ -6,7 +6,6 @@ import { NotificationsService } from './notifications.service';
 describe('NotificationsListener', () => {
   const notifications = {
     notify: jest.fn(),
-    markConversationMessagesRead: jest.fn(),
   };
   let listener: NotificationsListener;
 
@@ -142,36 +141,8 @@ describe('NotificationsListener', () => {
     });
   });
 
-  it('message.created: message del remitente al receptor', async () => {
-    await listener.onMessage({
-      recipientId: 'ana',
-      message: {
-        id: 'm1',
-        conversationId: 'conv1',
-        senderId: 'beto',
-        content: 'Hola',
-        createdAt: new Date(),
-      },
-    });
-    expect(notifications.notify).toHaveBeenCalledWith({
-      type: 'message',
-      recipientId: 'ana',
-      actorId: 'beto',
-      preview: 'Hola',
-    });
-  });
-
-  it('conversation.read: marca como leídas las notificaciones de mensaje de esa conversación', async () => {
-    const readAt = new Date('2026-10-30T15:00:00Z');
-    await listener.onConversationRead({
-      conversationId: 'conv1',
-      userId: 'ana',
-      readAt,
-    });
-    expect(notifications.markConversationMessagesRead).toHaveBeenCalledWith(
-      'conv1',
-      'ana',
-      readAt,
-    );
+  it('message.created y conversation.read ya no crean ni tocan notificaciones (S4-15)', () => {
+    expect('onMessage' in listener).toBe(false);
+    expect('onConversationRead' in listener).toBe(false);
   });
 });
