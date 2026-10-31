@@ -30,6 +30,7 @@ const {
   onPresenceRef,
   emitConversationTyping,
   notifyConversationRead,
+  setActiveChatUser,
   subscribeConversationMessages,
   watchUsersPresence,
 } = vi.hoisted(() => {
@@ -49,6 +50,7 @@ const {
   };
   const emitConversationTyping = vi.fn();
   const notifyConversationRead = vi.fn();
+  const setActiveChatUser = vi.fn();
   const watchUsersPresence = vi.fn(
     (_ids: string[], cb: (onlineIds: ReadonlySet<string>) => void) => {
       onPresenceRef.current = cb;
@@ -88,6 +90,7 @@ const {
     onPresenceRef,
     emitConversationTyping,
     notifyConversationRead,
+    setActiveChatUser,
     subscribeConversationMessages,
     watchUsersPresence,
   };
@@ -103,6 +106,7 @@ vi.mock("@/lib/socket", () => ({
   }),
   emitConversationTyping,
   notifyConversationRead,
+  setActiveChatUser,
   watchUsersPresence,
 }));
 
