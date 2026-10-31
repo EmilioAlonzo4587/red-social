@@ -34,6 +34,11 @@ import {
 import { reactionActionText } from "@/lib/reactions";
 
 export const TOAST_DURATION_MS = 5000;
+// Plegados, se ven el aviso más reciente y asomando detrás hasta 2 más; el resto queda
+// escondido detrás (S4-16)
+export const PEEKING_TOASTS = 2;
+const PEEK_OFFSET_PX = 10;
+const PEEK_SCALE_STEP = 0.05;
 
 // Los mensajes ya no son notificaciones guardadas (S4-15): su aviso sale de
 // conversation:updated, pero se ve igual que los demás.
@@ -156,6 +161,8 @@ export function NotificationToaster() {
   const pathname = usePathname();
   const isPublic = PUBLIC_PATHS.includes(pathname);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // Con el mouse encima o el foco dentro, el mazo se despliega en lista
+  const [expanded, setExpanded] = useState(false);
   const muted = useSyncExternalStore(
     subscribeSoundMuted,
     isNotificationSoundMuted,
@@ -210,6 +217,8 @@ export function NotificationToaster() {
     function showToast(toast: Toast) {
       playNotificationSound();
       setToasts((prev) => {
+        // Un mazo nuevo empieza plegado aunque el anterior se haya ido desplegado
+        if (prev.length === 0) setExpanded(false);
         const withoutDuplicate = prev.filter((item) => {
           if (item.id !== toast.id) return true;
           clearToastTimer(item.id);
@@ -265,23 +274,58 @@ export function NotificationToaster() {
     }
   }
 
-  // El más reciente va arriba; si no caben todos, los más viejos quedan cortados abajo
-  // hasta que se cierran solos (shrink-0: no se aplastan)
+  // Uno encima del otro, como un mazo (S4-16): el más reciente arriba y completo, y los
+  // anteriores asomando detrás, así ocupa el lugar de un solo aviso aunque lleguen 10.
+  // Todos comparten la misma celda de la grilla; al desplegarse pasan a una lista.
+  const isExpanded = expanded && toasts.length > 1;
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed top-20 left-1/2 z-40 flex max-h-[calc(100dvh-6rem)] w-full max-w-md -translate-x-1/2 flex-col gap-2 overflow-hidden px-4"
+      // Con el mouse encima se pausan todos, no solo el de abajo del cursor: desplegados,
+      // los demás no se cierran mientras se leen
+      onMouseEnter={() => {
+        setExpanded(true);
+        for (const toast of toasts) clearToastTimer(toast.id);
+      }}
+      onMouseLeave={() => {
+        setExpanded(false);
+        for (const toast of toasts) startToastTimer(toast.id);
+      }}
+      onFocus={() => setExpanded(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setExpanded(false);
+      }}
+      className={`fixed top-20 left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-4 ${
+        isExpanded
+          ? "flex max-h-[calc(100dvh-6rem)] flex-col gap-2 overflow-y-auto pb-2"
+          : "pointer-events-none grid"
+      }`}
     >
-      {toasts.map((toast) => {
+      {toasts.map((toast, index) => {
         const actorName = toast.actor.displayName ?? toast.actor.username;
         const accent = NOTIFICATION_ACCENT[toast.type];
+        // Plegado, solo el de arriba se usa; los de atrás no reciben clics ni foco
+        const behind = !isExpanded && index > 0;
+        const hidden = !isExpanded && index > PEEKING_TOASTS;
+        const depth = Math.min(index, PEEKING_TOASTS);
         return (
           <div
             key={toast.id}
             role="status"
-            onMouseEnter={() => clearToastTimer(toast.id)}
-            onMouseLeave={() => startToastTimer(toast.id)}
-            className={`notification-toast pointer-events-auto flex shrink-0 items-start gap-3 rounded-xl border border-border border-l-4 ${accent.border} bg-background p-3 shadow-md`}
+            aria-hidden={hidden || undefined}
+            inert={behind || undefined}
+            style={
+              isExpanded
+                ? undefined
+                : {
+                    zIndex: toasts.length - index,
+                    opacity: hidden ? 0 : 1,
+                    transform: `translateY(${depth * PEEK_OFFSET_PX}px) scale(${1 - depth * PEEK_SCALE_STEP})`,
+                  }
+            }
+            className={`notification-toast flex shrink-0 origin-bottom items-start gap-3 rounded-xl border border-border border-l-4 ${accent.border} bg-background p-3 shadow-md transition-[transform,opacity] duration-200 motion-reduce:transition-none ${
+              isExpanded ? "" : "[grid-area:1/1] self-start"
+            } ${behind ? "pointer-events-none" : "pointer-events-auto"}`}
           >
             <Link
               href={toast.href}
