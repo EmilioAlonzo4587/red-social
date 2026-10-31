@@ -301,6 +301,11 @@ describe("ChatPage (S3-06)", () => {
       expect(screen.getAllByText("Hola en vivo")).toHaveLength(2); // burbuja + vista previa en bandeja
     });
     expect(screen.getByText(/Enviado/)).toBeInTheDocument();
+    // S4-16: tocar Enviar no saca el foco del campo, así el teclado del celular no se cierra
+    const messageInput = screen.getByPlaceholderText("Escribe un mensaje...");
+    expect(messageInput).toHaveFocus();
+    expect(messageInput).toHaveValue("");
+    expect(messageInput).toHaveAttribute("enterkeyhint", "send");
 
     // Cuando el otro participante lee el chat, cambia de "Enviado" a "Visto"
     act(() => {
