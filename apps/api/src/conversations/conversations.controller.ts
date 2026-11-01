@@ -10,21 +10,25 @@ import {
   Res,
 } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
-  ApiCookieAuth,
   ApiCreatedResponse,
-  ApiForbiddenResponse,
   ApiNoContentResponse,
-  ApiNotFoundResponse,
   ApiOkResponse,
+  ApiParam,
   ApiTags,
-  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { SessionUser } from '../auth/session.guard';
+import {
+  ApiError,
+  ApiSession,
+  CONVERSATION_NOT_FOUND,
+  INVALID_CURSOR,
+  INVALID_ID,
+  NOT_A_PARTICIPANT,
+  USER_NOT_FOUND,
+} from '../common/api-docs';
 import { CursorQueryDto } from '../common/dto/cursor-query.dto';
-import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { postIdPipe as idPipe } from '../posts/post-id.pipe';
 import { ConversationsService } from './conversations.service';
 import {
@@ -38,8 +42,7 @@ import { SendMessageDto } from './dto/send-message.dto';
 // Chat 1 a 1 (S3-04, RN09). Los mensajes se envían por HTTP y se distribuyen por Socket.io
 // (S3-05) a partir del evento message.created.
 @ApiTags('conversations')
-@ApiCookieAuth()
-@ApiUnauthorizedResponse({ type: ErrorResponseDto })
+@ApiSession()
 @Controller('conversations')
 export class ConversationsController {
   constructor(private readonly conversations: ConversationsService) {}
@@ -47,14 +50,21 @@ export class ConversationsController {
   @Post()
   @ApiCreatedResponse({ type: ConversationDto, description: 'Nueva' })
   @ApiOkResponse({ type: ConversationDto, description: 'Ya existía' })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description: 'Falta username o es el propio usuario',
-  })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'El usuario no existe',
-  })
+  @ApiError(
+    400,
+    'Falta username o es el propio usuario',
+    {
+      summary: 'Falta username',
+      message: 'username: es obligatorio',
+      details: [{ field: 'username', rule: 'isNotEmpty' }],
+    },
+    {
+      summary: 'Chat con uno mismo',
+      message: 'username: no puedes abrir un chat contigo',
+      details: [{ field: 'username', rule: 'notSelf' }],
+    },
+  )
+  @ApiError(404, 'El usuario no existe', USER_NOT_FOUND)
   async open(
     @CurrentUser() user: SessionUser,
     @Body() dto: OpenConversationDto,
@@ -79,22 +89,19 @@ export class ConversationsController {
   }
 
   @Get(':id/messages')
+  @ApiParam({ name: 'id', format: 'uuid', description: 'De la conversación' })
   @ApiOkResponse({
     type: MessagePageDto,
     description: 'Del más reciente al más antiguo',
   })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description: 'id no es un UUID o cursor no válido',
-  })
-  @ApiForbiddenResponse({
-    type: ErrorResponseDto,
-    description: 'No participa en la conversación (RN09)',
-  })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'La conversación no existe',
-  })
+  @ApiError(
+    400,
+    'id no es un UUID o cursor no válido',
+    INVALID_ID,
+    INVALID_CURSOR,
+  )
+  @ApiError(403, 'No participa en la conversación (RN09)', NOT_A_PARTICIPANT)
+  @ApiError(404, 'La conversación no existe', CONVERSATION_NOT_FOUND)
   messages(
     @Param('id', idPipe) id: string,
     @CurrentUser() user: SessionUser,
@@ -104,20 +111,28 @@ export class ConversationsController {
   }
 
   @Post(':id/messages')
-  @ApiCreatedResponse({ type: MessageDto })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description:
-      'content vacío o de más de 2000 caracteres (RN09), o id no es un UUID',
+  @ApiParam({ name: 'id', format: 'uuid', description: 'De la conversación' })
+  @ApiCreatedResponse({
+    type: MessageDto,
+    description: 'Enviado; llega a los dos por Socket.io (message:new)',
   })
-  @ApiForbiddenResponse({
-    type: ErrorResponseDto,
-    description: 'No participa en la conversación (RN09)',
-  })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'La conversación no existe',
-  })
+  @ApiError(
+    400,
+    'content vacío o de más de 2000 caracteres (RN09), o id no es un UUID',
+    {
+      summary: 'Mensaje vacío (RN09)',
+      message: 'content: es obligatorio',
+      details: [{ field: 'content', rule: 'isNotEmpty' }],
+    },
+    {
+      summary: 'Mensaje largo (RN09)',
+      message: 'content: máximo 2000 caracteres',
+      details: [{ field: 'content', rule: 'maxLength' }],
+    },
+    INVALID_ID,
+  )
+  @ApiError(403, 'No participa en la conversación (RN09)', NOT_A_PARTICIPANT)
+  @ApiError(404, 'La conversación no existe', CONVERSATION_NOT_FOUND)
   send(
     @Param('id', idPipe) id: string,
     @CurrentUser() user: SessionUser,
@@ -128,19 +143,11 @@ export class ConversationsController {
 
   @Post(':id/read')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiParam({ name: 'id', format: 'uuid', description: 'De la conversación' })
   @ApiNoContentResponse({ description: 'Leída hasta el último mensaje' })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description: 'id no es un UUID',
-  })
-  @ApiForbiddenResponse({
-    type: ErrorResponseDto,
-    description: 'No participa en la conversación (RN09)',
-  })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'La conversación no existe',
-  })
+  @ApiError(400, 'id no es un UUID', INVALID_ID)
+  @ApiError(403, 'No participa en la conversación (RN09)', NOT_A_PARTICIPANT)
+  @ApiError(404, 'La conversación no existe', CONVERSATION_NOT_FOUND)
   markRead(
     @Param('id', idPipe) id: string,
     @CurrentUser() user: SessionUser,

@@ -7,26 +7,18 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBadRequestResponse,
-  ApiCookieAuth,
-  ApiNoContentResponse,
-  ApiOkResponse,
-  ApiTags,
-  ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
+import { ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { SessionUser } from '../auth/session.guard';
+import { ApiError, ApiSession, INVALID_CURSOR } from '../common/api-docs';
 import { CursorQueryDto } from '../common/dto/cursor-query.dto';
-import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
 import { NotificationPageDto, UnreadCountDto } from './dto/notification.dto';
 import { NotificationsService } from './notifications.service';
 
 // Siempre las del usuario de la sesión; nadie ve ni marca las de otro
 @ApiTags('notifications')
-@ApiCookieAuth()
-@ApiUnauthorizedResponse({ type: ErrorResponseDto })
+@ApiSession()
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
@@ -37,10 +29,7 @@ export class NotificationsController {
     description:
       'De la más reciente a la más antigua; sin las de publicaciones o comentarios eliminados',
   })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description: 'cursor no válido',
-  })
+  @ApiError(400, 'Cursor no válido', INVALID_CURSOR)
   list(
     @CurrentUser() user: SessionUser,
     @Query() query: CursorQueryDto,
@@ -60,11 +49,28 @@ export class NotificationsController {
   @Post('read')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Marcadas como leídas' })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description:
-      'Falta ids o all, vienen los dos, all no es true o ids no es una lista de 1 a 100 UUID',
-  })
+  @ApiError(
+    400,
+    'Falta ids o all, vienen los dos, all no es true o ids no es una lista de 1 a 100 UUID',
+    {
+      summary: 'Sin ids ni all',
+      message: 'ids: debe ser una lista de ids; all: debe ser true',
+      details: [
+        { field: 'ids', rule: 'isArray' },
+        { field: 'all', rule: 'equals' },
+      ],
+    },
+    {
+      summary: 'ids y all juntos',
+      message: 'all: no se puede mandar junto con ids',
+      details: [{ field: 'all', rule: 'notWith' }],
+    },
+    {
+      summary: 'Una id no es UUID',
+      message: 'ids: cada id debe ser un UUID',
+      details: [{ field: 'ids', rule: 'isUuid' }],
+    },
+  )
   markRead(
     @CurrentUser() user: SessionUser,
     @Body() dto: MarkReadDto,
