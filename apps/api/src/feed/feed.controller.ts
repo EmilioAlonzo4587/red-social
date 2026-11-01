@@ -1,28 +1,23 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import {
-  ApiBadRequestResponse,
-  ApiCookieAuth,
-  ApiNotFoundResponse,
-  ApiOkResponse,
-  ApiTags,
-  ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
+import { ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { SessionUser } from '../auth/session.guard';
+import {
+  ApiError,
+  ApiSession,
+  INVALID_CURSOR,
+  USER_NOT_FOUND,
+  USERNAME_PARAM,
+} from '../common/api-docs';
 import { CursorQueryDto } from '../common/dto/cursor-query.dto';
-import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { PostPageDto } from './dto/post-page.dto';
 import { FeedService } from './feed.service';
 
 // Listas de publicaciones (S2-05). /users/:username/posts vive aquí y no en UsersController,
 // igual que followers y following en FollowsController.
 @ApiTags('feed')
-@ApiCookieAuth()
-@ApiUnauthorizedResponse({ type: ErrorResponseDto })
-@ApiBadRequestResponse({
-  type: ErrorResponseDto,
-  description: 'Cursor no válido',
-})
+@ApiSession()
+@ApiError(400, 'Cursor no válido', INVALID_CURSOR)
 @Controller()
 export class FeedController {
   constructor(private readonly feed: FeedService) {}
@@ -52,14 +47,12 @@ export class FeedController {
   }
 
   @Get('users/:username/posts')
+  @ApiParam(USERNAME_PARAM)
   @ApiOkResponse({
     type: PostPageDto,
     description: 'Publicaciones del usuario, más recientes primero',
   })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'El usuario no existe',
-  })
+  @ApiError(404, 'El usuario no existe', USER_NOT_FOUND)
   byUser(
     @Param('username') username: string,
     @CurrentUser() user: SessionUser,

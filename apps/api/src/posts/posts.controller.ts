@@ -10,39 +10,75 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
-  ApiCookieAuth,
   ApiCreatedResponse,
-  ApiForbiddenResponse,
   ApiNoContentResponse,
-  ApiNotFoundResponse,
   ApiOkResponse,
+  ApiParam,
   ApiTags,
-  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { SessionUser } from '../auth/session.guard';
-import { ErrorResponseDto } from '../common/dto/error-response.dto';
+import {
+  ApiError,
+  ApiSession,
+  type ErrorExample,
+  INVALID_ID,
+  POST_NOT_FOUND,
+  unknownField,
+} from '../common/api-docs';
 import { CreatePostDto } from './dto/create-post.dto';
 import { PostDto } from './dto/post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { postIdPipe } from './post-id.pipe';
 import { PostsService } from './posts.service';
 
+// Sin texto ni imágenes, al crear o al editar (RN03)
+const EMPTY_POST: ErrorExample = {
+  summary: 'Sin texto ni imágenes (RN03)',
+  message: 'content: escribe un texto o agrega al menos una imagen',
+  details: [{ field: 'content', rule: 'contentOrMedia' }],
+};
+
+const LONG_CONTENT: ErrorExample = {
+  summary: 'Texto largo (RN03)',
+  message: 'content: máximo 2000 caracteres',
+  details: [{ field: 'content', rule: 'maxLength' }],
+};
+
+const ID_PARAM = {
+  name: 'id',
+  format: 'uuid',
+  description: 'De la publicación',
+};
+
 @ApiTags('posts')
-@ApiCookieAuth()
-@ApiUnauthorizedResponse({ type: ErrorResponseDto })
+@ApiSession()
 @Controller('posts')
 export class PostsController {
   constructor(private readonly posts: PostsService) {}
 
   @Post()
-  @ApiCreatedResponse({ type: PostDto })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description:
-      'Sin texto ni imágenes, content pasa de 2000, más de 4 imágenes o una imagen no es del usuario (RN03, RN04)',
+  @ApiCreatedResponse({
+    type: PostDto,
+    description: 'Creada; llega a los seguidores por Socket.io (feed:new)',
   })
+  @ApiError(
+    400,
+    'Sin texto ni imágenes, content pasa de 2000, más de 4 imágenes o una imagen no es del usuario (RN03, RN04)',
+    EMPTY_POST,
+    LONG_CONTENT,
+    {
+      summary: 'Más de 4 imágenes (RN03)',
+      message: 'media: máximo 4 imágenes',
+      details: [{ field: 'media', rule: 'arrayMaxSize' }],
+    },
+    {
+      summary: 'Imagen de otro usuario',
+      message: 'media.0.publicId: no pertenece al usuario',
+      details: [{ field: 'media.0.publicId', rule: 'ownership' }],
+    },
+    unknownField('authorId'),
+  )
   create(
     @CurrentUser() user: SessionUser,
     @Body() dto: CreatePostDto,
@@ -51,15 +87,13 @@ export class PostsController {
   }
 
   @Get(':id')
-  @ApiOkResponse({ type: PostDto })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description: 'id no es un UUID',
+  @ApiParam(ID_PARAM)
+  @ApiOkResponse({
+    type: PostDto,
+    description: 'La publicación con likedByMe y myReaction de quien la pide',
   })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'No existe o fue eliminada',
-  })
+  @ApiError(400, 'id no es un UUID', INVALID_ID)
+  @ApiError(404, 'No existe o fue eliminada', POST_NOT_FOUND)
   findOne(
     @Param('id', postIdPipe) id: string,
     @CurrentUser() user: SessionUser,
@@ -68,20 +102,23 @@ export class PostsController {
   }
 
   @Patch(':id')
-  @ApiOkResponse({ type: PostDto })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description:
-      'id no es un UUID, content pasa de 2000 o quedaría sin texto ni imágenes (RN03)',
+  @ApiParam(ID_PARAM)
+  @ApiOkResponse({
+    type: PostDto,
+    description: 'Texto actualizado y editedAt con la hora de la edición',
   })
-  @ApiForbiddenResponse({
-    type: ErrorResponseDto,
-    description: 'La publicación es de otro usuario (RN04)',
+  @ApiError(
+    400,
+    'id no es un UUID, content pasa de 2000 o quedaría sin texto ni imágenes (RN03)',
+    EMPTY_POST,
+    LONG_CONTENT,
+    INVALID_ID,
+  )
+  @ApiError(403, 'La publicación es de otro usuario (RN04)', {
+    summary: 'Publicación ajena (RN04)',
+    message: 'Solo el autor puede editar su publicación',
   })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'No existe o fue eliminada',
-  })
+  @ApiError(404, 'No existe o fue eliminada', POST_NOT_FOUND)
   update(
     @Param('id', postIdPipe) id: string,
     @CurrentUser() user: SessionUser,
@@ -92,19 +129,16 @@ export class PostsController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiNoContentResponse({ description: 'Eliminada' })
-  @ApiBadRequestResponse({
-    type: ErrorResponseDto,
-    description: 'id no es un UUID',
+  @ApiParam(ID_PARAM)
+  @ApiNoContentResponse({
+    description: 'Eliminada (borrado lógico) junto con sus imágenes (RN04)',
   })
-  @ApiForbiddenResponse({
-    type: ErrorResponseDto,
-    description: 'La publicación es de otro usuario (RN04)',
+  @ApiError(400, 'id no es un UUID', INVALID_ID)
+  @ApiError(403, 'La publicación es de otro usuario (RN04)', {
+    summary: 'Publicación ajena (RN04)',
+    message: 'Solo el autor puede eliminar su publicación',
   })
-  @ApiNotFoundResponse({
-    type: ErrorResponseDto,
-    description: 'No existe o ya fue eliminada',
-  })
+  @ApiError(404, 'No existe o ya fue eliminada', POST_NOT_FOUND)
   remove(
     @Param('id', postIdPipe) id: string,
     @CurrentUser() user: SessionUser,

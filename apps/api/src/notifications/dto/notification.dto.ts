@@ -26,7 +26,7 @@ export class NotificationDto {
     type: String,
     format: 'uuid',
     nullable: true,
-    description: 'En like y comment',
+    description: 'En like, comment y reply',
   })
   postId!: string | null;
 
@@ -34,7 +34,7 @@ export class NotificationDto {
     type: String,
     format: 'uuid',
     nullable: true,
-    description: 'En comment',
+    description: 'En comment y reply',
   })
   commentId!: string | null;
 
