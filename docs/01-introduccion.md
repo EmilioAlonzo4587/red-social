@@ -22,7 +22,7 @@ El proyecto demuestra el desarrollo, la integración y el despliegue de una apli
 | Perfil con nombre visible, biografía y foto | Cuentas o publicaciones privadas |
 | Publicaciones con texto, hasta 4 imágenes o ambos; eliminación de las propias | Video en la interfaz |
 | Likes, comentarios y seguimiento de usuarios | Chats grupales |
-| Feed con pestañas Siguiendo y Explorar | Indicador de "escribiendo" y confirmación de lectura por mensaje |
+| Feed con pestañas Siguiendo y Explorar | Confirmación de lectura de cada mensaje (el chat marca "Visto" solo en el último propio) |
 | Búsqueda de usuarios | Varias instancias del backend (requiere Redis) |
 | Notificaciones en vivo y persistidas | Contenido visible sin sesión |
 | Chat 1 a 1 en tiempo real | |

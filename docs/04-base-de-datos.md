@@ -107,6 +107,7 @@ erDiagram
   posts ||--o{ post_media : "adjunta"
   posts ||--o{ comments : "recibe"
   users ||--o{ comments : "escribe"
+  comments |o--o{ comments : "respuestas"
   users ||--o{ post_likes : "da"
   posts ||--o{ post_likes : "recibe"
   users ||--o{ follows : "sigue (follower)"
