@@ -42,7 +42,7 @@ flowchart LR
 
 `ci.yml` (S0-02), `docs-pdf.yml` y `deploy.yml` (S1-01) están en `.github/workflows/`.
 
-`ci.yml` levanta un PostgreSQL 16 de servicio con la base `minired_test`, aplica las migraciones y corre las e2e contra ella (S1-03). Las e2e vacían las tablas antes de cada prueba y solo aceptan una base cuyo nombre termine en `_test`. Al final construye las imágenes de api y web sin publicarlas, para que un Dockerfile roto falle en el PR y no en el despliegue.
+`ci.yml` levanta un PostgreSQL 16 de servicio con la base `minired_test`, aplica las migraciones y corre las e2e contra ella (S1-03). Las e2e vacían las tablas antes de cada prueba y solo aceptan una base cuyo nombre termine en `_test`. Además de una e2e por endpoint, dos recorridos completos con HTTP y Socket.io cubren los flujos críticos (S4-01): `content-flow.e2e-spec.ts` (publicar, like, comentar, notificación y los 403) y `session-chat-flow.e2e-spec.ts` (sesión, refresh y chat entre dos usuarios). Al final construye las imágenes de api y web sin publicarlas, para que un Dockerfile roto falle en el PR y no en el despliegue.
 
 `deploy.yml` corre en cada push a `main`, salvo si solo cambian `docs/`, archivos `.md` o `.claude/`, y también a mano desde la pestaña Actions (`workflow_dispatch`):
 
