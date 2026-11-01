@@ -773,12 +773,12 @@ export interface components {
             actor: components["schemas"]["UserSummaryDto"];
             /**
              * Format: uuid
-             * @description En like y comment
+             * @description En like, comment y reply
              */
             postId: string | null;
             /**
              * Format: uuid
-             * @description En comment
+             * @description En comment y reply
              */
             commentId: string | null;
             /** @description Primeros ~80 caracteres del comentario o la respuesta; null en like y follow */
@@ -875,13 +875,15 @@ export interface operations {
             /** @description Cuenta creada y sesión iniciada */
             201: {
                 headers: {
+                    /** @description access_token=<JWT>; Path=/; HttpOnly; SameSite=Lax y refresh_token=<token>; Path=/api/auth; HttpOnly; SameSite=Lax, los dos con Max-Age de 7 días (y Secure en producción) */
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["MeDto"];
                 };
             };
-            /** @description RN01, RN02 */
+            /** @description username de 3 a 30 caracteres [A-Za-z0-9_], email válido y password de 8 a 128 (RN01, RN02) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -890,7 +892,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description Usuario o correo ya registrado */
+            /** @description Usuario o correo ya registrado, sin distinguir mayúsculas (RN01) */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -899,6 +901,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Demasiados intentos desde la misma IP */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -922,15 +925,18 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Sesión iniciada */
             200: {
                 headers: {
+                    /** @description access_token=<JWT>; Path=/; HttpOnly; SameSite=Lax y refresh_token=<token>; Path=/api/auth; HttpOnly; SameSite=Lax, los dos con Max-Age de 7 días (y Secure en producción) */
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["MeDto"];
                 };
             };
-            /** @description Falta un campo */
+            /** @description Falta un campo o viene vacío */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -939,7 +945,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description Usuario o contraseña incorrectos */
+            /** @description Usuario o contraseña incorrectos: el mismo error si la cuenta no existe, para no revelar cuáles existen */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -948,6 +954,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Demasiados intentos desde la misma IP */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -967,14 +974,16 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Cookies nuevas */
+            /** @description Cookies nuevas: el refresh_token usado ya no sirve (rotación, RN12) */
             204: {
                 headers: {
+                    /** @description access_token=<JWT>; Path=/; HttpOnly; SameSite=Lax y refresh_token=<token>; Path=/api/auth; HttpOnly; SameSite=Lax, los dos con Max-Age de 7 días (y Secure en producción) */
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description Sin token, vencido o reutilizado (RN12) */
+            /** @description Sin refresh_token, vencido o reutilizado. Reutilizar uno ya rotado cierra todas las sesiones del usuario (RN12). Siempre borra las dos cookies */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -994,9 +1003,11 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Sesión cerrada y cookies borradas */
+            /** @description Sesión cerrada y cookies borradas; responde igual aunque no haya sesión */
             204: {
                 headers: {
+                    /** @description access_token y refresh_token vacías y ya vencidas */
+                    "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content?: never;
@@ -1012,6 +1023,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description El usuario con sesión */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1020,6 +1032,7 @@ export interface operations {
                     "application/json": components["schemas"]["MeDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1072,6 +1085,7 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Perfil actualizado. Un campo que falta no cambia; null lo borra */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1089,6 +1103,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1128,6 +1143,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1143,12 +1159,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description Sin distinguir mayúsculas */
                 username: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            /** @description Perfil con contadores; sin correo */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1157,6 +1175,7 @@ export interface operations {
                     "application/json": components["schemas"]["ProfileDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1165,6 +1184,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description El usuario no existe */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1185,12 +1205,16 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": {
-                    /** Format: binary */
-                    file?: string;
+                    /**
+                     * Format: binary
+                     * @description jpeg, png o webp de hasta 5 MB (RN03)
+                     */
+                    file: string;
                 };
             };
         };
         responses: {
+            /** @description Subida a users/{id}/ en Cloudinary; publicId, width y height se reenvían tal cual en POST /api/posts o PATCH /api/users/me */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1199,7 +1223,7 @@ export interface operations {
                     "application/json": components["schemas"]["MediaDto"];
                 };
             };
-            /** @description Falta el archivo o no es jpeg, png o webp */
+            /** @description Falta el archivo o no es jpeg, png o webp (Cloudinary también revisa el formato real) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1208,6 +1232,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1216,7 +1241,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description El archivo pasa de 5 MB */
+            /** @description El archivo pasa de 5 MB (RN03). El mensaje es el de multer */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -1232,12 +1257,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description Sin distinguir mayúsculas */
                 username: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            /** @description Siguiendo; repetirlo responde lo mismo (RN06) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1255,6 +1282,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1279,12 +1307,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description Sin distinguir mayúsculas */
                 username: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            /** @description Dejó de seguir; si no lo seguía responde lo mismo */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1293,6 +1323,7 @@ export interface operations {
                     "application/json": components["schemas"]["FollowStatusDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1320,12 +1351,14 @@ export interface operations {
             };
             header?: never;
             path: {
+                /** @description Sin distinguir mayúsculas */
                 username: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            /** @description Seguidores, los más recientes primero */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1343,6 +1376,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1370,12 +1404,14 @@ export interface operations {
             };
             header?: never;
             path: {
+                /** @description Sin distinguir mayúsculas */
                 username: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            /** @description Seguidos, los más recientes primero */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1393,6 +1429,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1425,6 +1462,7 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Creada; llega a los seguidores por Socket.io (feed:new) */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1442,6 +1480,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1457,12 +1496,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description De la publicación */
                 id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            /** @description La publicación con likedByMe y myReaction de quien la pide */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1480,6 +1521,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1504,13 +1546,14 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description De la publicación */
                 id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Eliminada */
+            /** @description Eliminada (borrado lógico) junto con sus imágenes (RN04) */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -1526,6 +1569,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1559,6 +1603,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description De la publicación */
                 id: string;
             };
             cookie?: never;
@@ -1569,6 +1614,7 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Texto actualizado y editedAt con la hora de la edición */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1586,6 +1632,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1644,6 +1691,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1684,6 +1732,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1702,6 +1751,7 @@ export interface operations {
             };
             header?: never;
             path: {
+                /** @description Sin distinguir mayúsculas */
                 username: string;
             };
             cookie?: never;
@@ -1726,6 +1776,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1750,6 +1801,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description De la publicación */
                 id: string;
             };
             cookie?: never;
@@ -1778,6 +1830,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1802,6 +1855,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description De la publicación */
                 id: string;
             };
             cookie?: never;
@@ -1817,7 +1871,7 @@ export interface operations {
                     "application/json": components["schemas"]["LikeStatusDto"];
                 };
             };
-            /** @description id no es un UUID o la reacción no es válida */
+            /** @description id no es un UUID */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1826,6 +1880,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1850,6 +1905,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description De la publicación */
                 id: string;
             };
             cookie?: never;
@@ -1874,6 +1930,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1901,13 +1958,14 @@ export interface operations {
             };
             header?: never;
             path: {
+                /** @description De la publicación */
                 id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Del más antiguo al más reciente */
+            /** @description Solo los de primer nivel, del más antiguo al más reciente, con replyCount */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1925,6 +1983,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1949,6 +2008,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description De la publicación */
                 id: string;
             };
             cookie?: never;
@@ -1959,6 +2019,7 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Creado; con parentId, como respuesta en ese hilo */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1976,6 +2037,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2003,6 +2065,7 @@ export interface operations {
             };
             header?: never;
             path: {
+                /** @description Del comentario */
                 id: string;
             };
             cookie?: never;
@@ -2027,6 +2090,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2051,6 +2115,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description Del comentario */
                 id: string;
             };
             cookie?: never;
@@ -2073,6 +2138,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2122,7 +2188,7 @@ export interface operations {
                     "application/json": components["schemas"]["NotificationPageDto"];
                 };
             };
-            /** @description cursor no válido */
+            /** @description Cursor no válido */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2131,6 +2197,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2159,6 +2226,7 @@ export interface operations {
                     "application/json": components["schemas"]["UnreadCountDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2198,6 +2266,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2226,6 +2295,7 @@ export interface operations {
                     "application/json": components["schemas"]["ConversationDto"][];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2276,6 +2346,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2303,6 +2374,7 @@ export interface operations {
             };
             header?: never;
             path: {
+                /** @description De la conversación */
                 id: string;
             };
             cookie?: never;
@@ -2327,6 +2399,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2360,6 +2433,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description De la conversación */
                 id: string;
             };
             cookie?: never;
@@ -2370,6 +2444,7 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Enviado; llega a los dos por Socket.io (message:new) */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -2387,6 +2462,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2420,6 +2496,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description De la conversación */
                 id: string;
             };
             cookie?: never;
@@ -2442,6 +2519,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
+            /** @description Sin la cookie access_token o con el JWT vencido: la web llama una vez a POST /api/auth/refresh y repite la petición */
             401: {
                 headers: {
                     [name: string]: unknown;
