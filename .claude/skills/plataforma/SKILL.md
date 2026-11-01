@@ -29,7 +29,7 @@ En `apps/api/src/configure-app.ts` (lo usan `main.ts` y las e2e), cuando lo pida
 - `app.set('trust proxy', 1)`: un solo proxy (Caddy) delante. No lo subas a `true` ni a más saltos: cualquiera podría elegir su IP con `X-Forwarded-For` y saltarse el throttler.
 - Un filtro global de excepciones que responda siempre `{ statusCode, error, message, details }` (`docs/05-api.md`) y traduzca los errores de Prisma `P2002` a 409 y `P2025` a 404. Ningún error interno ni traza llega al cliente.
 - `cookie-parser`, `helmet` y `enableCors` solo con `CORS_ORIGIN` y `credentials: true`; nunca `origin: '*'`.
-- Swagger en `/api/docs` y el JSON en `/api/docs-json`, que alimenta `packages/api-types`.
+- Swagger en `/api/docs` y el JSON en `/api/docs-json`, que alimenta `packages/api-types`. Se configura en `src/swagger.ts` (`setupSwagger`, desde S4-04), aparte de `configure-app.ts`: lo llaman `main.ts` y `test/swagger.e2e-spec.ts`.
 - `GET /api/health` que verifica la conexión a la base (S1-01).
 - Las variables se leen y validan al arrancar en `src/config/env.ts` (se inyectan con `@Inject(ENV)`): si falta una obligatoria, la api no arranca. Toda variable nueva va a `.env.example` con un valor de ejemplo, a `test/setup-env.ts` y, antes del merge, al `.env` del VPS.
 

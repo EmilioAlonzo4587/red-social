@@ -33,7 +33,7 @@ Si la tarea necesita algo que aún no existe, dilo y créalo como parte de la is
 ```
 
 - Códigos: 400 validación, 401 sin sesión, 403 sin permiso sobre algo ajeno, 404 inexistente o borrado, 409 usuario o correo repetido, 413 archivo grande, 429 demasiados intentos. Usa las excepciones de Nest (`NotFoundException`, `ForbiddenException`, `ConflictException`) y no armes respuestas de error a mano en cada controlador.
-- Cada endpoint se documenta en Swagger con sus respuestas de error (definición de terminado).
+- Cada endpoint se documenta en Swagger con sus respuestas de error (definición de terminado). Desde S4-04 se usan los decoradores de `src/common/api-docs.ts`: `@ApiSession()` en el controlador (cookie `access_token` y su 401) y `@ApiError(status, descripción, ...ejemplos)` por cada error, con ejemplos que copian el `message` y los `details` reales (reutiliza `INVALID_ID`, `INVALID_CURSOR`, `POST_NOT_FOUND`, `USER_NOT_FOUND`, `unknownField(campo)`, …). Cada respuesta 2xx lleva `description`. `test/swagger.e2e-spec.ts` falla si falta algo de esto; si agregas una ruta `@Public()`, súmala a su `PUBLIC_OPERATIONS`.
 
 ## Validación de entradas
 

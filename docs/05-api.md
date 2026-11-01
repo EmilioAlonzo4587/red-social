@@ -1,6 +1,6 @@
 # Contrato de la API
 
-Versión 0, acordada al inicio del proyecto (issue S0-05). La referencia viva es Swagger en `https://<dominio>/api/docs`, y el JSON de OpenAPI en `/api/docs-json` genera los tipos del frontend (`packages/api-types`). Este documento fija la forma de cada objeto, petición y respuesta; Swagger debe coincidir con él.
+Versión 0, acordada al inicio del proyecto (issue S0-05). La referencia viva es Swagger en `https://<dominio>/api/docs` (ver Swagger, abajo), y el JSON de OpenAPI en `/api/docs-json` genera los tipos del frontend (`packages/api-types`). Este documento fija la forma de cada objeto, petición y respuesta; Swagger debe coincidir con él.
 
 ## Convenciones
 
@@ -29,6 +29,16 @@ Versión 0, acordada al inicio del proyecto (issue S0-05). La referencia viva es
 | 413 | Archivo demasiado grande |
 | 429 | Demasiados intentos |
 | 503 | Sin conexión a la base (solo `/api/health`) |
+
+Una ruta con `:id` responde 400 con `details: [{ field: "id", rule: "isUuid" }]` si `id` no es un UUID, aunque su tabla no lo repita.
+
+### Swagger (S4-04)
+
+`/api/docs` documenta cada ruta con su respuesta correcta y sus errores, y cada error trae uno o más ejemplos con el `message` y los `details` que responde la api de verdad. Arriba de la lista de rutas explica la autenticación por cookie, el formato de error y la paginación.
+
+- Las dos cookies son esquemas de seguridad `apiKey` en `cookie`: `access_token` (todas las rutas 🔒) y `refresh_token` (`refresh` y `logout`). Register, login y refresh documentan la cabecera `Set-Cookie` que mandan.
+- Para probar una ruta 🔒 desde `/api/docs`: ejecutar `POST /api/auth/login` (o `register`) con *Try it out*. El navegador guarda las cookies y las manda solo en las peticiones siguientes, porque la página está en el mismo dominio que la api. El botón *Authorize* no sirve para esto: una página no puede escribir cookies `HttpOnly`.
+- `apps/api/test/swagger.e2e-spec.ts` falla si una ruta nueva no documenta su 401 (salvo las cinco públicas), si un error no trae `ErrorResponseDto` con un ejemplo de este formato, o si una ruta con `:id`, `:username`, `?cursor=` o cuerpo no documenta su 400 o su 404.
 
 ## Objetos
 
